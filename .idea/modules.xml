@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/Marche_Florent_biorbd_casadi.iml" filepath="$PROJECT_DIR$/.idea/Marche_Florent_biorbd_casadi.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Simu_Marche_Casadi.iml" filepath="$PROJECT_DIR$/.idea/Simu_Marche_Casadi.iml" />
     </modules>
   </component>
 </project>

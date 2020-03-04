@@ -95,9 +95,9 @@ def initial_guess_activation(e, T, nbNoeuds, nkutta, GaitPhase):
     # a              = initial guess for muscular activation (nbQ * nbNoeuds)
 
     if GaitPhase == 'stance':
-        model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
     elif GaitPhase == 'swing':
-        model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
 
     def muscle_activationDot(a, e):
         states   = biorbd.VecBiorbdMuscleStateDynamics(model.nbMuscleTotal())

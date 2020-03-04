@@ -4,15 +4,15 @@ from casadi import *
 from pylab import *
 import numpy as np
 import time
+from LoadData import *
+from Fcn_InitialGuess import *
 from Marche_Fcn_Integration import *
 from Fcn_Objective import *
-from LoadData import *
 from Fcn_Affichage import *
-from Fcn_InitialGuess import *
 
 # SET MODELS
-model_swing  = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
-model_stance = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+model_swing  = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
+model_stance = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
 
 # ----------------------------- Probleme -------------------------------------------------------------------------------
 nbNoeuds_stance = 25                                   # shooting points for stance phase
@@ -47,8 +47,8 @@ dq = x[nbQ: 2*nbQ]                                     # velocities
 
 # ----------------------------- Load Data ------------------------------------------------------------------------------
 # LOAD MEASUREMENT DATA FROM C3D FILE
-file        = '/home/leasanchez/programmation/Marche_Florent/DonneesMouvement/equinus01_out.c3d'
-kalman_file = '/home/leasanchez/programmation/Marche_Florent/DonneesMouvement/equinus01_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
+file        = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/equincocont01_out.c3d'
+kalman_file = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/equincocont01_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
 
 # ground reaction forces
 [GRF_real, T, T_stance] = load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, 'cycle')
@@ -71,8 +71,8 @@ for nGrp in range(model_stance.nbMuscleGroups()):
         FISO0[n_muscle] = model_stance.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax()
         n_muscle += 1
 
-nkutta = 4                                             # number of iteration for integration
 
+nkutta = 4                                             # number of iteration for integration
 # ----------------------------- Weighting factors ----------------------------------------------------------------------
 wL  = 1                                                # activation
 wMa = 30                                               # anatomical marker
@@ -92,7 +92,6 @@ Jm = 0                                                 # objective function for 
 Je = 0                                                 # objective function for EMG
 JR = 0                                                 # objective function for ground reactions
 
-M_simu = np.zeros((nbMarker, nbNoeuds))
 # ------------ PHASE 1 : Stance phase
 # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL STANCE
 Set_forceISO_max = external('libforce_iso_max_stance', 'libforce_iso_max_stance.so',{'enable_fd':True})
@@ -135,7 +134,6 @@ for k in range(nbNoeuds_swing):
 # égalité
 lbg = [0]*nbX*nbNoeuds
 ubg = [0]*nbX*nbNoeuds
-# contrainte cyclique???
 
 # ----------------------------- Bounds on w ----------------------------------------------------------------------------
 # activation - excitation musculaire
@@ -190,18 +188,22 @@ X0                = vertcat(*X0.T)
 p0 = [1] + [1]*nbMus
 
 
-x0 = vertcat(u0, X0, p0)
+w0 = vertcat(u0, X0, p0)
 
 # ----------------------------- Solver ---------------------------------------------------------------------------------
 w = vertcat(U, X, p)
 J = Ja + Je + Jm + JR
 
 class AnimateCallback(casadi.Callback):
-    def __init__(self, name):
+    def __init__(self, name, nx, ng, np, opts={}):
         Callback.__init__(self)
         self.name = name               # callback name
 
-        self.J  = []                    # objective function
+        self.nx = nx                   # optimized value number
+        self.ng = ng                   # constraints number
+        self.np = np                   # parameters number
+
+        self.J  = []                   # objective function
         self.Ja = []
         self.Je = []
         self.Jm = []
@@ -252,93 +254,95 @@ class AnimateCallback(casadi.Callback):
             plt.plot([0, nbNoeuds], [min_Q, min_Q], 'k--')
             plt.plot([0, nbNoeuds], [max_Q, max_Q], 'k--')
 
-        plt.show()
+        self.construct(name, opts)
 
-        def get_n_in(self): return nlpsol_n_out()
-        def get_n_out(self): return 1
-        def get_name_in(self, i): return nlpsol_out(i)
-        def get_name_out(self, i): return "ret"
+    def get_n_in(self): return nlpsol_n_out()
+    def get_n_out(self): return 1
+    def get_name_in(self, i): return nlpsol_out(i)
+    def get_name_out(self, i): return "ret"
 
-        def get_sparsity_in(self, i):
-            n = nlpsol_out(i)
-            if n == 'f': return Sparsity.scalar()
-            elif n in ('x', 'lam_x'): return Sparsity.dense(self.nx)
-            elif n in ('g', 'lam_g'): return Sparsity.dense(self.ng)
-            else: return Sparsity(0, 0)
+    def get_sparsity_in(self, i):
+        n = nlpsol_out(i)
+        if n == 'f': return Sparsity.scalar()
+        elif n in ('x', 'lam_x'): return Sparsity.dense(self.nx)
+        elif n in ('g', 'lam_g'): return Sparsity.dense(self.ng)
+        else: return Sparsity(0, 0)
 
-        def eval(self, arg):
-            darg = {}
-            # GET CONTROL AND STATES
-            for (i, s) in enumerate(nlpsol_out()): darg[s] = arg[i]
-            sol_U = darg["x"][:nbU * nbNoeuds]
-            sol_X = darg["x"][nbU * nbNoeuds: -nP]
+    def eval(self, arg):
+        darg = {}
+        # GET CONTROL AND STATES
+        for (i, s) in enumerate(nlpsol_out()): darg[s] = arg[i]
+        sol_U = darg["x"][:nbU * nbNoeuds]
+        sol_X = darg["x"][nbU * nbNoeuds: -nP]
 
-            sol_q  = [np.array(sol_X[0::nbX]).squeeze(), np.array(sol_X[1::nbX]).squeeze(), np.array(sol_X[2::nbX]).squeeze(), np.array(sol_X[3::nbX]).squeeze(), np.array(sol_X[4::nbX]).squeeze(), np.array(sol_X[5::nbX]).squeeze()]
-            sol_dq = [np.array(sol_X[6::nbX]).squeeze(), np.array(sol_X[7::nbX]).squeeze(), np.array(sol_X[8::nbX]).squeeze(), np.array(sol_X[9::nbX]).squeeze(), np.array(sol_X[10::nbX]).squeeze(), np.array(sol_X[11::nbX]).squeeze()]
-            sol_a  = [np.array(sol_U[0::nbU]).squeeze(), np.array(sol_U[1::nbU]).squeeze(), np.array(sol_U[2::nbU]).squeeze(), np.array(sol_U[3::nbU]).squeeze(), np.array(sol_U[4::nbU]).squeeze(), np.array(sol_U[5::nbU]).squeeze(), np.array(sol_U[6::nbU]).squeeze(), np.array(sol_U[7::nbU]).squeeze(), np.array(sol_U[8::nbU]).squeeze(), np.array(sol_U[9::nbU]).squeeze(), np.array(sol_U[10::nbU]).squeeze(), np.array(sol_U[11::nbU]).squeeze(), np.array(sol_U[12::nbU]).squeeze(), np.array(sol_U[13::nbU]).squeeze(), np.array(sol_U[14::nbU]).squeeze(), np.array(sol_U[15::nbU]).squeeze(), np.array(sol_U[16::nbU]).squeeze()]
-            sol_F  = [np.array(sol_U[17::nbU]).squeeze(), np.array(sol_U[18::nbU]).squeeze(), np.array(sol_U[19::nbU]).squeeze()]
+        # sol_q  = [np.array(sol_X[0::nbX]).squeeze(), np.array(sol_X[1::nbX]).squeeze(), np.array(sol_X[2::nbX]).squeeze(), np.array(sol_X[3::nbX]).squeeze(), np.array(sol_X[4::nbX]).squeeze(), np.array(sol_X[5::nbX]).squeeze()]
+        # sol_dq = [np.array(sol_X[6::nbX]).squeeze(), np.array(sol_X[7::nbX]).squeeze(), np.array(sol_X[8::nbX]).squeeze(), np.array(sol_X[9::nbX]).squeeze(), np.array(sol_X[10::nbX]).squeeze(), np.array(sol_X[11::nbX]).squeeze()]
+        # sol_a  = [np.array(sol_U[0::nbU]).squeeze(), np.array(sol_U[1::nbU]).squeeze(), np.array(sol_U[2::nbU]).squeeze(), np.array(sol_U[3::nbU]).squeeze(), np.array(sol_U[4::nbU]).squeeze(), np.array(sol_U[5::nbU]).squeeze(), np.array(sol_U[6::nbU]).squeeze(), np.array(sol_U[7::nbU]).squeeze(), np.array(sol_U[8::nbU]).squeeze(), np.array(sol_U[9::nbU]).squeeze(), np.array(sol_U[10::nbU]).squeeze(), np.array(sol_U[11::nbU]).squeeze(), np.array(sol_U[12::nbU]).squeeze(), np.array(sol_U[13::nbU]).squeeze(), np.array(sol_U[14::nbU]).squeeze(), np.array(sol_U[15::nbU]).squeeze(), np.array(sol_U[16::nbU]).squeeze()]
+        # sol_F  = [np.array(sol_U[17::nbU]).squeeze(), np.array(sol_U[18::nbU]).squeeze(), np.array(sol_U[19::nbU]).squeeze()]
 
-            # CONVERGENCE
-            JR = 0
-            Je = 0
-            Jm = 0
-            Ja = 0
+        sol_q  = [sol_X[0::nbX], sol_X[1::nbX], sol_X[2::nbX], sol_X[3::nbX], sol_X[4::nbX], sol_X[5::nbX]]
+        sol_dq = [sol_X[6::nbX], sol_X[7::nbX], sol_X[8::nbX], sol_X[9::nbX], sol_X[10::nbX], sol_X[11::nbX]]
+        sol_a  = [sol_U[0::nbU], sol_U[1::nbU], sol_U[2::nbU], sol_U[3::nbU], sol_U[4::nbU], sol_U[5::nbU], sol_U[6::nbU], sol_U[7::nbU], sol_U[8::nbU], sol_U[9::nbU], sol_U[10::nbU], sol_U[11::nbU], sol_U[12::nbU], sol_U[13::nbU], sol_U[14::nbU], sol_U[15::nbU],sol_U[16::nbU]]
+        sol_F  = [sol_U[17::nbU], sol_U[18::nbU], sol_U[19::nbU]]
 
-            # OBJECTIVE FUNCTION
-            for k in range(nbNoeuds_stance):
-                JR += fcn_objective_GRF(wR, X[nbX * k: nbX * (k + 1)], U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
-                Jm += fcn_objective_markers(wMa, wMt, X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k],'stance')  # Marker
-                Je += fcn_objective_emg(wU, U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                        # EMG
-                Ja += fcn_objective_activation(wL, U[nbU * k: nbU * (k + 1)])                                      # Muscle activations (no EMG)
-            for k in range(nbNoeuds_swing):
-                Jm += fcn_objective_markers(wMa, wMt, X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')  # marker
-                Je += fcn_objective_emg(wU, U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])  # emg
-                Ja += fcn_objective_activation(wL, U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
+        # CONVERGENCE
+        JR = 0
+        Je = 0
+        Jm = 0
+        Ja = 0
 
-            J = Ja + Je + Jm + JR
+        # OBJECTIVE FUNCTION
+        for k in range(nbNoeuds_stance):
+            JR += fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
+            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k],'stance')  # Marker
+            Je += fcn_objective_emg(wU, sol_U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                        # EMG
+            Ja += fcn_objective_activation(wL, sol_U[nbU * k: nbU * (k + 1)])                                      # Muscle activations (no EMG)
+        for k in range(nbNoeuds_swing):
+            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')  # marker
+            Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])  # emg
+            Ja += fcn_objective_activation(wL, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
 
-            self.J.append(J)
-            self.Ja.append(Ja)
-            self.Je.append(Je)
-            self.Jm.append(Jm)
-            self.JR.append(JR)
+        J = Ja + Je + Jm + JR
 
-            plt.figure(1)
-            plt.plot(J,  'r', Labels = 'global')
-            plt.plot(Jm, 'g', Labels = 'markers')
-            plt.plot(Je, 'b', Labels = 'emg')
-            plt.plot(JR, 'o', Labels = 'ground reaction forces')
-            plt.plot(Ja, 'k', Labels = 'activations')
-            plt.legend()
+        self.J.append(J)
+        self.Ja.append(Ja)
+        self.Je.append(Je)
+        self.Jm.append(Jm)
+        self.JR.append(JR)
 
-            # CONTROL
-            plt.figure(2)
-            # muscular activation
-            for nMus in range(nbMus):
-                plt.subplot(5, 4, nMus + 1)
-                for n in range(nbNoeuds - 1):
-                    plt.plot([n, n + 1, n + 1], [sol_a[nMus, n], sol_a[nMus, n], sol_a[nMus, n + 1]], 'b')
-            # pelvis forces
-            for nF in range(3):
-                plt.subplot(5, 4, nbMus + nF)
-                for n in range(nbNoeuds - 1):
-                    plt.plot([n, n + 1, n + 1], [sol_F[nF, n], sol_F[nF, n], sol_F[nF, n + 1]], 'b')
+        plt.figure(1)
+        label =['J', 'Jm', 'Je', 'JR', 'Ja']
+        for it in range(len(self.J)):
+            plt.plot(label, [self.J[it], self.Jm[it], self.Je[it], self.JR[it], self.Ja[it]], 'r+')
 
-            # STATE
-            plt.figure(3)
-            for q in range(nbQ):
-                # joint position
-                plt.subplot(2, 6, q)
-                plt.plot(sol_q[q, :])
+        # CONTROL
+        plt.figure(2)
+        # muscular activation
+        for nMus in range(nbMus):
+            plt.subplot(5, 4, nMus + 1)
+            for n in range(nbNoeuds - 1):
+                plt.plot([n, n + 1, n + 1], [sol_a[nMus, n], sol_a[nMus, n], sol_a[nMus, n + 1]], 'b')
+        # pelvis forces
+        for nF in range(3):
+            plt.subplot(5, 4, nbMus + nF)
+            for n in range(nbNoeuds - 1):
+                plt.plot([n, n + 1, n + 1], [sol_F[nF, n], sol_F[nF, n], sol_F[nF, n + 1]], 'b')
 
-                # velocities
-                plt.subplot(2, 6, q + nbQ)
-                plt.plot(sol_dq[q, :])
+        # STATE
+        plt.figure(3)
+        for q in range(nbQ):
+            # joint position
+            plt.subplot(2, 6, q)
+            plt.plot(sol_q[q, :])
 
-        plt.show()
+            # velocities
+            plt.subplot(2, 6, q + nbQ)
+            plt.plot(sol_dq[q, :])
+
+        return [0]
 
 nlp = {'x': w, 'f': J, 'g': vertcat(*G)}
-callback = AnimateCallback('callback')
+callback = AnimateCallback('callback', (nbU*nbNoeuds + nbX*(nbNoeuds + 1) + nP), nbX*nbNoeuds, 0)
 opts = {"ipopt.tol": 1e-1, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory", "iteration_callback": callback}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
@@ -348,13 +352,15 @@ res = solver(lbg = lbg,
              ubg = ubg,
              lbx = lbx,
              ubx = ubx,
-             x0  = x0)
+             x0  = w0)
 
+matplotlib.interactive(False)
+plt.show()
 
 # RESULTS
 stop_opti = time.time() - start_opti
 print('Time to solve : ' + str(stop_opti))
-save()
+
 
 sol_U  = res["x"][:nbU * nbNoeuds]
 sol_X  = res["x"][nbU * nbNoeuds: -nP]

@@ -65,26 +65,20 @@ def fcn_objective_markers(wMa, wMt, Q, M_real, Gaitphase):
 
     if Gaitphase == 'stance':
         # SET MODEL
-        model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
         Get_Markers = external('libmarche_Florent_markers_stance', 'libmarche_Florent_markers_stance.so', {'enable_fd': True})
     else:
         # SET MODEL
-        model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
         Get_Markers = external('libmarche_Florent_markers_swing', 'libmarche_Florent_markers_swing.so', {'enable_fd': True})
 
     markers = Get_Markers(Q, 1, 1)                                                  # markers position
     Jm = 0
     for nMark in range(model.nbMarkers()):
         if model.marker(nMark).isAnatomical():
-            # Jm += wMa * ((model.marker(Q, nMark) - M_real[0, nMark]) * (model.marker(Q, nMark) - M_real[0, nMark]))            # x
-            # Jm += wMa * ((model.marker(Q, nMark) - M_real[2, nMark]) * (model.marker(Q, nMark) - M_real[2, nMark]))            # z
-
             Jm += wMa * ((markers[3*nMark] - M_real[0, nMark]) * (markers[3*nMark] - M_real[0, nMark]))             # x
             Jm += wMa * ((markers[3*nMark + 2] - M_real[2, nMark]) * (markers[3*nMark + 2] - M_real[2, nMark]))     # z
         else:
-            # Jm += wMt * ((model.marker(Q, nMark) - M_real[0, nMark]) * (model.marker(Q, nMark) - M_real[0, nMark]))           # x
-            # Jm += wMt * ((model.marker(Q, nMark) - M_real[2, nMark]) * (model.marker(Q, nMark) - M_real[2, nMark]))           # z
-
             Jm += wMt * ((markers[3*nMark] - M_real[0, nMark]) * (markers[3*nMark] - M_real[0, nMark]))
             Jm += wMt * ((markers[3*nMark + 2] - M_real[2, nMark]) * (markers[3*nMark + 2] - M_real[2, nMark]))
     return Jm
@@ -102,41 +96,20 @@ def fcn_objective_GRF(wR, x, u, GRF_real):
     # JR            = cost of the difference between real and simulated ground reaction forces
 
     # SET MODEL
-    model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+    model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
 
     activations = u[: model.nbMuscleTotal()]
     Q           = x[:model.nbQ()]
     dQ          = x[model.nbQ(): 2 * model.nbQ()]
 
-    # # COMPUTE ACTIVATION DERIVATIVE
-    # # def timeDerivationActivation(excitations, activations):
-    # #     states   = biorbd.VecBiorbdMuscleStateDynamics(model.nbMuscleTotal())
-    # #     activationsDot = []
-    # #     n_muscle = 0
-    # #     for nGrp in range(model.nbMuscleGroups()):
-    # #         for nMus in range(model.muscleGroup(nGrp).nbMuscles()):
-    # #             activationsDot.append(states[n_muscle].timeDerivativeActivation(excitations[n_muscle], activations[n_muscle], model.muscleGroup(nGrp).muscle(nMus).characteristics())
-    # #             n_muscle += 1
-    # #     return activationsDot
-    #
-    # # timeDerivationActivation = Function('activationDot', [excitations, activations], timeDerivationActivation(excitations, activations)).expand()
-    # timeDerivativeActivation = external('libtime_Derivative_Activation_stance', 'libtime_Derivative_Activation_stance.so', {'enable_fd': True})
-    # activationsDot           = timeDerivativeActivation(excitations, activations)
 
-    # COMPUTE MOTOR JOINT TORQUES
-    # muscularJointTorque = Function('muscular_joint_torque', [activations, Q, dQ], model.muscularJointTorque(activations, Q, dQ)).expand()
     muscularJointTorque = external('libmuscular_joint_torque', 'libmuscular_joint_torque.so', {'enable_fd': True})
-
     joint_torque    = muscularJointTorque(activations, Q, dQ)
     joint_torque[0] = u[model.nbMuscleTotal() + 0]           # ajout des forces au pelvis
     joint_torque[1] = u[model.nbMuscleTotal() + 1]
     joint_torque[2] = u[model.nbMuscleTotal() + 2]
 
     # COMPUTE THE GROUND REACTION FORCES
-    # C                        = model.getConstraints()
-    # Forward_Dynamics_Contact = Function('ffcn_contact', [Q, dQ, joint_torque, C], model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque, C)).expand()
-    # ddQ = model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque, C)
-    # GRF = C.force()
     Forward_Dynamics_Contact = external('libforward_dynamics_contact', 'libforward_dynamics_contact.so',{'enable_fd': True})
     GRF                      = Forward_Dynamics_Contact(Q, dQ, joint_torque)[2*model.nbQ():]
 

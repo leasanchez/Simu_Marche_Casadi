@@ -1,7 +1,6 @@
 import biorbd
 from casadi import *
-# from Fcn_forward_dynamic import *
-from Fcn_forward_dynamic_2 import *
+from Fcn_forward_dynamic import *
 
 
 # Integration Euler
