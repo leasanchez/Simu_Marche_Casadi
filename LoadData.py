@@ -47,6 +47,7 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
     measurements   = c3d(file)
     points         = measurements['data']['points']
     labels_markers = measurements['parameters']['POINT']['LABELS']['value']
+    freq           = measurements['parameters']['POINT']['RATE']['value'][0]
 
     # GET THE TIME OF TOE OFF & HEEL STRIKE
     [start, stop_stance, stop] = Get_Event(file)
@@ -96,9 +97,9 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
 
     elif GaitPhase == 'swing':
         # T = T_swing
-        t = np.linspace(0, T, int(stop - stop_stance))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
-        f = interp1d(t, markers[:, :, int(stop_stance) + 1: int(stop) + 1], kind='cubic')
+        t = np.linspace(0, T + 1/freq, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, T + 1/freq, nbNoeuds + 1)
+        f = interp1d(t, markers[:, :, int(stop_stance) + 1: int(stop) + 2], kind='cubic')
         M_real = f(node_t)
     return M_real
 
@@ -265,9 +266,9 @@ def load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, GaitPhase):
     GRF_real_stance = f_stance(node_t_stance)
 
     # Swing
-    t_swing        = np.linspace(0, T_swing + 1/freq, int(stop - stop_stance) + 1)
-    node_t_swing   = np.linspace(0, T_swing, nbNoeuds_swing + 1)
-    f_swing        = interp1d(t_swing, GRF[:, int(stop_stance) + 1: int(stop) + 2], kind ='cubic')
+    t_swing        = np.linspace(0, T_swing + 1/freq, int(stop - stop_stance))
+    node_t_swing   = np.linspace(0, T_swing, nbNoeuds_swing)
+    f_swing        = interp1d(t_swing, GRF[:, int(stop_stance) + 1: int(stop) + 1], kind ='cubic')
     GRF_real_swing = f_swing(node_t_swing)
 
 
