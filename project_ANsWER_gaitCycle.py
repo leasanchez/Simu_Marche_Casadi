@@ -166,8 +166,8 @@ init_A = 0.1
 
 # CONTROL
 u0               = np.zeros((nbU, nbNoeuds))
-# u0[: nbMus, :]   = load_initialguess_muscularExcitation(np.hstack([U_real_stance, U_real_swing]))
-u0[: nbMus, :]   = np.zeros((nbMus, nbNoeuds)) + init_A
+u0[: nbMus, :]   = load_initialguess_muscularExcitation(np.hstack([U_real_stance, U_real_swing]))
+#u0[: nbMus, :]   = np.zeros((nbMus, nbNoeuds)) + init_A
 u0[nbMus + 0, :] = [0]*nbNoeuds               # pelvis forces
 u0[nbMus + 1, :] = [-500]*nbNoeuds_stance + [0]*nbNoeuds_swing
 u0[nbMus + 2, :] = [0]*nbNoeuds
@@ -211,7 +211,17 @@ class AnimateCallback(casadi.Callback):
 
         # CONVERGENCE
         plt.figure(1)
-        title('Convergence objective functions')
+
+        plt.subplot(2, 3, 1)
+        title('Convergence objective global')
+        plt.subplot(2, 3, 2)
+        title('Convergence objective min activation')
+        plt.subplot(2, 3, 3)
+        title('Convergence objective track emg')
+        plt.subplot(2, 3, 4)
+        title('Convergence objective track marker')
+        plt.subplot(2, 3, 5)
+        title('Convergence objective track GRF')
 
         # CONTROL
         plt.figure(2)
@@ -285,6 +295,7 @@ class AnimateCallback(casadi.Callback):
         sol_a  = [sol_U[0::nbU], sol_U[1::nbU], sol_U[2::nbU], sol_U[3::nbU], sol_U[4::nbU], sol_U[5::nbU], sol_U[6::nbU], sol_U[7::nbU], sol_U[8::nbU], sol_U[9::nbU], sol_U[10::nbU], sol_U[11::nbU], sol_U[12::nbU], sol_U[13::nbU], sol_U[14::nbU], sol_U[15::nbU],sol_U[16::nbU]]
         sol_F  = [sol_U[17::nbU], sol_U[18::nbU], sol_U[19::nbU]]
 
+
         # CONVERGENCE
         JR = 0
         Je = 0
@@ -301,7 +312,6 @@ class AnimateCallback(casadi.Callback):
             Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')  # marker
             Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])  # emg
             Ja += fcn_objective_activation(wL, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
-
         J = Ja + Je + Jm + JR
 
         self.J.append(J)
@@ -311,15 +321,24 @@ class AnimateCallback(casadi.Callback):
         self.JR.append(JR)
 
         plt.figure(1)
-        label =['J', 'Jm', 'Je', 'JR', 'Ja']
-        for it in range(len(self.J)):
-            plt.plot(label, [self.J[it], self.Jm[it], self.Je[it], self.JR[it], self.Ja[it]], 'r+')
+        node = np.linspace(0, len(self.J) - 1, len(self.J))
+        plt.subplot(231)
+        plt.plot(node, self.J, '+-')
+        plt.subplot(232)
+        plt.plot(node, self.Ja, '+-')
+        plt.subplot(233)
+        plt.plot(node, self.Je, '+-')
+        plt.subplot(234)
+        plt.plot(node, self.Jm, '+-')
+        plt.subplot(235)
+        plt.plot(node, self.JR, '+-')
+
 
         # CONTROL
         plt.figure(2)
         # muscular activation
         for nMus in range(nbMus):
-            plt.subplot(5, 4, nMus + 1)
+            plt.subplot(54(nMus + 1))
             for n in range(nbNoeuds - 1):
                 plt.plot([n, n + 1, n + 1], [sol_a[nMus, n], sol_a[nMus, n], sol_a[nMus, n + 1]], 'b')
         # pelvis forces
