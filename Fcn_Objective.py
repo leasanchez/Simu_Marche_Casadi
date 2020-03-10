@@ -115,4 +115,4 @@ def fcn_objective_GRF(wR, x, u, GRF_real):
 
     JR  = wR * ((GRF[0] - GRF_real[1]) * (GRF[0] - GRF_real[1]))         # Fx
     JR += wR * ((GRF[2] - GRF_real[2]) * (GRF[2] - GRF_real[2]))         # Fz
-    return JR
+    return GRF, JR

@@ -49,8 +49,12 @@ dq = x[nbQ: 2*nbQ]                                     # velocities
 
 # ----------------------------- Load Data ------------------------------------------------------------------------------
 # LOAD MEASUREMENT DATA FROM C3D FILE
-file        = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/equincocont01_out.c3d'
-kalman_file = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/equincocont01_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
+name_subject = 'equincocont01'
+file         = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/' + name_subject + '_out.c3d'
+kalman_file  = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/' + name_subject + '_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
+
+save_dir = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/' + name_subject + '/'
+
 
 # ground reaction forces
 [GRF_real, T, T_stance] = load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, 'cycle')
@@ -65,6 +69,8 @@ M_real        = [np.hstack([M_real_stance[0, :, :], M_real_swing[0, :, :]]), np.
 U_real_swing  = load_data_emg(file, T_swing, nbNoeuds_swing, nbMus, 'swing')
 U_real_stance = load_data_emg(file, T_stance, nbNoeuds_stance, nbMus, 'stance')
 U_real        = np.hstack([U_real_stance, U_real_swing])
+
+# sauvegarde valeurs comparées mesurées
 
 # EXTRACT INITIAL MAXIMAL ISOMETRIC FORCES FROM THE MODEL
 FISO0 = np.zeros(nbMus)
@@ -81,9 +87,9 @@ wL  = 1                                                # activation
 wMa = 30                                               # anatomical marker
 wMt = 50                                               # technical marker
 wU  = 1                                                # excitation
-wR  = 0.05                                             # ground reaction
+wR  = 0.05 # 30                                        # ground reaction
 
-
+# sauvegarde weighting factor
 
 
 # ----------------------------- Movement -------------------------------------------------------------------------------
@@ -108,7 +114,8 @@ for k in range(nbNoeuds_stance):
 
     # OBJECTIVE FUNCTION
     # Tracking
-    JR += fcn_objective_GRF(wR, X[nbX*k: nbX*(k + 1)], Uk, GRF_real[:, k])                              # Ground Reaction --> stance
+    [grf, Jr] = fcn_objective_GRF(wR, X[nbX*k: nbX*(k + 1)], Uk, GRF_real[:, k])                        # Ground Reaction --> stance  # Ground Reaction --> stance
+    JR += Jr
     Jm += fcn_objective_markers(wMa, wMt, X[nbX*k: nbX*k + nbQ], M_real_stance[:, :, k], 'stance')      # Marker
     Je += fcn_objective_emg(wU, Uk, U_real_stance[:, k])                                                # EMG
 
@@ -142,15 +149,16 @@ ubg = [0]*nbX*nbNoeuds
 # activation - excitation musculaire
 min_A = 1e-3                        # 0 exclusif
 max_A = 1
-
-lbu = ([min_A]*nbMus + [-1000] + [-2000] + [-200])*nbNoeuds
-ubu = ([max_A]*nbMus + [1000]  + [2000]  + [200])*nbNoeuds
+lowerbound_u = [min_A]*nbMus + [-1000] + [-2000] + [-200]
+upperbound_u = [max_A]*nbMus + [1000]  + [2000]  + [200]
+lbu = (lowerbound_u)*nbNoeuds
+ubu = (upperbound_u)*nbNoeuds
 
 # q et dq
-min_Q = -5
-max_Q = 5
-lbX   = ([min_Q]*2*nbQ )*(nbNoeuds + 1)
-ubX   = ([max_Q]*2*nbQ)*(nbNoeuds + 1)
+lowerbound_x = [-10, -0.5, -np.pi/4, -np.pi/9, -np.pi/2, -np.pi/3, 0.5, -0.5, -1.7453, -5.2360, -5.2360, -5.2360]
+upperbound_x = [10, 1.5, np.pi/4, np.pi/3, 0.0873, np.pi/9, 1.5, 0.5, 1.7453, 5.2360, 5.2360, 5.2360]
+lbX   = (lowerbound_x)*(nbNoeuds + 1)
+ubX   = (upperbound_x)*(nbNoeuds + 1)
 
 # parameters
 min_pg = 1
@@ -164,14 +172,16 @@ ubp = [max_pg] + [max_p]*nbMus
 lbx = vertcat(lbu, lbX, lbp)
 ubx = vertcat(ubu, ubX, ubp)
 
+# sauvegarde contraintes
+
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 init_A = 0.1
 
 # CONTROL
 u0               = np.zeros((nbU, nbNoeuds))
 u0[: nbMus, :]   = load_initialguess_muscularExcitation(np.hstack([U_real_stance, U_real_swing]))
-#u0[: nbMus, :]   = np.zeros((nbMus, nbNoeuds)) + init_A
-u0[nbMus + 0, :] = [0]*nbNoeuds               # pelvis forces
+# u0[: nbMus, :]   = np.zeros((nbMus, nbNoeuds)) + init_A
+u0[nbMus + 0, :] = [0]*nbNoeuds                                  # pelvis forces
 u0[nbMus + 1, :] = [-500]*nbNoeuds_stance + [0]*nbNoeuds_swing
 u0[nbMus + 2, :] = [0]*nbNoeuds
 u0               = vertcat(*u0.T)
@@ -205,9 +215,10 @@ class AnimateCallback(casadi.Callback):
         self.nx = nx                   # optimized value number
         self.ng = ng                   # constraints number
         self.nP = nP                   # parameters number
+        self.update = 0                # first iteration?
 
         # CONTROL
-        fig1, axes1 = plt.subplots(5, 4, sharex=True)
+        fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10,10))
         Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
                   'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
                   'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']
@@ -224,9 +235,9 @@ class AnimateCallback(casadi.Callback):
         for i in range(nbU):
             ax = axes1[i]
             ax.set_title(Labels[i])
-            ax.plot([0, T], [lower_bound[i], lower_bound[i]], 'k--')               # lower bound
-            ax.plot([0, T], [upper_bound[i], upper_bound[i]], 'k--')               # upper bound
-            ax.plot([T_stance, T_stance], [lower_bound[i], upper_bound[i]], 'k:')  # end of the stance phase
+            ax.plot([0, T], [lowerbound_u[i], lowerbound_u[i]], 'k--')               # lower bound
+            ax.plot([0, T], [upperbound_u[i], upperbound_u[i]], 'k--')               # upper bound
+            ax.plot([T_stance, T_stance], [lowerbound_u[i], upperbound_u[i]], 'k:')  # end of the stance phase
             ax.grid(True)
             if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < (nbMus - 1)):
                 ax.plot(t, U_real[u_emg, :], 'r')
@@ -238,36 +249,48 @@ class AnimateCallback(casadi.Callback):
 
 
         # STATES
-        fig2, axes2 = plt.subplots(2,6)
+        fig2, axes2 = plt.subplots(2,6, sharex=True, figsize=(20,10))
         axes2 = axes2.flatten()
 
         Labels_X = ['Pelvis_TX', 'Pelvis_TY', 'Pelvis_RZ', 'Hip', 'Knee', 'Ankle']
-        lower_bound_x = [min_Q] * nbQ + [min_Q] * nbQ
-        upper_bound_x = [max_Q] * nbQ + [max_Q] * nbQ
 
         for q in range(nbQ):
             ax1 = axes2[q]
             ax1.set_title('Q ' + Labels_X[q])
-            ax1.plot([0, T], [min_Q, min_Q], 'k--')
-            ax1.plot([0, T], [max_Q, max_Q], 'k--')
+            if q!= 0 and q!= 1:
+                ax1.plot([0, T], [lowerbound_x[q] * (180/np.pi), lowerbound_x[q] * (180/np.pi)], 'k--')
+                ax1.plot([0, T], [upperbound_x[q] * (180/np.pi), upperbound_x[q] * (180/np.pi)], 'k--')
+                ax1.plot([T_stance, T_stance], [lowerbound_x[q] * (180/np.pi), upperbound_x[q] * (180/np.pi)], 'k:')  # end of the stance phase
+            else:
+                ax1.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
+                ax1.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
+                ax1.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
+
             ax1.grid(True)
 
             ax2 = axes2[q + nbQ]
             ax2.set_title('dQ ' + Labels_X[q])
-            ax2.plot([0, T], [min_Q, min_Q], 'k--')
-            ax2.plot([0, T], [max_Q, max_Q], 'k--')
+            ax2.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
+            ax2.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
+            ax2.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
+            ax2.set_xlabel('time (s)')
             ax2.grid(True)
 
         # GROUND REACTION FORCES
-        fig3, axes3 = plt.subplots(2, 1)
+        fig3, axes3 = plt.subplots(2, 1, sharex=True)
         axes3.flatten()
 
         ax_ap = axes3[0]
         ax_ap.set_title('GRF A/P  during the gait')
+        ax_ap.plot(t, GRF_real[1, :], 'r')
+        ax_ap.plot([T_stance, T_stance], [min(GRF_real[1, :]), max(GRF_real[1, :])], 'k:')  # end of the stance phase
         ax_ap.grid(True)
 
         ax_v  = axes3[1]
         ax_v.set_title('GRF vertical')
+        ax_v.plot(t, GRF_real[2, :], 'r')
+        ax_v.plot([T_stance, T_stance], [min(GRF_real[2, :]), max(GRF_real[2, :])], 'k:')
+        ax_v.set_xlabel('time (s)')
         ax_v.grid(True)
         fig3.tight_layout()
 
@@ -306,17 +329,20 @@ class AnimateCallback(casadi.Callback):
         JR = Je = Jm = Ja = constraint = 0
 
         # OBJECTIVE FUNCTION
+        GRF = np.zeros((3, nbNoeuds))
         for k in range(nbNoeuds_stance):
-            JR += fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
-            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k],'stance')  # Marker
-            Je += fcn_objective_emg(wU, sol_U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                        # EMG
-            Ja += fcn_objective_activation(wL, sol_U[nbU * k: nbU * (k + 1)])                                      # Muscle activations (no EMG)
+            [F, Jr] = fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
+            GRF[:, k] = np.array(F).squeeze()
+            JR += Jr
+            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k],'stance')      # Marker
+            Je += fcn_objective_emg(wU, sol_U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                            # EMG
+            Ja += fcn_objective_activation(wL, sol_U[nbU * k: nbU * (k + 1)])                                          # Muscle activations (no EMG)
 
             constraint += sol_X[nbX * (k + 1): nbX * (k + 2)] - int_RK4_stance(T_stance, nbNoeuds_stance, nkutta, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)])
 
         for k in range(nbNoeuds_swing):
-            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')  # marker
-            Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])  # emg
+            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')
+            Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])
             Ja += fcn_objective_activation(wL, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
 
             constraint += sol_X[nbX * nbNoeuds_stance + nbX*(k + 1): nbX*nbNoeuds_stance + nbX*(k + 2)] - int_RK4_swing(T_swing, nbNoeuds_swing, nkutta,  sol_X[nbX*nbNoeuds_stance + nbX*k: nbX*nbNoeuds_stance + nbX*(k + 1)], sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
@@ -334,10 +360,20 @@ class AnimateCallback(casadi.Callback):
             nbPoints = len(np.array(x))
             for n in range(nbPoints - 1):
                 ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
-            return ax.get_lines()
+
+        def plot_control_update(ax, t, x):
+            nbPoints = len(np.array(x))
+            for n in range(nbPoints - 1):
+                lines = ax.get_lines()
+                if size(lines) > 52:
+                    lines[4 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
+                    lines[4 + n].set_ydata([x[n], x[n], x[n + 1]])
+                else:
+                    lines[3 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
+                    lines[3 + n].set_ydata([x[n], x[n], x[n + 1]])
 
 
-        if hasattr(self, 'lines'):
+        if (self.update == 1):
             # CONTROL
             # TIME
             t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
@@ -346,22 +382,43 @@ class AnimateCallback(casadi.Callback):
 
             axes1 = plt.figure(1).axes
             for i in range(nbMus):
-                self.lines[i].set_xdata(t)
-                self.lines[i].set_ydata(sol_a[:, i])
+                ax = axes1[i]
+                plot_control_update(ax, t, sol_a[:, i])
             for j in range(3):
-                self.lines[i + j].set_xdata(t)
-                self.lines[i + j].set_ydata(sol_F[:, j])
+                ax = axes1[i + 1 + j]
+                plot_control_update(ax, t, sol_F[:, j])
+
+            plt.savefig(save_dir + 'plot_control')
 
             # STATE
             axes2 = plt.figure(2).axes
             # ADJUSTED TIME
             ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
             for q in range(nbQ):
-                self.lines[i + j + q].set_xdata(ts)
-                self.lines[i + j + q].set_ydata(sol_q[:, x])
+                ax1 = axes2[q]
+                lines = ax1.get_lines()
+                if q != 0 and q != 1:
+                    lines[3].set_ydata(sol_q[:, q] * (180/np.pi))
+                else:
+                    lines[3].set_ydata(sol_q[:, q])
+
             for dq in range(nbQ):
-                self.lines[i + j + q + dq].set_xdata(ts)
-                self.lines[i + j + q + dq].set_ydata(sol_dq[:, dq])
+                ax1 = axes2[q + 1 + dq]
+                lines = ax1.get_lines()
+                lines[3].set_ydata(sol_dq[:, dq])
+
+            plt.savefig(save_dir + 'plot_state')
+
+            # GRF
+            axes3 = plt.figure(3).axes
+            ax_ap = axes3[0]
+            lines = ax_ap.get_lines()
+            lines[2].set_ydata(GRF[0, :])
+
+            ax_v = axes3[1]
+            lines = ax_v.get_lines()
+            lines[2].set_ydata(GRF[2, :])
+            plt.savefig(save_dir + 'plot_GRF')
 
         else:
             # CONTROL
@@ -373,10 +430,12 @@ class AnimateCallback(casadi.Callback):
             axes1 = plt.figure(1).axes
             for i in range(nbMus):
                 ax = axes1[i]
-                self.lines[i] = plot_control(ax, t, sol_a[:, i])
+                plot_control(ax, t, sol_a[:, i])
             for j in range(3):
-                ax = axes1[i + j]
-                self.lines[i + j] = plot_control(ax, t, sol_F[:, j])
+                ax = axes1[i + 1 + j]
+                plot_control(ax, t, sol_F[:, j])
+
+            plt.savefig(save_dir + 'plot_control')
 
             # STATE
             axes2 = plt.figure(2).axes
@@ -384,14 +443,29 @@ class AnimateCallback(casadi.Callback):
             ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
             for q in range(nbQ):
                 ax1 = axes2[q]
-                self.lines[i + j + q] = ax1.plot(ts, sol_q[:, q], 'b')
+                if q!=0 and q!= 1:
+                    ax1.plot(ts, sol_q[:, q] * (180/np.pi), 'b')
+                else:
+                    ax1.plot(ts, sol_q[:, q], 'b')
             for dq in range(nbQ):
-                ax1 = axes2[q + dq]
-                self.lines[i + j + q + dq] = ax1.plot(ts, sol_dq[:, dq], 'b')
+                ax1 = axes2[q + 1 + dq]
+                ax1.plot(ts, sol_dq[:, dq], 'b')
+            plt.savefig(save_dir + 'plot_state')
 
+            # GRF
+            axes3 = plt.figure(3).axes
+            ax_ap = axes3[0]
+            ax_ap.plot(t, GRF[0, :], 'b')
+
+            ax_v = axes3[1]
+            ax_v.plot(t, GRF[2, :], 'b')
+            plt.savefig(save_dir + 'plot_GRF')
+            self.update = 1
+
+        plt.interactive(True)
         plt.draw()
 
-        time.sleep(0.5)
+        time.sleep(0.25)
         return [0]
 
 nlp = {'x': w, 'f': J, 'g': vertcat(*G)}

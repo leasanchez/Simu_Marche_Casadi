@@ -158,8 +158,9 @@ def load_data_emg(file, T, nbNoeuds, nbMuscle, GaitPhase):
         U_real = f(node_t)
 
     # RECTIFY EMG VALUES BETWEEN 0 & 1
-    U_real[U_real < 0] = 0
-    U_real[U_real > 1] = 1
+    U_real[U_real < 0]  = 1e-3
+    U_real[U_real == 0] = 1e-3
+    U_real[U_real > 1]  = 1
 
     return U_real
 
