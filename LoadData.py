@@ -47,6 +47,7 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
     measurements   = c3d(file)
     points         = measurements['data']['points']
     labels_markers = measurements['parameters']['POINT']['LABELS']['value']
+    freq           = measurements['parameters']['POINT']['RATE']['value'][0]
 
     # GET THE TIME OF TOE OFF & HEEL STRIKE
     [start, stop_stance, stop] = Get_Event(file)
@@ -87,18 +88,18 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
     markers[:, 25, :] = points[:3, labels_markers.index("R_FMP5"), :] * 1e-3                          # R_FMP5
 
     # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR THE WHOLE CYCLE
-    if GaitPhase == 'swing':
-        # T = T_swing
-        t = np.linspace(0, T, int(stop - stop_stance))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
-        f = interp1d(t, markers[:, :, int(stop_stance) + 1: int(stop) + 1], kind='cubic')
-        M_real = f(node_t)
-
-    elif GaitPhase == 'stance':
+    if GaitPhase == 'stance':
         # T = T_stance
         t = np.linspace(0, T, int(stop_stance - start + 1))
         node_t = np.linspace(0, T, nbNoeuds)
         f = interp1d(t, markers[:, :, int(start): int(stop_stance) + 1], kind='cubic')
+        M_real = f(node_t)
+
+    elif GaitPhase == 'swing':
+        # T = T_swing
+        t = np.linspace(0, T + 1/freq, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, T + 1/freq, nbNoeuds + 1)
+        f = interp1d(t, markers[:, :, int(stop_stance) + 1: int(stop) + 2], kind='cubic')
         M_real = f(node_t)
     return M_real
 
@@ -142,23 +143,24 @@ def load_data_emg(file, T, nbNoeuds, nbMuscle, GaitPhase):
     EMG[9, :] = points[0, labels_points.index("R_Gluteus_Maximus"), :].squeeze()            # R_Gluteus_Maximus
 
     # INTERPOLATE AND GET REAL MUSCULAR EXCITATION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-    if GaitPhase == 'swing':
+    if GaitPhase == 'stance':
+        # T = T_stance
+        t      = np.linspace(0, T, int(stop_stance - start + 1))
+        node_t = np.linspace(0, T, nbNoeuds)
+        f      = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
+        U_real = f(node_t)
+
+    elif GaitPhase == 'swing':
         # T = T_swing
-        t = np.linspace(0, T, int(stop - stop_stance))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t      = np.linspace(0, T, int(stop - stop_stance))
+        node_t = np.linspace(0, T, nbNoeuds)
         f = interp1d(t, EMG[:, int(stop_stance) + 1: int(stop) + 1], kind='cubic')
         U_real = f(node_t)
 
-    elif GaitPhase == 'stance':
-        # T = T_stance
-        t = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds)
-        f = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
-        U_real = f(node_t)
-
     # RECTIFY EMG VALUES BETWEEN 0 & 1
-    U_real[U_real < 0] = 0
-    U_real[U_real > 1] = 1
+    U_real[U_real < 0]  = 1e-3
+    U_real[U_real == 0] = 1e-3
+    U_real[U_real > 1]  = 1
 
     return U_real
 
@@ -231,9 +233,9 @@ def load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, GaitPhase):
     [start, stop_stance, stop] = Get_Event(file)
 
     # time
-    T        = 1/freq * (stop - start)
-    T_stance = 1/freq * (stop_stance - start)
-    T_swing  = 1/freq * (stop - stop_stance)
+    T        = 1/freq * (int(stop) - int(start) + 1)
+    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)  # point stop stance inclus
+    T_swing  = 1/freq * (int(stop) - int(stop_stance))
 
     # FIND FORCE PLATFORM FOR RIGHT FOOT -- GET FORCES FOR MODEL
     P1 = sum(GRW[int(start): int(stop_stance) + 1, 2, 0])
@@ -259,15 +261,15 @@ def load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, GaitPhase):
 
     # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     # Stance
-    t_stance = np.linspace(0, T_stance, int(stop_stance - start) + 1)
-    node_t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-    f_stance = interp1d(t_stance, GRF[:, int(start): int(stop_stance + 1)], kind ='cubic')
+    t_stance        = np.linspace(0, T_stance, int(stop_stance - start) + 1)
+    node_t_stance   = np.linspace(0, T_stance, nbNoeuds_stance)
+    f_stance        = interp1d(t_stance, GRF[:, int(start): int(stop_stance + 1)], kind ='cubic')
     GRF_real_stance = f_stance(node_t_stance)
 
     # Swing
-    t_swing = np.linspace(0, T_swing, int(stop - stop_stance))
-    node_t_swing = np.linspace(0, T_swing, nbNoeuds_swing)
-    f_swing = interp1d(t_swing, GRF[:, int(stop_stance) + 1: int(stop) + 1], kind ='cubic')
+    t_swing        = np.linspace(0, T_swing + 1/freq, int(stop - stop_stance))
+    node_t_swing   = np.linspace(0, T_swing, nbNoeuds_swing)
+    f_swing        = interp1d(t_swing, GRF[:, int(stop_stance) + 1: int(stop) + 1], kind ='cubic')
     GRF_real_swing = f_swing(node_t_swing)
 
 

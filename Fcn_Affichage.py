@@ -3,8 +3,6 @@ from casadi import *
 from pylab import *
 import numpy as np
 
-
-
 # AFFICHAGE DONNEES EXPERIMENTALES
 def affichage_emg_real(U_real, T_stance, T_swing, nbNoeuds_stance, nbNoeuds_swing):
     plt.figure()
@@ -147,7 +145,7 @@ def affichage_markers_result(sol_q, T_phase, nbNoeuds_phase, nbMarker, M_real):
     plt.figure()
     # FIND MARKERS POSITIONS
     for k_stance in range(nbNoeuds_phase[0]):
-        model   = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+        model   = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
         markers = model.markers(sol_q[:, k_stance])
         for nMark in range(nbMarker):
             M_simu[:, nMark, k_stance] = markers[nMark].to_array()
@@ -164,7 +162,7 @@ def affichage_markers_result(sol_q, T_phase, nbNoeuds_phase, nbMarker, M_real):
                  [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance], M_real[2, 22, k_stance]], 'r+')
 
     for k_swing in range(nbNoeuds_phase[1] + 1):
-        model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
         markers = model.markers(sol_q[:, nbNoeuds_phase[0] + k_swing])
         for nMark in range(nbMarker):
             M_simu[:, nMark, nbNoeuds_phase[0] + k_swing] = markers[nMark].to_array()

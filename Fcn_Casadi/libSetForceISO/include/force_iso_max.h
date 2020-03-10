@@ -6,7 +6,7 @@
 #include "Muscles/MuscleGroup.h" 
 #include "Muscles/Characteristics.h" 
 
-static biorbd::Model m("/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod");
+static biorbd::Model m("/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod");
 
 #ifdef __cplusplus
 extern "C" {
