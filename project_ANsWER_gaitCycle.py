@@ -20,6 +20,7 @@ model_stance = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/M
 nbNoeuds_stance = 25                                   # shooting points for stance phase
 nbNoeuds_swing  = 25                                   # shooting points for swing phase
 nbNoeuds        = nbNoeuds_stance + nbNoeuds_swing     # total shooting points
+nbNoeuds_phase  = [nbNoeuds_stance, nbNoeuds_swing]
 
 nbMus     = model_stance.nbMuscleTotal()               # number of muscles
 nbQ       = model_stance.nbDof()                       # number of DoFs
@@ -35,7 +36,7 @@ nP       = nbMus + 1                                   # number of parameters : 
 # ----------------------------- States & controls ----------------------------------------------------------------------
 # CONTROL
 u  = MX.sym("u", nbU)
-e  = u[:nbMus]                                         # muscular excitation
+a  = u[:nbMus]                                         # muscular activation
 F  = u[nbMus:]                                         # articular torque
 
 # PARAMETERS
@@ -53,24 +54,61 @@ name_subject = 'equincocont01'
 file         = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/' + name_subject + '_out.c3d'
 kalman_file  = '/home/leasanchez/programmation/Simu_Marche_Casadi/DonneesMouvement/' + name_subject + '_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
 
-save_dir = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/' + name_subject + '/'
-
+save_dir     = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/' + name_subject + '/'
 
 # ground reaction forces
 [GRF_real, T, T_stance] = load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, 'cycle')
 T_swing                 = T - T_stance                                                                # gait cycle time
+T_phase                 = [T_stance, T_swing]
+
+# SAVE GRF FROM PLATFORM
+filename_GRF = name_subject + '_GRF.txt'
+if filename_GRF not in os.listdir(save_dir):
+    f = open(save_dir + filename_GRF, 'a')
+    f.write("Ground Reaction Forces from force plateform \n\n")
+    for n in range(nbNoeuds):
+        np.savetxt(f, GRF_real[:, n], delimiter=' , ')
+        f.write("\n")
+    f.close()
+
 
 # marker
 M_real_stance = load_data_markers(file, T_stance, nbNoeuds_stance, nbMarker, 'stance')
 M_real_swing  = load_data_markers(file, T_swing, nbNoeuds_swing, nbMarker, 'swing')
-M_real        = [np.hstack([M_real_stance[0, :, :], M_real_swing[0, :, :]]), np.hstack([M_real_stance[1, :, :], M_real_swing[1, :, :]]), np.hstack([M_real_stance[2, :, :], M_real_swing[2, :, :]])]
+
+M_real          = np.zeros((3, nbMarker, (nbNoeuds + 1)))
+M_real[0, :, :] = np.hstack([M_real_stance[0, :, :], M_real_swing[0, :, :]])
+M_real[1, :, :] = np.hstack([M_real_stance[1, :, :], M_real_swing[1, :, :]])
+M_real[2, :, :] = np.hstack([M_real_stance[2, :, :], M_real_swing[2, :, :]])
+
+# SAVE MARKERS POSITIONS FROM MOTION CAPTURE
+filename_M = name_subject + '_Markers.txt'
+if filename_M not in os.listdir(save_dir):
+    f = open(save_dir + filename_M, 'a')
+    f.write("Markers position from motion capture \n\n")
+    for n in range(nbNoeuds):
+        for m in range(nbMarker):
+            f.write(str(m + 1) + "  :  ")
+            np.savetxt(f, M_real[:, m, n], delimiter=',')
+            f.write("\n")
+        f.write("\n")
+    f.close()
 
 # muscular excitation
 U_real_swing  = load_data_emg(file, T_swing, nbNoeuds_swing, nbMus, 'swing')
 U_real_stance = load_data_emg(file, T_stance, nbNoeuds_stance, nbMus, 'stance')
 U_real        = np.hstack([U_real_stance, U_real_swing])
 
-# sauvegarde valeurs comparées mesurées
+# SAVE EMG
+filename_EMG = name_subject + '_EMG.txt'
+if filename_EMG not in os.listdir(save_dir):
+    f = open(save_dir + filename_EMG, 'a')
+    f.write("Muscular excitations from emg \n\n")
+    for n in range(nbNoeuds):
+        for m in range(nbMus - 7):
+            f.write(str(m + 1) + "  :  " + str(U_real[m, n]) + " \n")
+        f.write("\n")
+    f.close()
 
 # EXTRACT INITIAL MAXIMAL ISOMETRIC FORCES FROM THE MODEL
 FISO0 = np.zeros(nbMus)
@@ -89,8 +127,38 @@ wMt = 50                                               # technical marker
 wU  = 1                                                # excitation
 wR  = 0.05 # 30                                        # ground reaction
 
-# sauvegarde weighting factor
+# SAVE PARAMETERS USED FOR SIMULATIONS
+filename_param = name_subject + '_params.txt'
+if filename_param in os.listdir(save_dir):
+    os.remove(save_dir + filename_param)
 
+f = open(save_dir + filename_param, 'a')
+f.write("Parameters for the simulation \n\n\n")
+f.write('MODEL\n')
+f.write('model stance : ' + str(model_stance))
+f.write('\nmodel swing  : ' + str(model_swing))
+
+f.write('\n\nMODEL PARAMETERS\n')
+f.write('\nnbNoeuds stance : ' + str(nbNoeuds_stance))
+f.write('\nnbNoeuds swing  : ' + str(nbNoeuds_swing))
+f.write('\nnbNoeuds        : ' + str(nbNoeuds))
+f.write('\nnbMus           : ' + str(nbMus))
+f.write('\nnbQ             : ' + str(nbQ))
+f.write('\nnbMarker        : ' + str(nbMarker))
+f.write('\nnbBody          : ' + str(nbBody))
+f.write('\nnbContact       : ' + str(nbContact))
+f.write('\nnbU             : ' + str(nbU))
+f.write('\nnbX             : ' + str(nbX))
+f.write('\nnP              : ' + str(nP))
+f.write('\nnkutta          : ' + str(nkutta))
+
+f.write('\n\nWEIGHTING FACTORS\n')
+f.write('wL   : ' + str(wL))
+f.write('\nwMa : ' + str(wMa))
+f.write('\nwMt : ' + str(wMt))
+f.write('\nwU  : ' + str(wU))
+f.write('\nwR  : ' + str(wR))
+f.close()
 
 # ----------------------------- Movement -------------------------------------------------------------------------------
 U = MX.sym("U", nbU*nbNoeuds)                          # controls
@@ -104,7 +172,7 @@ JR = 0                                                 # objective function for 
 # ------------ PHASE 1 : Stance phase
 # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL STANCE
 Set_forceISO_max = external('libforce_iso_max_stance', 'libforce_iso_max_stance.so',{'enable_fd':True})
-forceISO         = p[0]*p[1:]*FISO0
+forceISO         = p[0] * p[1:] * FISO0
 Set_forceISO_max(forceISO)
 
 for k in range(nbNoeuds_stance):
@@ -120,7 +188,7 @@ for k in range(nbNoeuds_stance):
     Je += fcn_objective_emg(wU, Uk, U_real_stance[:, k])                                                # EMG
 
     # Activations
-    Ja += fcn_objective_activation(wL, Uk)                                                                 # Muscle activations (no EMG)
+    Ja += fcn_objective_activation(wL, Uk)                                                              # Muscle activations (no EMG)
 
 
 # ------------ PHASE 2 : Swing phase
@@ -172,7 +240,22 @@ ubp = [max_pg] + [max_p]*nbMus
 lbx = vertcat(lbu, lbX, lbp)
 ubx = vertcat(ubu, ubX, ubp)
 
-# sauvegarde contraintes
+# SAVE BOUNDS
+f = open(save_dir + filename_param, 'a')
+f.write('\n\nBOUNDS\n')
+f.write('Control max\n')
+np.savetxt(f, upperbound_u, delimiter='\n')
+f.write('\nControl min\n')
+np.savetxt(f, lowerbound_u, delimiter='\n')
+f.write('\n\nState max \n')
+np.savetxt(f, upperbound_x, delimiter='\n')
+f.write('\nState min\n')
+np.savetxt(f, lowerbound_x, delimiter='\n')
+f.write('\n\nParameter max \n')
+np.savetxt(f, ubp, delimiter='\n')
+f.write('\nParameter min\n')
+np.savetxt(f, lbp, delimiter='\n')
+f.close()
 
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 init_A = 0.1
@@ -184,7 +267,7 @@ u0[: nbMus, :]   = load_initialguess_muscularExcitation(np.hstack([U_real_stance
 u0[nbMus + 0, :] = [0]*nbNoeuds                                  # pelvis forces
 u0[nbMus + 1, :] = [-500]*nbNoeuds_stance + [0]*nbNoeuds_swing
 u0[nbMus + 2, :] = [0]*nbNoeuds
-u0               = vertcat(*u0.T)
+# u0               = vertcat(*u0.T)
 
 # STATE
 q0_stance = load_initialguess_q(file, kalman_file, T_stance, nbNoeuds_stance, 'stance')
@@ -195,13 +278,30 @@ dq0       = np.zeros((nbQ, (nbNoeuds + 1)))
 X0                = np.zeros((nbX, (nbNoeuds + 1)))
 X0[:nbQ, :]       = q0
 X0[nbQ: 2*nbQ, :] = dq0
-X0                = vertcat(*X0.T)
+# X0                = vertcat(*X0.T)
 
 # PARAMETERS
 p0 = [1] + [1]*nbMus
 
+# SAVE INITIAL GUESS
+filename_init = name_subject + '_initialguess.txt'
+if filename_init not in os.listdir(save_dir):
+    f = open(save_dir + filename_init, 'a')
+    f.write('Initial guess\n\n\n')
+    f.write('CONTROL\n')
+    for n in range(nbNoeuds):
+        f.write('\nu0   ' + str(n) + '\n')
+        np.savetxt(f, u0[:, n], delimiter='\n')
+    f.write('\n\nSTATE\n')
+    for n in range(nbNoeuds + 1):
+        f.write('\nx0   ' + str(n) + '\n')
+        np.savetxt(f, X0[:, n], delimiter='\n')
+    f.write('\n\nPARAMETER\n')
+    np.savetxt(f, p0, delimiter='\n')
+f.close()
 
-w0 = vertcat(u0, X0, p0)
+
+w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T), p0)
 
 # ----------------------------- Solver ---------------------------------------------------------------------------------
 w = vertcat(U, X, p)
@@ -356,6 +456,21 @@ class AnimateCallback(casadi.Callback):
         print('ground reaction forces : ' + str(JR))
         print('constraints            : ' + str(sum(constraint)) + '\n')
 
+        # SAVE OBJECTIVE FUNCTION AND CONSTRAINTS VALUE FOR EACH ITERATION
+        filename_J = name_subject + '_objvalue.txt'
+        f = open(save_dir + '/RES/' + filename_J, 'a')
+        if (self.update == 1):
+            f.write("Objective functions value and constraint \n\n\n")
+
+        f.write('Global                 : ' + str(J) + '\n')
+        f.write('activation             : ' + str(Ja) + '\n')
+        f.write('emg                    : ' + str(Je) + '\n')
+        f.write('marker                 : ' + str(Jm) + '\n')
+        f.write('ground reaction forces : ' + str(JR) + '\n')
+        f.write('constraints            : ' + str(sum(constraint)) + '\n\n')
+        f.close()
+
+
         def plot_control(ax, t, x):
             nbPoints = len(np.array(x))
             for n in range(nbPoints - 1):
@@ -388,7 +503,7 @@ class AnimateCallback(casadi.Callback):
                 ax = axes1[i + 1 + j]
                 plot_control_update(ax, t, sol_F[:, j])
 
-            plt.savefig(save_dir + 'plot_control')
+            plt.savefig(save_dir + '/RES/plot_control')
 
             # STATE
             axes2 = plt.figure(2).axes
@@ -407,7 +522,7 @@ class AnimateCallback(casadi.Callback):
                 lines = ax1.get_lines()
                 lines[3].set_ydata(sol_dq[:, dq])
 
-            plt.savefig(save_dir + 'plot_state')
+            plt.savefig(save_dir + '/RES/plot_state')
 
             # GRF
             axes3 = plt.figure(3).axes
@@ -418,7 +533,7 @@ class AnimateCallback(casadi.Callback):
             ax_v = axes3[1]
             lines = ax_v.get_lines()
             lines[2].set_ydata(GRF[2, :])
-            plt.savefig(save_dir + 'plot_GRF')
+            plt.savefig(save_dir + '/RES/plot_GRF')
 
         else:
             # CONTROL
@@ -435,7 +550,7 @@ class AnimateCallback(casadi.Callback):
                 ax = axes1[i + 1 + j]
                 plot_control(ax, t, sol_F[:, j])
 
-            plt.savefig(save_dir + 'plot_control')
+            plt.savefig(save_dir + '/RES/plot_control')
 
             # STATE
             axes2 = plt.figure(2).axes
@@ -450,7 +565,7 @@ class AnimateCallback(casadi.Callback):
             for dq in range(nbQ):
                 ax1 = axes2[q + 1 + dq]
                 ax1.plot(ts, sol_dq[:, dq], 'b')
-            plt.savefig(save_dir + 'plot_state')
+            plt.savefig(save_dir + '/RES/plot_state')
 
             # GRF
             axes3 = plt.figure(3).axes
@@ -459,7 +574,7 @@ class AnimateCallback(casadi.Callback):
 
             ax_v = axes3[1]
             ax_v.plot(t, GRF[2, :], 'b')
-            plt.savefig(save_dir + 'plot_GRF')
+            plt.savefig(save_dir + '/RES/plot_GRF')
             self.update = 1
 
         plt.interactive(True)
