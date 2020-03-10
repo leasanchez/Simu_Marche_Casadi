@@ -1,0 +1,7 @@
+Global                 : 186299
+activation             : 4.56826
+emg                    : 0.00438212
+marker                 : 12.289
+ground reaction forces : 186282
+constraints            : 2507.6051947766937
+

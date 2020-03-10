@@ -310,94 +310,14 @@ J = Ja + Je + Jm + JR
 class AnimateCallback(casadi.Callback):
     def __init__(self, name, nx, ng, nP, opts={}):
         Callback.__init__(self)
-        self.name = name               # callback name
+        self.name   = name                 # callback name
 
-        self.nx = nx                   # optimized value number
-        self.ng = ng                   # constraints number
-        self.nP = nP                   # parameters number
-        self.update = 0                # first iteration?
+        self.nx     = nx                   # optimized value number
+        self.ng     = ng                   # constraints number
+        self.nP     = nP                   # parameters number
 
-        # CONTROL
-        fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10,10))
-        Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
-                  'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
-                  'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']
-        lower_bound = [min_A] * nbMus + [-1000] + [-2000] + [-200]
-        upper_bound = [max_A] * nbMus + [1000]  + [2000]  + [200]
-
-        # TIME
-        t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-        t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
-        t = np.hstack([t_stance, t_swing])
-
-        axes1 = axes1.flatten()
-        u_emg = 9
-        for i in range(nbU):
-            ax = axes1[i]
-            ax.set_title(Labels[i])
-            ax.plot([0, T], [lowerbound_u[i], lowerbound_u[i]], 'k--')               # lower bound
-            ax.plot([0, T], [upperbound_u[i], upperbound_u[i]], 'k--')               # upper bound
-            ax.plot([T_stance, T_stance], [lowerbound_u[i], upperbound_u[i]], 'k:')  # end of the stance phase
-            ax.grid(True)
-            if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < (nbMus - 1)):
-                ax.plot(t, U_real[u_emg, :], 'r')
-                u_emg -= 1
-            if (i < (nbMus - 1)):
-                ax.yaxis.set_ticks(np.arange(0, 1, 0.5))
-            if (i > nbU - 5):
-                ax.set_xlabel('time (s)')
-
-
-        # STATES
-        fig2, axes2 = plt.subplots(2,6, sharex=True, figsize=(20,10))
-        axes2 = axes2.flatten()
-
-        Labels_X = ['Pelvis_TX', 'Pelvis_TY', 'Pelvis_RZ', 'Hip', 'Knee', 'Ankle']
-
-        for q in range(nbQ):
-            ax1 = axes2[q]
-            ax1.set_title('Q ' + Labels_X[q])
-            if q!= 0 and q!= 1:
-                ax1.plot([0, T], [lowerbound_x[q] * (180/np.pi), lowerbound_x[q] * (180/np.pi)], 'k--')
-                ax1.plot([0, T], [upperbound_x[q] * (180/np.pi), upperbound_x[q] * (180/np.pi)], 'k--')
-                ax1.plot([T_stance, T_stance], [lowerbound_x[q] * (180/np.pi), upperbound_x[q] * (180/np.pi)], 'k:')  # end of the stance phase
-            else:
-                ax1.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
-                ax1.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
-                ax1.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
-
-            ax1.grid(True)
-
-            ax2 = axes2[q + nbQ]
-            ax2.set_title('dQ ' + Labels_X[q])
-            ax2.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
-            ax2.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
-            ax2.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
-            ax2.set_xlabel('time (s)')
-            ax2.grid(True)
-
-        # GROUND REACTION FORCES
-        fig3, axes3 = plt.subplots(2, 1, sharex=True)
-        axes3.flatten()
-
-        ax_ap = axes3[0]
-        ax_ap.set_title('GRF A/P  during the gait')
-        ax_ap.plot(t, GRF_real[1, :], 'r')
-        ax_ap.plot([T_stance, T_stance], [min(GRF_real[1, :]), max(GRF_real[1, :])], 'k:')  # end of the stance phase
-        ax_ap.grid(True)
-
-        ax_v  = axes3[1]
-        ax_v.set_title('GRF vertical')
-        ax_v.plot(t, GRF_real[2, :], 'r')
-        ax_v.plot([T_stance, T_stance], [min(GRF_real[2, :]), max(GRF_real[2, :])], 'k:')
-        ax_v.set_xlabel('time (s)')
-        ax_v.grid(True)
-        fig3.tight_layout()
-
-        plt.draw()
-        plt.interactive(True)
-        plt.show()
-        time.sleep(0.25)
+        self.sol_data   = None             # optimized variables
+        self.update_sol = False            # first iteration
 
         self.construct(name, opts)
 
@@ -415,176 +335,252 @@ class AnimateCallback(casadi.Callback):
 
     def eval(self, arg):
         darg = {}
-        # GET CONTROL AND STATES
         for (i, s) in enumerate(nlpsol_out()): darg[s] = arg[i]
-        sol_U = darg["x"][:nbU * nbNoeuds]
-        sol_X = darg["x"][nbU * nbNoeuds: -nP]
-
-        sol_q  = np.hstack([sol_X[0::nbX], sol_X[1::nbX], sol_X[2::nbX], sol_X[3::nbX], sol_X[4::nbX], sol_X[5::nbX]])
-        sol_dq = np.hstack([sol_X[6::nbX], sol_X[7::nbX], sol_X[8::nbX], sol_X[9::nbX], sol_X[10::nbX], sol_X[11::nbX]])
-        sol_a  = np.hstack([sol_U[0::nbU], sol_U[1::nbU], sol_U[2::nbU], sol_U[3::nbU], sol_U[4::nbU], sol_U[5::nbU], sol_U[6::nbU], sol_U[7::nbU], sol_U[8::nbU], sol_U[9::nbU], sol_U[10::nbU], sol_U[11::nbU], sol_U[12::nbU], sol_U[13::nbU], sol_U[14::nbU], sol_U[15::nbU],sol_U[16::nbU]])
-        sol_F  = np.hstack([sol_U[17::nbU], sol_U[18::nbU], sol_U[19::nbU]])
-
-        # CONVERGENCE
-        JR = Je = Jm = Ja = constraint = 0
-
-        # OBJECTIVE FUNCTION
-        GRF = np.zeros((3, nbNoeuds))
-        for k in range(nbNoeuds_stance):
-            [F, Jr] = fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
-            GRF[:, k] = np.array(F).squeeze()
-            JR += Jr
-            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k],'stance')      # Marker
-            Je += fcn_objective_emg(wU, sol_U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                            # EMG
-            Ja += fcn_objective_activation(wL, sol_U[nbU * k: nbU * (k + 1)])                                          # Muscle activations (no EMG)
-
-            constraint += sol_X[nbX * (k + 1): nbX * (k + 2)] - int_RK4_stance(T_stance, nbNoeuds_stance, nkutta, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)])
-
-        for k in range(nbNoeuds_swing):
-            Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')
-            Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])
-            Ja += fcn_objective_activation(wL, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
-
-            constraint += sol_X[nbX * nbNoeuds_stance + nbX*(k + 1): nbX*nbNoeuds_stance + nbX*(k + 2)] - int_RK4_swing(T_swing, nbNoeuds_swing, nkutta,  sol_X[nbX*nbNoeuds_stance + nbX*k: nbX*nbNoeuds_stance + nbX*(k + 1)], sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
-
-        J = Ja + Je + Jm + JR
-
-        print('\n \nGlobal                 : ' + str(J))
-        print('activation             : ' + str(Ja))
-        print('emg                    : ' + str(Je))
-        print('marker                 : ' + str(Jm))
-        print('ground reaction forces : ' + str(JR))
-        print('constraints            : ' + str(sum(constraint)) + '\n')
-
-        # SAVE OBJECTIVE FUNCTION AND CONSTRAINTS VALUE FOR EACH ITERATION
-        filename_J = name_subject + '_objvalue.txt'
-        f = open(save_dir + '/RES/' + filename_J, 'a')
-        if (self.update == 1):
-            f.write("Objective functions value and constraint \n\n\n")
-
-        f.write('Global                 : ' + str(J) + '\n')
-        f.write('activation             : ' + str(Ja) + '\n')
-        f.write('emg                    : ' + str(Je) + '\n')
-        f.write('marker                 : ' + str(Jm) + '\n')
-        f.write('ground reaction forces : ' + str(JR) + '\n')
-        f.write('constraints            : ' + str(sum(constraint)) + '\n\n')
-        f.close()
-
-
-        def plot_control(ax, t, x):
-            nbPoints = len(np.array(x))
-            for n in range(nbPoints - 1):
-                ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
-
-        def plot_control_update(ax, t, x):
-            nbPoints = len(np.array(x))
-            for n in range(nbPoints - 1):
-                lines = ax.get_lines()
-                if size(lines) > 52:
-                    lines[4 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
-                    lines[4 + n].set_ydata([x[n], x[n], x[n + 1]])
-                else:
-                    lines[3 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
-                    lines[3 + n].set_ydata([x[n], x[n], x[n + 1]])
-
-
-        if (self.update == 1):
-            # CONTROL
-            # TIME
-            t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-            t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
-            t = np.hstack([t_stance, t_swing])
-
-            axes1 = plt.figure(1).axes
-            for i in range(nbMus):
-                ax = axes1[i]
-                plot_control_update(ax, t, sol_a[:, i])
-            for j in range(3):
-                ax = axes1[i + 1 + j]
-                plot_control_update(ax, t, sol_F[:, j])
-
-            plt.savefig(save_dir + '/RES/plot_control')
-
-            # STATE
-            axes2 = plt.figure(2).axes
-            # ADJUSTED TIME
-            ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
-            for q in range(nbQ):
-                ax1 = axes2[q]
-                lines = ax1.get_lines()
-                if q != 0 and q != 1:
-                    lines[3].set_ydata(sol_q[:, q] * (180/np.pi))
-                else:
-                    lines[3].set_ydata(sol_q[:, q])
-
-            for dq in range(nbQ):
-                ax1 = axes2[q + 1 + dq]
-                lines = ax1.get_lines()
-                lines[3].set_ydata(sol_dq[:, dq])
-
-            plt.savefig(save_dir + '/RES/plot_state')
-
-            # GRF
-            axes3 = plt.figure(3).axes
-            ax_ap = axes3[0]
-            lines = ax_ap.get_lines()
-            lines[2].set_ydata(GRF[0, :])
-
-            ax_v = axes3[1]
-            lines = ax_v.get_lines()
-            lines[2].set_ydata(GRF[2, :])
-            plt.savefig(save_dir + '/RES/plot_GRF')
-
-        else:
-            # CONTROL
-            # TIME
-            t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-            t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
-            t = np.hstack([t_stance, t_swing])
-
-            axes1 = plt.figure(1).axes
-            for i in range(nbMus):
-                ax = axes1[i]
-                plot_control(ax, t, sol_a[:, i])
-            for j in range(3):
-                ax = axes1[i + 1 + j]
-                plot_control(ax, t, sol_F[:, j])
-
-            plt.savefig(save_dir + '/RES/plot_control')
-
-            # STATE
-            axes2 = plt.figure(2).axes
-            # ADJUSTED TIME
-            ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
-            for q in range(nbQ):
-                ax1 = axes2[q]
-                if q!=0 and q!= 1:
-                    ax1.plot(ts, sol_q[:, q] * (180/np.pi), 'b')
-                else:
-                    ax1.plot(ts, sol_q[:, q], 'b')
-            for dq in range(nbQ):
-                ax1 = axes2[q + 1 + dq]
-                ax1.plot(ts, sol_dq[:, dq], 'b')
-            plt.savefig(save_dir + '/RES/plot_state')
-
-            # GRF
-            axes3 = plt.figure(3).axes
-            ax_ap = axes3[0]
-            ax_ap.plot(t, GRF[0, :], 'b')
-
-            ax_v = axes3[1]
-            ax_v.plot(t, GRF[2, :], 'b')
-            plt.savefig(save_dir + '/RES/plot_GRF')
-            self.update = 1
-
-        plt.interactive(True)
-        plt.draw()
-
-        time.sleep(0.25)
+        self.sol_data   = darg["x"]
+        self.update_sol = True
         return [0]
 
-nlp = {'x': w, 'f': J, 'g': vertcat(*G)}
 callback = AnimateCallback('callback', (nbU*nbNoeuds + nbX*(nbNoeuds + 1) + nP), nbX*nbNoeuds, 0)
+
+
+def plot_callback(callback):
+    # initialisation graph
+
+    def plot_control(ax, t, x):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
+
+    # TIME
+    t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
+    t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
+    t = np.hstack([t_stance, t_swing])
+
+    # CONTROL
+    fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))
+    Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
+              'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
+              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']
+    axes1 = axes1.flatten()
+    u_emg = 9
+    for i in range(nbU):
+        ax = axes1[i]
+        ax.set_title(Labels[i])
+        ax.plot([0, T], [lowerbound_u[i], lowerbound_u[i]], 'k--')               # lower bound
+        ax.plot([0, T], [upperbound_u[i], upperbound_u[i]], 'k--')               # upper bound
+        ax.plot([T_stance, T_stance], [lowerbound_u[i], upperbound_u[i]], 'k:')  # end of the stance phase
+        ax.grid(True)
+        if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < (nbMus - 1)):
+            ax.plot(t, U_real[u_emg, :], 'r')                                    # plot emg if available
+            u_emg -= 1
+        if (i > nbU - 5):
+            ax.set_xlabel('time (s)')
+        if (i < (nbMus - 1)):
+            ax.yaxis.set_ticks(np.arange(0, 1, 0.5))
+        plot_control(ax, t, u0[i, :])                                            # plot initial guess
+    plt.savefig(save_dir + '/RES/plot_control_initial')
+
+
+    # STATES
+    ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])]) # Adjusted time
+    fig2, axes2 = plt.subplots(2, 6, sharex=True, figsize=(20, 10))
+    axes2    = axes2.flatten()
+    Labels_X = ['Pelvis_TX', 'Pelvis_TY', 'Pelvis_RZ', 'Hip', 'Knee', 'Ankle']
+
+    for q in range(nbQ):
+        ax1 = axes2[q]
+        ax1.set_title('Q ' + Labels_X[q])
+        if q != 0 and q != 1:
+            ax1.plot([0, T], [lowerbound_x[q] * (180 / np.pi), lowerbound_x[q] * (180 / np.pi)], 'k--')
+            ax1.plot([0, T], [upperbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k--')
+            ax1.plot([T_stance, T_stance], [lowerbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k:')  # end of the stance phase
+            ax1.plot(ts, X0[q, :] * (180 / np.pi), 'b')
+        else:
+            ax1.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
+            ax1.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
+            ax1.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
+            ax1.plot(ts, X0[q, :], 'b')
+        ax1.grid(True)
+
+        ax2 = axes2[q + nbQ]
+        ax2.set_title('dQ ' + Labels_X[q])
+        ax2.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
+        ax2.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
+        ax2.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
+        ax2.plot(ts, X0[(q + nbQ), :], 'b')
+        ax2.set_xlabel('time (s)')
+        ax2.grid(True)
+    plt.savefig(save_dir + '/RES/plot_state_initial guess')
+
+
+
+
+    # GROUND REACTION FORCES
+    fig3, axes3 = plt.subplots(2, 1, sharex=True)
+    axes3.flatten()
+
+    ax_ap = axes3[0]
+    ax_ap.set_title('GRF A/P  during the gait')
+    ax_ap.plot(t, GRF_real[1, :], 'r')
+    ax_ap.plot([T_stance, T_stance], [min(GRF_real[1, :]), max(GRF_real[1, :])], 'k:')  # end of the stance phase
+    ax_ap.grid(True)
+
+    ax_v = axes3[1]
+    ax_v.set_title('GRF vertical')
+    ax_v.plot(t, GRF_real[2, :], 'r')
+    ax_v.plot([T_stance, T_stance], [min(GRF_real[2, :]), max(GRF_real[2, :])], 'k:')
+    ax_v.set_xlabel('time (s)')
+    ax_v.grid(True)
+    fig3.tight_layout()
+
+    # GRF
+    axes3 = plt.figure(3).axes
+    ax_ap = axes3[0]
+    ax_ap.plot(t, GRF[0, :], 'b')
+
+    ax_v = axes3[1]
+    ax_v.plot(t, GRF[2, :], 'b')
+    plt.savefig(save_dir + '/RES/plot_GRF')
+    self.update = 1
+
+    
+
+    plt.show(block=False)
+
+
+
+    while plt.get_fignums():
+        if callback.update_sol:
+            # STRUCTURE DATA
+            sol_U = callback.sol_data[:nbU * nbNoeuds]
+            sol_X = callback.sol_data[nbU * nbNoeuds: -nP]
+
+            sol_q  = np.hstack([sol_X[0::nbX], sol_X[1::nbX], sol_X[2::nbX], sol_X[3::nbX], sol_X[4::nbX], sol_X[5::nbX]])
+            sol_dq = np.hstack([sol_X[6::nbX], sol_X[7::nbX], sol_X[8::nbX], sol_X[9::nbX], sol_X[10::nbX], sol_X[11::nbX]])
+            sol_a  = np.hstack([sol_U[0::nbU], sol_U[1::nbU], sol_U[2::nbU], sol_U[3::nbU], sol_U[4::nbU], sol_U[5::nbU],
+                               sol_U[6::nbU], sol_U[7::nbU], sol_U[8::nbU], sol_U[9::nbU], sol_U[10::nbU],
+                               sol_U[11::nbU], sol_U[12::nbU], sol_U[13::nbU], sol_U[14::nbU], sol_U[15::nbU],
+                               sol_U[16::nbU]])
+            sol_F  = np.hstack([sol_U[17::nbU], sol_U[18::nbU], sol_U[19::nbU]])
+
+            # CONVERGENCE
+            JR = Je = Jm = Ja = constraint = 0
+
+            GRF = np.zeros((3, nbNoeuds))
+            for k in range(nbNoeuds_stance):
+                # GROUND REACTION FORCES
+                [F, Jr] = fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
+                GRF[:, k] = np.array(F).squeeze()
+
+                # OBJECTIVE FUNCTION
+                JR += Jr                                                                                                # Ground Reaction --> stance
+                Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * k: nbX * k + nbQ], M_real_stance[:, :, k], 'stance')  # Marker
+                Je += fcn_objective_emg(wU, sol_U[nbU * k: nbU * (k + 1)], U_real_stance[:, k])                         # EMG
+                Ja += fcn_objective_activation(wL, sol_U[nbU * k: nbU * (k + 1)])                                       # Muscle activations (no EMG)
+
+                # CONSTRAINT
+                constraint += sol_X[nbX * (k + 1): nbX * (k + 2)] - int_RK4_stance(T_stance, nbNoeuds_stance, nkutta, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)])
+
+            for k in range(nbNoeuds_swing):
+                # OBJECTIVE FUNCTION
+                Jm += fcn_objective_markers(wMa, wMt, sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * k + nbQ], M_real_swing[:, :, k], 'swing')
+                Je += fcn_objective_emg(wU, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)], U_real_swing[:, k])
+                Ja += fcn_objective_activation(wL, sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
+
+                # CONSTRAINT
+                constraint += sol_X[nbX * nbNoeuds_stance + nbX * (k + 1): nbX * nbNoeuds_stance + nbX * (k + 2)] - int_RK4_swing(T_swing, nbNoeuds_swing, nkutta,
+                                                                                                                                  sol_X[nbX * nbNoeuds_stance + nbX * k: nbX * nbNoeuds_stance + nbX * (k + 1)],
+                                                                                                                                  sol_U[nbU * nbNoeuds_stance + nbU * k: nbU * nbNoeuds_stance + nbU * (k + 1)])
+
+            J = Ja + Je + Jm + JR
+
+            # SAVE VALUES IN TXT
+            print('\n \nGlobal                 : ' + str(J))
+            print('activation             : ' + str(Ja))
+            print('emg                    : ' + str(Je))
+            print('marker                 : ' + str(Jm))
+            print('ground reaction forces : ' + str(JR))
+            print('constraints            : ' + str(sum(constraint)) + '\n')
+
+            # SAVE OBJECTIVE FUNCTION AND CONSTRAINTS VALUE FOR EACH ITERATION
+            filename_J = name_subject + '_objvalue.txt'
+            f = open(save_dir + '/RES/' + filename_J, 'a')
+            f.write('Global                 : ' + str(J) + '\n')
+            f.write('activation             : ' + str(Ja) + '\n')
+            f.write('emg                    : ' + str(Je) + '\n')
+            f.write('marker                 : ' + str(Jm) + '\n')
+            f.write('ground reaction forces : ' + str(JR) + '\n')
+            f.write('constraints            : ' + str(sum(constraint)) + '\n\n')
+            f.close()
+
+
+
+            def plot_control_update(ax, t, x):
+                nbPoints = len(np.array(x))
+                for n in range(nbPoints - 1):
+                    lines = ax.get_lines()
+                    if size(lines) > 52:
+                        lines[4 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
+                        lines[4 + n].set_ydata([x[n], x[n], x[n + 1]])
+                    else:
+                        lines[3 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
+                        lines[3 + n].set_ydata([x[n], x[n], x[n + 1]])
+
+                # CONTROL
+                # TIME
+                t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
+                t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
+                t = np.hstack([t_stance, t_swing])
+
+                axes1 = plt.figure(1).axes
+                for i in range(nbMus):
+                    ax = axes1[i]
+                    plot_control_update(ax, t, sol_a[:, i])
+                for j in range(3):
+                    ax = axes1[i + 1 + j]
+                    plot_control_update(ax, t, sol_F[:, j])
+
+                plt.savefig(save_dir + '/RES/plot_control')
+
+                # STATE
+                axes2 = plt.figure(2).axes
+                # ADJUSTED TIME
+                ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
+                for q in range(nbQ):
+                    ax1 = axes2[q]
+                    lines = ax1.get_lines()
+                    if q != 0 and q != 1:
+                        lines[3].set_ydata(sol_q[:, q] * (180 / np.pi))
+                    else:
+                        lines[3].set_ydata(sol_q[:, q])
+
+                for dq in range(nbQ):
+                    ax1 = axes2[q + 1 + dq]
+                    lines = ax1.get_lines()
+                    lines[3].set_ydata(sol_dq[:, dq])
+
+                plt.savefig(save_dir + '/RES/plot_state')
+
+                # GRF
+                axes3 = plt.figure(3).axes
+                ax_ap = axes3[0]
+                lines = ax_ap.get_lines()
+                lines[2].set_ydata(GRF[0, :])
+
+                ax_v = axes3[1]
+                lines = ax_v.get_lines()
+                lines[2].set_ydata(GRF[2, :])
+                plt.savefig(save_dir + '/RES/plot_GRF')
+
+            plt.draw()
+
+            time.sleep(0.25)
+
+
+
+
+
+nlp = {'x': w, 'f': J, 'g': vertcat(*G)}
 opts = {"ipopt.tol": 1e-1, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory", "iteration_callback": callback}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
