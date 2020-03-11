@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from pylab import *
 import numpy as np
 import time
+import _thread
+
 from LoadData import *
 from Fcn_InitialGuess import *
 from Marche_Fcn_Integration import *
@@ -303,21 +305,16 @@ f.close()
 
 w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T), p0)
 
-# ----------------------------- Solver ---------------------------------------------------------------------------------
-w = vertcat(U, X, p)
-J = Ja + Je + Jm + JR
-
-class AnimateCallback(casadi.Callback):
-    def __init__(self, name, nx, ng, nP, opts={}):
+# ----------------------------- Callback -------------------------------------------------------------------------------
+class AnimateCallback(Callback):
+    def __init__(self, name, nx, ng, np, opts={}):
         Callback.__init__(self)
-        self.name   = name                 # callback name
-
         self.nx     = nx                   # optimized value number
         self.ng     = ng                   # constraints number
-        self.nP     = nP                   # parameters number
+        self.nP     = np
 
         self.sol_data   = None             # optimized variables
-        self.update_sol = False            # first iteration
+        self.update_sol = True             # first iteration
 
         self.construct(name, opts)
 
@@ -335,37 +332,41 @@ class AnimateCallback(casadi.Callback):
 
     def eval(self, arg):
         darg = {}
-        for (i, s) in enumerate(nlpsol_out()): darg[s] = arg[i]
+        for (i, s) in enumerate(nlpsol_out()):
+            darg[s] = arg[i]
+
         self.sol_data   = darg["x"]
         self.update_sol = True
+        # plot_callback(self)
+        print('coucou')
         return [0]
 
-callback = AnimateCallback('callback', (nbU*nbNoeuds + nbX*(nbNoeuds + 1) + nP), nbX*nbNoeuds, 0)
+mycallback = AnimateCallback('mycallback', (nbU*nbNoeuds + nbX*(nbNoeuds + 1) + nP), nbX*nbNoeuds, 0)
 
 
+# ----------------------------- Plot results optimization --------------------------------------------------------------
 def plot_callback(callback):
-    # initialisation graph
+    # INITIALISATION GRAPH WITH INITIAL GUESS
+    # TIME
+    t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
+    t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
+    t = np.hstack([t_stance, t_swing])
 
     def plot_control(ax, t, x):
         nbPoints = len(np.array(x))
         for n in range(nbPoints - 1):
             ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
 
-    # TIME
-    t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-    t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
-    t = np.hstack([t_stance, t_swing])
-
     # CONTROL
-    fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))
+    fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))                                                     # Create figure
     Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
               'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
-              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']
-    axes1 = axes1.flatten()
-    u_emg = 9
+              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']    # Control labels
+    axes1 = axes1.flatten()                                                                                             # Get axes figure (vector)
+    u_emg = 9                                                                                                           # init variable for muscle with emg
     for i in range(nbU):
-        ax = axes1[i]
-        ax.set_title(Labels[i])
+        ax = axes1[i]                                                            # get the correct subplot
+        ax.set_title(Labels[i])                                                  # put control label
         ax.plot([0, T], [lowerbound_u[i], lowerbound_u[i]], 'k--')               # lower bound
         ax.plot([0, T], [upperbound_u[i], upperbound_u[i]], 'k--')               # upper bound
         ax.plot([T_stance, T_stance], [lowerbound_u[i], upperbound_u[i]], 'k:')  # end of the stance phase
@@ -378,42 +379,76 @@ def plot_callback(callback):
         if (i < (nbMus - 1)):
             ax.yaxis.set_ticks(np.arange(0, 1, 0.5))
         plot_control(ax, t, u0[i, :])                                            # plot initial guess
-    plt.savefig(save_dir + '/RES/plot_control_initial')
+    plt.savefig(save_dir + '/RES/plot_control_initialguess')                     # save figure of initial guess
 
 
     # STATES
-    ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])]) # Adjusted time
-    fig2, axes2 = plt.subplots(2, 6, sharex=True, figsize=(20, 10))
-    axes2    = axes2.flatten()
-    Labels_X = ['Pelvis_TX', 'Pelvis_TY', 'Pelvis_RZ', 'Hip', 'Knee', 'Ankle']
+    ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])                                      # Adjusted time (T + dt)
+
+    fig2, axes2 = plt.subplots(2, 6, sharex=True, figsize=(20, 10))                                                     # Create figure
+    axes2       = axes2.flatten()                                                                                       # Get axes figure (vector)
+    Labels_X    = ['Pelvis_TX', 'Pelvis_TY', 'Pelvis_RZ', 'Hip', 'Knee', 'Ankle']                                       # Control labels
 
     for q in range(nbQ):
         ax1 = axes2[q]
         ax1.set_title('Q ' + Labels_X[q])
         if q != 0 and q != 1:
-            ax1.plot([0, T], [lowerbound_x[q] * (180 / np.pi), lowerbound_x[q] * (180 / np.pi)], 'k--')
-            ax1.plot([0, T], [upperbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k--')
-            ax1.plot([T_stance, T_stance], [lowerbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k:')  # end of the stance phase
-            ax1.plot(ts, X0[q, :] * (180 / np.pi), 'b')
+            ax1.plot([0, T], [lowerbound_x[q] * (180 / np.pi), lowerbound_x[q] * (180 / np.pi)], 'k--')                 # lower bound
+            ax1.plot([0, T], [upperbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k--')                 # upper bound
+            ax1.plot([T_stance, T_stance], [lowerbound_x[q] * (180 / np.pi), upperbound_x[q] * (180 / np.pi)], 'k:')    # end of the stance phase
+            ax1.plot(ts, X0[q, :] * (180 / np.pi), 'b')                                                                 # plot initial guess q (degre)
         else:
             ax1.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
             ax1.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
-            ax1.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
-            ax1.plot(ts, X0[q, :], 'b')
+            ax1.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')                                    # end of the stance phase
+            ax1.plot(ts, X0[q, :], 'b')                                                                                 # plot initial guess q (trans)
         ax1.grid(True)
 
         ax2 = axes2[q + nbQ]
         ax2.set_title('dQ ' + Labels_X[q])
-        ax2.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')
-        ax2.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')
-        ax2.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')  # end of the stance phase
-        ax2.plot(ts, X0[(q + nbQ), :], 'b')
+        ax2.plot([0, T], [lowerbound_x[q], lowerbound_x[q]], 'k--')                                                     # lower bound
+        ax2.plot([0, T], [upperbound_x[q], upperbound_x[q]], 'k--')                                                     # upper bound
+        ax2.plot([T_stance, T_stance], [lowerbound_x[q], upperbound_x[q]], 'k:')                                        # end of the stance phase
+        ax2.plot(ts, X0[(q + nbQ), :], 'b')                                                                             # plot initial guess dq
         ax2.set_xlabel('time (s)')
         ax2.grid(True)
-    plt.savefig(save_dir + '/RES/plot_state_initial guess')
+    plt.savefig(save_dir + '/RES/plot_state_initialguess')                                                              # save initial guess plot
 
+    # CONVERGENCE
+    JR = Je = Jm = Ja = constraint = 0
 
+    GRF = np.zeros((3, nbNoeuds))
+    for k in range(nbNoeuds_stance):
+        # GROUND REACTION FORCES
+        [F, Jr] = fcn_objective_GRF(wR, X0[:, k], u0[:, k], GRF_real[:, k])  # Ground Reaction --> stance
+        GRF[:, k] = np.array(F).squeeze()
 
+        # OBJECTIVE FUNCTION
+        JR += Jr  # Ground Reaction --> stance
+        Jm += fcn_objective_markers(wMa, wMt, q0[: , k], M_real_stance[:, :, k], 'stance')  # Marker
+        Je += fcn_objective_emg(wU, u0[:, k], U_real_stance[:, k])                          # EMG
+        Ja += fcn_objective_activation(wL, u0[:, k])                                        # Muscle activations (no EMG)
+
+        # CONSTRAINT
+        constraint += X0[:, k + 1] - int_RK4_stance(T_stance, nbNoeuds_stance, nkutta, X0[:, k], u0[:, k])
+
+    for k in range(nbNoeuds_swing):
+        # OBJECTIVE FUNCTION
+        Jm += fcn_objective_markers(wMa, wMt, q0[: , nbNoeuds_stance + k], M_real_swing[:, :, k], 'swing')
+        Je += fcn_objective_emg(wU, u0[:, nbNoeuds_stance + k], U_real_swing[:, k])
+        Ja += fcn_objective_activation(wL, u0[:, nbNoeuds_stance + k])
+
+        # CONSTRAINT
+        constraint += X0[:, nbNoeuds_stance + k + 1] - int_RK4_swing(T_swing, nbNoeuds_swing, nkutta, X0[:, nbNoeuds_stance + k], u0[:, nbNoeuds_stance + k])
+
+    J = Ja + Je + Jm + JR
+
+    print('\n \nGlobal                 : ' + str(J))
+    print('activation             : ' + str(Ja))
+    print('emg                    : ' + str(Je))
+    print('marker                 : ' + str(Jm))
+    print('ground reaction forces : ' + str(JR))
+    print('constraints            : ' + str(sum(constraint)) + '\n')
 
     # GROUND REACTION FORCES
     fig3, axes3 = plt.subplots(2, 1, sharex=True)
@@ -423,34 +458,24 @@ def plot_callback(callback):
     ax_ap.set_title('GRF A/P  during the gait')
     ax_ap.plot(t, GRF_real[1, :], 'r')
     ax_ap.plot([T_stance, T_stance], [min(GRF_real[1, :]), max(GRF_real[1, :])], 'k:')  # end of the stance phase
+    ax_ap.plot(t, GRF[0, :], 'b')
     ax_ap.grid(True)
 
     ax_v = axes3[1]
     ax_v.set_title('GRF vertical')
     ax_v.plot(t, GRF_real[2, :], 'r')
     ax_v.plot([T_stance, T_stance], [min(GRF_real[2, :]), max(GRF_real[2, :])], 'k:')
+    ax_v.plot(t, GRF[2, :], 'b')
     ax_v.set_xlabel('time (s)')
     ax_v.grid(True)
     fig3.tight_layout()
-
-    # GRF
-    axes3 = plt.figure(3).axes
-    ax_ap = axes3[0]
-    ax_ap.plot(t, GRF[0, :], 'b')
-
-    ax_v = axes3[1]
-    ax_v.plot(t, GRF[2, :], 'b')
-    plt.savefig(save_dir + '/RES/plot_GRF')
-    self.update = 1
-
-    
+    plt.savefig(save_dir + '/RES/plot_GRF_initialguess')
 
     plt.show(block=False)
 
 
-
-    while plt.get_fignums():
-        if callback.update_sol:
+    while plt.get_fignums():            # figures opened
+        if callback.update_sol:         # optimized values modified (new iteration)
             # STRUCTURE DATA
             sol_U = callback.sol_data[:nbU * nbNoeuds]
             sol_X = callback.sol_data[nbU * nbNoeuds: -nP]
@@ -465,8 +490,8 @@ def plot_callback(callback):
 
             # CONVERGENCE
             JR = Je = Jm = Ja = constraint = 0
-
             GRF = np.zeros((3, nbNoeuds))
+
             for k in range(nbNoeuds_stance):
                 # GROUND REACTION FORCES
                 [F, Jr] = fcn_objective_GRF(wR, sol_X[nbX * k: nbX * (k + 1)], sol_U[nbU * k: nbU * (k + 1)], GRF_real[:, k])  # Ground Reaction --> stance
@@ -494,7 +519,7 @@ def plot_callback(callback):
 
             J = Ja + Je + Jm + JR
 
-            # SAVE VALUES IN TXT
+            # PRINT VALUES
             print('\n \nGlobal                 : ' + str(J))
             print('activation             : ' + str(Ja))
             print('emg                    : ' + str(Je))
@@ -502,7 +527,7 @@ def plot_callback(callback):
             print('ground reaction forces : ' + str(JR))
             print('constraints            : ' + str(sum(constraint)) + '\n')
 
-            # SAVE OBJECTIVE FUNCTION AND CONSTRAINTS VALUE FOR EACH ITERATION
+            # SAVE OBJECTIVE FUNCTION AND CONSTRAINTS VALUE FOR EACH ITERATION IN TXT
             filename_J = name_subject + '_objvalue.txt'
             f = open(save_dir + '/RES/' + filename_J, 'a')
             f.write('Global                 : ' + str(J) + '\n')
@@ -512,8 +537,6 @@ def plot_callback(callback):
             f.write('ground reaction forces : ' + str(JR) + '\n')
             f.write('constraints            : ' + str(sum(constraint)) + '\n\n')
             f.close()
-
-
 
             def plot_control_update(ax, t, x):
                 nbPoints = len(np.array(x))
@@ -526,66 +549,58 @@ def plot_callback(callback):
                         lines[3 + n].set_xdata([t[n], t[n + 1], t[n + 1]])
                         lines[3 + n].set_ydata([x[n], x[n], x[n + 1]])
 
-                # CONTROL
-                # TIME
-                t_stance = np.linspace(0, T_stance, nbNoeuds_stance)
-                t_swing = t_stance[-1] + np.linspace(0, T_swing, nbNoeuds_swing)
-                t = np.hstack([t_stance, t_swing])
+            # CONTROL
+            axes1 = plt.figure(1).axes
+            for i in range(nbMus):
+                ax = axes1[i]
+                plot_control_update(ax, t, sol_a[:, i])
+            for j in range(3):
+                ax = axes1[i + 1 + j]
+                plot_control_update(ax, t, sol_F[:, j])
+            plt.savefig(save_dir + '/RES/plot_control')
 
-                axes1 = plt.figure(1).axes
-                for i in range(nbMus):
-                    ax = axes1[i]
-                    plot_control_update(ax, t, sol_a[:, i])
-                for j in range(3):
-                    ax = axes1[i + 1 + j]
-                    plot_control_update(ax, t, sol_F[:, j])
+            # STATE
+            axes2 = plt.figure(2).axes
+            for q in range(nbQ):
+                ax1 = axes2[q]
+                lines = ax1.get_lines()
+                if q != 0 and q != 1:
+                    lines[3].set_ydata(sol_q[:, q] * (180 / np.pi))
+                else:
+                    lines[3].set_ydata(sol_q[:, q])
+            for dq in range(nbQ):
+                ax1 = axes2[q + 1 + dq]
+                lines = ax1.get_lines()
+                lines[3].set_ydata(sol_dq[:, dq])
+            plt.savefig(save_dir + '/RES/plot_state')
 
-                plt.savefig(save_dir + '/RES/plot_control')
+            # GRF
+            axes3 = plt.figure(3).axes
+            ax_ap = axes3[0]
+            lines = ax_ap.get_lines()
+            lines[2].set_ydata(GRF[0, :])
 
-                # STATE
-                axes2 = plt.figure(2).axes
-                # ADJUSTED TIME
-                ts = np.hstack([t_stance, t_swing, t_swing[-1] + (t_swing[-1] - t_swing[-2])])
-                for q in range(nbQ):
-                    ax1 = axes2[q]
-                    lines = ax1.get_lines()
-                    if q != 0 and q != 1:
-                        lines[3].set_ydata(sol_q[:, q] * (180 / np.pi))
-                    else:
-                        lines[3].set_ydata(sol_q[:, q])
+            ax_v  = axes3[1]
+            lines = ax_v.get_lines()
+            lines[2].set_ydata(GRF[2, :])
+            plt.savefig(save_dir + '/RES/plot_GRF')
 
-                for dq in range(nbQ):
-                    ax1 = axes2[q + 1 + dq]
-                    lines = ax1.get_lines()
-                    lines[3].set_ydata(sol_dq[:, dq])
-
-                plt.savefig(save_dir + '/RES/plot_state')
-
-                # GRF
-                axes3 = plt.figure(3).axes
-                ax_ap = axes3[0]
-                lines = ax_ap.get_lines()
-                lines[2].set_ydata(GRF[0, :])
-
-                ax_v = axes3[1]
-                lines = ax_v.get_lines()
-                lines[2].set_ydata(GRF[2, :])
-                plt.savefig(save_dir + '/RES/plot_GRF')
-
-            plt.draw()
-
-            time.sleep(0.25)
+            callback.update_sol = False         # can get new iteration
+        plt.draw()                              # update plots
+        plt.pause(.001)
 
 
+# _thread.start_new_thread(plot_callback, (mycallback,))          # nouveau thread
 
+# ----------------------------- Solver ---------------------------------------------------------------------------------
+w = vertcat(U, X, p)
+J = Ja + Je + Jm + JR
 
-
-nlp = {'x': w, 'f': J, 'g': vertcat(*G)}
-opts = {"ipopt.tol": 1e-1, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory", "iteration_callback": callback}
+nlp    = {'x': w, 'f': J, 'g': vertcat(*G)}
+opts   = {"ipopt.tol": 1e-1, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory", "iteration_callback": mycallback}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
-start_opti = time.time()
-print('Start optimisation : ' + str(start_opti))
+# start_opti = time.time()
 
 res = solver(lbg = lbg,
              ubg = ubg,
@@ -595,9 +610,8 @@ res = solver(lbg = lbg,
 
 
 # RESULTS
-stop_opti = time.time() - start_opti
-print('Time to solve : ' + str(stop_opti))
-
+# stop_opti = time.time() - start_opti
+# print('Time to solve : ' + str(stop_opti))
 
 sol_U  = res["x"][:nbU * nbNoeuds]
 sol_X  = res["x"][nbU * nbNoeuds: -nP]
