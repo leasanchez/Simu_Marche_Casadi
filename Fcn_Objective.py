@@ -1,8 +1,5 @@
 import biorbd
 from casadi import *
-from pylab import *
-import numpy as np
-import scipy.io as sio
 
 def fcn_objective_activation(wL, u):
     # Minimize muscular excitation of muscle without emg
@@ -103,7 +100,7 @@ def fcn_objective_GRF(wR, x, u, GRF_real):
     dQ          = x[model.nbQ(): 2 * model.nbQ()]
 
 
-    muscularJointTorque = external('libmuscular_joint_torque', 'libmuscular_joint_torque.so', {'enable_fd': True})
+    muscularJointTorque = external('libmuscular_joint_torque_stance', 'libmuscular_joint_torque_stance.so', {'enable_fd': True})
     joint_torque    = muscularJointTorque(activations, Q, dQ)
     joint_torque[0] = u[model.nbMuscleTotal() + 0]           # ajout des forces au pelvis
     joint_torque[1] = u[model.nbMuscleTotal() + 1]

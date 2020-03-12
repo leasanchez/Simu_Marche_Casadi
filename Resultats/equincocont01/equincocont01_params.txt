@@ -2,14 +2,14 @@ Parameters for the simulation
 
 
 MODEL
-model stance : <biorbd.biorbd.Model; proxy of <Swig Object of type 'biorbd::Model *' at 0x7fbb0a541e70> >
-model swing  : <biorbd.biorbd.Model; proxy of <Swig Object of type 'biorbd::Model *' at 0x7fbb0a541fc0> >
+model stance : <biorbd.biorbd.Model; proxy of <Swig Object of type 'biorbd::Model *' at 0x7fc41a6d8ba0> >
+model swing  : <biorbd.biorbd.Model; proxy of <Swig Object of type 'biorbd::Model *' at 0x7fc41a6745d0> >
 
 MODEL PARAMETERS
 
-nbNoeuds stance : 25
-nbNoeuds swing  : 25
-nbNoeuds        : 50
+nbNoeuds stance : 10
+nbNoeuds swing  : 10
+nbNoeuds        : 20
 nbMus           : 17
 nbQ             : 6
 nbMarker        : 26

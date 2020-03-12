@@ -1,8 +1,6 @@
 from ezc3d import c3d
-import biorbd
 import numpy as np
-from Platform_Force import *
-from pylab import *
+from Platform_Force import GetForces, GetMoment, GetGroundReactionForces
 from scipy.interpolate import interp1d
 
 
