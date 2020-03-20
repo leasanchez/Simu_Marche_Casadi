@@ -1,8 +1,17 @@
 import os
 import numpy as np
 
-def save_GRF_real(name_subject, save_dir, GRF_real):
-    # SAVE GRF FROM PLATFORM
+def save_GRF_real(params, GRF_real):
+    # Save grf values from platform -- used for objective fcn : tracking
+    # in a txt file called 'name_subject'_GRF.txt
+
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject = params.name_subject
+    save_dir     = params.save_dir
+
     filename_GRF = name_subject + '_GRF.txt'
     nbNoeuds = len(GRF_real[0, :])
     if filename_GRF not in os.listdir(save_dir):
@@ -13,8 +22,17 @@ def save_GRF_real(name_subject, save_dir, GRF_real):
             f.write("\n")
         f.close()
 
-def save_Markers_real(name_subject, save_dir, M_real):
-    # SAVE MARKERS POSITIONS FROM MOTION CAPTURE
+def save_Markers_real(params, M_real):
+    # Save marker position from motion analysis -- used for objective fcn : tracking
+    # in a txt file called 'name_subject'_Markers.txt
+
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject = params.name_subject
+    save_dir = params.save_dir
+
     filename_M = name_subject + '_Markers.txt'
     nbNoeuds   = len(M_real[0, 0, :])
     nbMarkers  = len(M_real[0, :, 0])
@@ -30,11 +48,20 @@ def save_Markers_real(name_subject, save_dir, M_real):
             f.write("\n")
         f.close()
 
-def save_EMG_real(name_subject, save_dir, U_real):
-    # SAVE EMG
+def save_EMG_real(params, U_real):
+    # Save muscular activation from emg -- used for objective fcn : tracking
+    # in a txt file called 'name_subject'_EMG.txt
+
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject = params.name_subject
+    save_dir     = params.save_dir
     filename_EMG = name_subject + '_EMG.txt'
-    nbNoeuds     = len(U_real[0, :])
-    nbMus        = len(U_real[:, 0])
+    nbNoeuds     = params.nbNoeuds
+    nbMus        = params.nbMus - 7
+
     if filename_EMG not in os.listdir(save_dir):
         f = open(save_dir + filename_EMG, 'a')
         f.write("Muscular excitations from emg \n\n")
@@ -45,9 +72,18 @@ def save_EMG_real(name_subject, save_dir, U_real):
         f.close()
 
 
-def save_params(name_subject, save_dir, params):
-    # SAVE PARAMETERS USED FOR SIMULATIONS
+def save_params(params):
+    # Save parameters used for simulation (# shooting nodes, # states, # control, weight...)
+    # in a txt file called 'name_subject'_params.txt
+
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject = params.name_subject
+    save_dir = params.save_dir
     filename_param = name_subject + '_params.txt'
+
     if filename_param in os.listdir(save_dir):
         os.remove(save_dir + filename_param)
 
@@ -82,8 +118,16 @@ def save_params(name_subject, save_dir, params):
     f.close()
 
 
-def save_bounds(name_subject, save_dir, lbx, ubx, params):
-    # SAVE BOUNDS
+def save_bounds(params, lbx, ubx):
+    # Save bounds
+    # in a txt file called 'name_subject'_params.txt
+
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject = params.name_subject
+    save_dir = params.save_dir
     filename_param = name_subject + '_params.txt'
 
     upperbound_u = ubx[:params.nbU]
@@ -111,24 +155,31 @@ def save_bounds(name_subject, save_dir, lbx, ubx, params):
     f.close()
 
 
-def save_initialguess(name_subject, save_dir, u0, x0, p0):
-    # SAVE INITIAL GUESS
-    filename_init = name_subject + '_initialguess.txt'
-    nbNoeuds      = len(u0[0, :])
+def save_initialguess(params, u0, x0, p0):
+    # Save marker position from motion analysis -- used for objective fcn : tracking
+    # in a txt file called 'name_subject'_Markers.txt
 
-    if filename_init not in os.listdir(save_dir):
-        f = open(save_dir + filename_init, 'a')
-        f.write('Initial guess\n\n\n')
-        f.write('CONTROL\n')
-        for n in range(nbNoeuds):
-            f.write('\nu0   ' + str(n) + '\n')
-            np.savetxt(f, u0[:, n], delimiter='\n')
-        f.write('\n\nSTATE\n')
-        for n in range(nbNoeuds + 1):
-            f.write('\nx0   ' + str(n) + '\n')
-            np.savetxt(f, x0[:, n], delimiter='\n')
-        f.write('\n\nPARAMETER\n')
-        np.savetxt(f, p0, delimiter='\n')
+    # INPUT
+    # name_subject = name of the subject used
+    # save_dir     = path to the directory to save txt file
+
+    name_subject   = params.name_subject
+    save_dir       = params.save_dir
+    filename_param = name_subject + '_params.txt'
+    nbNoeuds       = params.nbNoeuds
+
+    f = open(save_dir + filename_param, 'a')
+    f.write('\n\nINITIAL GUESS\n')
+    f.write('Control\n')
+    for n in range(nbNoeuds):
+        f.write('\nu0   ' + str(n) + '\n')
+        np.savetxt(f, u0[:, n], delimiter='\n')
+    f.write('\n\nState\n')
+    for n in range(nbNoeuds + 1):
+        f.write('\nx0   ' + str(n) + '\n')
+        np.savetxt(f, x0[:, n], delimiter='\n')
+        f.write('\n\nParameter\n')
+    np.savetxt(f, p0, delimiter='\n')
     f.close()
 
 def save_objective_values(name_subject, save_dir, objectif, constraint):
