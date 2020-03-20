@@ -28,7 +28,7 @@ def Get_Event(file):
     return start, stop_stance, stop
 
 
-def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
+def load_data_markers(params, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
 
     # INPUT
@@ -40,6 +40,15 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
 
     # OUTPUT
     # M_real          = 3 x nMarker x nbNoeuds : muscular excitation from emg
+
+    file     = params.file
+    nbMarker = params.nbMarker
+    if GaitPhase == 'stance':
+        T        = params.T_stance
+        nbNoeuds = params.nbNoeuds_stance
+    else:
+        T        = params.T_swing
+        nbNoeuds = params.nbNoeuds_swing
 
     # LOAD C3D FILE
     measurements   = c3d(file)
@@ -105,7 +114,7 @@ def load_data_markers(file, T, nbNoeuds, nbMarker, GaitPhase):
 
 
 
-def load_data_emg(file, T, nbNoeuds, nbMuscle, GaitPhase):
+def load_data_emg(params, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
 
     # INPUT
@@ -117,6 +126,16 @@ def load_data_emg(file, T, nbNoeuds, nbMuscle, GaitPhase):
 
     # OUTPUT
     # U_real          = (nMus - 7) x nbNoeuds : muscular excitation from emg
+
+    file     = params.file
+    nbMuscle = params.nbMus
+
+    if GaitPhase == 'stance':
+        T        = params.T_stance
+        nbNoeuds = params.nbNoeuds_stance
+    else:
+        T        = params.T_swing
+        nbNoeuds = params.nbNoeuds_swing
 
     # LOAD C3D FILE
     measurements  = c3d(file)
@@ -177,7 +196,7 @@ def find_HS(input, idx_in):
     return idx_HS
 
 
-def load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, GaitPhase):
+def load_data_GRF(params, GaitPhase):
     # Load c3d file and get the Ground Reaction Forces from teh force platform
     # based on the vertical GRF estimation of each phase time
 
@@ -191,6 +210,10 @@ def load_data_GRF(file, nbNoeuds_stance, nbNoeuds_swing, GaitPhase):
     # GRF_real        = 3 x nbNoeuds with the Ground Reaction Forces values
     # T               = gaitcycle time
     # T_stance        = stance phase time
+
+    file            = params.file
+    nbNoeuds_stance = params.nbNoeuds_stance
+    nbNoeuds_swing  = params.nbNoeuds_swing
 
     # LOAD C3D FILE
     measurements = c3d(file)
