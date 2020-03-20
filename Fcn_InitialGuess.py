@@ -1,4 +1,3 @@
-import biorbd
 from casadi import *
 from pylab import *
 import numpy as np
@@ -41,7 +40,7 @@ def load_initialguess_muscularExcitation(U_real):
 
     return U0
 
-def load_initialguess_q(c3d_file, kalman_file, T, nbNoeuds, GaitPhase):  # A MODIFIER !!
+def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
     # Create initial vector for joint position (nbNoeuds x nbQ)
     # Based on Kalman filter??
 
@@ -54,6 +53,15 @@ def load_initialguess_q(c3d_file, kalman_file, T, nbNoeuds, GaitPhase):  # A MOD
 
     # OUTPUT
     # Q0             = initial guess for joint position (nbQ x nbNoeuds)
+    kalman_file   = params.kalman_file
+    c3d_file      = params.file
+
+    if GaitPhase == 'stance':
+        T        = params.T_stance
+        nbNoeuds = params.nbNoeuds_stance
+    else:
+        T        = params.T_swing
+        nbNoeuds = params.nbNoeuds_swing
 
     # LOAD MAT FILE FOR GENERALIZED COORDINATES
     kalman = sio.loadmat(kalman_file)
