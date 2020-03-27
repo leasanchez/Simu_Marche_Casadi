@@ -129,7 +129,7 @@ w = vertcat(U, X, p)
 J = Ja + Je + Jm + JR
 
 nlp    = {'x': w, 'f': J, 'g': vertcat(*G)}
-opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory"}
+opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory"} # acceptable_obj_change_tol
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
 res = solver(lbg = lbg,
@@ -143,6 +143,17 @@ res = solver(lbg = lbg,
 sol_U  = res["x"][:params.nbU * params.nbNoeuds_stance]
 sol_X  = res["x"][params.nbU * params.nbNoeuds_stance: -params.nP]
 sol_p  = res["x"][-params.nP:]
+
+# save txt file
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_sol4_stance.txt'
+f = open(file, 'a')
+f.write('STATE\n\n')
+np.savetxt(f, sol_X, delimiter = '\n')
+f.write('\n\nCONTROL\n\n')
+np.savetxt(f, sol_U, delimiter = '\n')
+f.write('\n\nPARAMETER\n\n')
+np.savetxt(f, sol_p, delimiter = '\n')
+f.close()
 
 sol_q  = [sol_X[0::params.nbX], sol_X[1::params.nbX], sol_X[2::params.nbX], sol_X[3::params.nbX], sol_X[4::params.nbX], sol_X[5::params.nbX]]
 sol_dq = [sol_X[6::params.nbX], sol_X[7::params.nbX], sol_X[8::params.nbX], sol_X[9::params.nbX], sol_X[10::params.nbX], sol_X[11::params.nbX]]
