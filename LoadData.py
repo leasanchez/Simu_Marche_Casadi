@@ -98,7 +98,7 @@ def load_data_markers(params, GaitPhase):
     if GaitPhase == 'stance':
         # T = T_stance
         t = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        node_t = np.linspace(0, T, nbNoeuds)
         f = interp1d(t, markers[:, :, int(start): int(stop_stance) + 1], kind='cubic')
         M_real = f(node_t)
 
@@ -163,7 +163,7 @@ def load_data_emg(params, GaitPhase):
     if GaitPhase == 'stance':
         # T = T_stance
         t      = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        node_t = np.linspace(0, T, nbNoeuds)
         f      = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
         U_real = f(node_t)
 
@@ -257,7 +257,7 @@ def load_data_GRF(params, GaitPhase):
     # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     # Stance
     t_stance        = np.linspace(0, T_stance, int(stop_stance - start) + 1)
-    node_t_stance   = np.linspace(0, T_stance, nbNoeuds_stance + 1)
+    node_t_stance   = np.linspace(0, T_stance, nbNoeuds_stance)
     f_stance        = interp1d(t_stance, GRF[:, int(start): int(stop_stance + 1)], kind ='cubic')
     GRF_real_stance = f_stance(node_t_stance)
 

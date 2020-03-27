@@ -81,7 +81,7 @@ def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
     elif GaitPhase == 'stance':
         # T = T_stance
         t      = np.linspace(0, T, int(stop_stance - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
         f      = interp1d(t, Q_real[:, int(start): int(stop_stance) + 1], kind='cubic')
         Q0     = f(node_t)
 
