@@ -42,13 +42,14 @@ def ffcn_no_contact(x, u, p):
     Q              = x[:model.nbQ()]                            # states
     dQ             = x[model.nbQ():2 * model.nbQ()]
     activations    = u[: model.nbMuscleTotal()]                 # controls
+    res_torque     = u[model.nbMuscleTotal():]
 
     # COMPUTE MOTOR JOINT TORQUES
     muscularJointTorque = Function('muscular_joint_torque', [activations, Q, dQ], articular_torque(model, activations, Q, dQ)).expand()
     # muscularJointTorque = external('libmuscular_joint_torque', 'libmuscular_joint_torque.so',{'enable_fd': True})
 
     joint_torque  = muscularJointTorque(activations, Q, dQ)
-    joint_torque += u[model.nbMuscleTotal():]                # add residual torques
+    joint_torque += u[model.nbMuscleTotal():]                  # add residual torques
     # joint_torque[0] = u[model.nbMuscleTotal() + 0]           # add force pelvis
     # joint_torque[1] = u[model.nbMuscleTotal() + 1]
     # joint_torque[2] = u[model.nbMuscleTotal() + 2]
@@ -95,7 +96,7 @@ def ffcn_contact(x, u, p):
     # COMPUTE THE ANGULAR ACCELERATION BY FORWARD DYNAMICS
     # Forward_Dynamics_Contact = external('libforward_dynamics_contact', 'libforward_dynamics_contact.so',{'enable_fd': True})
     Forward_Dynamics_Contact = Function('Forward_Dynamics_Contact', [Q, dQ, joint_torque], vertcat(dQ, model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque))).expand()
-    d_xQ                     = Forward_Dynamics_Contact(Q, dQ, joint_torque)
+    d_xQ                     = Forward_Dynamics_Contact(Q, dQ, joint_torque) #[:2 * model.nbQ()]
 
     # STATE DERIVATIVE
     dX = vertcat(d_xQ)
