@@ -20,7 +20,7 @@ class Parameters():
         self.nbNoeuds_swing  = 25                                             # shooting points for swing phase
         self.nbNoeuds        = self.nbNoeuds_stance + self.nbNoeuds_swing     # total shooting points
 
-        self.nbU      = self.nbMus + 3                                        # number of controls : muscle activation + articular torque
+        self.nbU      = self.nbMus + self.nbQ                                 # number of controls : muscle activation + articular torque (residual torque)
         self.nbX      = 2 * self.nbQ                                          # number of states : generalized positions + velocities
         self.nP       = self.nbMus + 1                                        # number of parameters : 1 global + muscles
 
