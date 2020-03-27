@@ -6,8 +6,8 @@ def plot_q(q, T, nbNoeuds):
     # JOINT POSITIONS
     fig, axes = plt.subplots(2, 3, figsize=(20, 10))
     axes = axes.flatten()
-    dt = T/nbNoeuds
-    t = np.linspace(0, T, nbNoeuds + 1)
+    # t = np.linspace(0, T, nbNoeuds + 1)
+    t = np.linspace(0, T +  0.02520833, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
     axes[0].plot(t, q[0, :], '+')
@@ -115,7 +115,8 @@ def plot_dq(dq, T, nbNoeuds):
 
     # Set time
     dt = T/nbNoeuds
-    t = np.linspace(0, T, nbNoeuds + 1)
+    # t = np.linspace(0, T, nbNoeuds + 1)
+    t = np.linspace(0, T + 0.02520833, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
     axes[0].plot(t, dq[0, :], '+')
@@ -155,57 +156,60 @@ def plot_dq(dq, T, nbNoeuds):
 
     plt.show(block=False)
 
-def plot_torque(torque, T, nbNoeuds):
+def plot_torque(torque, F, T, nbNoeuds):
     # JOINT TORQUES
+    fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+    axes = axes.flatten()
 
     # Set time
     dt = T/nbNoeuds
-    t = np.linspace(0, T - dt, nbNoeuds)
+    # t = np.linspace(0, T - dt, nbNoeuds)
+    t = np.linspace(0, T, nbNoeuds)
 
-    plt.subplot(231)
-    plt.title('Pelvis_Trans_X')
-    plt.plot(t, torque[0, :], 'b+-')
-    # plt.plot(t, F0[0, :], 'r-', label = 'control')
-    plt.plot([T, T], [min(torque[0, :]), max(torque[0, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('Force (N)')
+    # plot control
+    def plot_control(ax, t, x):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'r', alpha = 0.5)
 
-    plt.subplot(232)
-    plt.title('Pelvis_Trans_Y')
-    plt.plot(t, torque[1, :], 'b+-')
-    # plt.plot(t, F0[1, :], 'r-', label = 'control')
-    plt.plot([T, T], [min(torque[1, :]), max(torque[1, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('force (N)')
+    axes[0].set_title('Pelvis_Trans_X')
+    axes[0].plot(t, torque[0, :], 'b+-')
+    plot_control(axes[0], t, F[0, :])
+    axes[0].plot([T, T], [min(torque[0, :]), max(torque[0, :])], 'k:')
+    axes[0].set_xlabel('time (s)')
+    axes[0].set_ylabel('Force (N)')
 
-    plt.subplot(233)
-    plt.title('Pelvis_Rot_Z')
-    plt.plot(t, torque[2, :], 'b+-')
-    # plt.plot(t, F0[2, :], 'r-', label = 'control')
-    plt.plot([T, T], [min(torque[2, :]), max(torque[2, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('torque (Nm)')
+    axes[1].set_title('Pelvis_Trans_Y')
+    axes[1].plot(t, torque[1, :], 'b+-')
+    plot_control(axes[1], t, F[1, :])
+    axes[1].plot([T, T], [min(torque[1, :]), max(torque[1, :])], 'k:')
+    axes[1].set_xlabel('time (s)')
+    axes[1].set_ylabel('force (N)')
 
-    plt.subplot(234)
-    plt.title('R_Hip_Rot_Z')
-    plt.plot(t, torque[3, :], 'b+-')
-    plt.plot([T, T], [min(torque[3, :]), max(torque[3, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('torque (Nm)')
+    axes[2].set_title('Pelvis_Rot_Z')
+    axes[2].plot(t, torque[2, :], 'b+-')
+    plot_control(axes[2], t, F[2, :])
+    axes[2].plot([T, T], [min(torque[2, :]), max(torque[2, :])], 'k:')
+    axes[2].set_xlabel('time (s)')
+    axes[2].set_ylabel('torque (Nm)')
 
-    plt.subplot(235)
-    plt.title('R_Knee_Rot_Z')
-    plt.plot(t, torque[4, :], 'b+-')
-    plt.plot([T, T], [min(torque[4, :]), max(torque[4, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('torque (Nm)')
+    axes[3].set_title('R_Hip_Rot_Z')
+    axes[3].plot(t, torque[3, :], 'b+-')
+    axes[3].plot([T, T], [min(torque[3, :]), max(torque[3, :])], 'k:')
+    axes[3].set_xlabel('time (s)')
+    axes[3].set_ylabel('torque (Nm)')
 
-    plt.subplot(236)
-    plt.title('R_Ankle_Rot_Z')
-    plt.plot(t, torque[5, :], 'b+-')
-    plt.plot([T, T], [min(torque[5, :]), max(torque[5, :])], 'k:')
-    plt.xlabel('time (s)')
-    plt.ylabel('torque (Nm)')
+    axes[4].set_title('R_Knee_Rot_Z')
+    axes[4].plot(t, torque[4, :], 'b+-')
+    axes[4].plot([T, T], [min(torque[4, :]), max(torque[4, :])], 'k:')
+    axes[4].set_xlabel('time (s)')
+    axes[4].set_ylabel('torque (Nm)')
+
+    axes[5].set_title('R_Ankle_Rot_Z')
+    axes[5].plot(t, torque[5, :], 'b+-')
+    axes[5].plot([T, T], [min(torque[5, :]), max(torque[5, :])], 'k:')
+    axes[5].set_xlabel('time (s)')
+    axes[5].set_ylabel('torque (Nm)')
 
     plt.show(block=False)
 
@@ -269,7 +273,8 @@ def plot_emg_heatmap(diff_U):
 def plot_pelvis_force(F, T, nbNoeuds):
     # Set time
     dt = T/nbNoeuds
-    t = np.linspace(0, T - dt, nbNoeuds)
+    # t = np.linspace(0, T - dt, nbNoeuds)
+    t = np.linspace(0, T, nbNoeuds)
 
     plt.figure()
     plt.subplot(311)
@@ -303,11 +308,12 @@ def plot_control(u, U_real, T, nbNoeuds):
     # plot control
     def plot_control(ax, t, x):
         nbPoints = len(np.array(x))
-        for n in range(nbPoints - 2):
+        for n in range(nbPoints - 1):
             ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
 
     # Set time
-    t = np.linspace(0, T, nbNoeuds + 1)
+    # t = np.linspace(0, T, nbNoeuds + 1)
+    t = np.linspace(0, T, nbNoeuds)
 
     # CONTROL
     fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))
