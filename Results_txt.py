@@ -68,7 +68,6 @@ for nGrp in range(model.nbMuscleGroups()):
     for nMus in range(model.muscleGroup(nGrp).nbMuscles()):
         fiso = model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax()
         model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(p[n_muscle + 1] * fiso)
-        model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(p[n_muscle + 1] * fiso)
 
 def fcn_dyn_contact(xk, uk):
     Q  = xk[:params.nbQ]
@@ -157,10 +156,10 @@ for k in range(params.nbNoeuds_stance):
 # psu.plot_q_int(s[:params.nbQ, :], q_int, params.T_stance, params.nbNoeuds_stance)
 psu.plot_q(s[:params.nbQ, :], params.T_stance, params.nbNoeuds_stance)
 psu.plot_dq(s[params.nbQ:, :], params.T_stance, params.nbNoeuds_stance)
-U_real_stance = U_real_stance[:, :-1]
+# U_real_stance = U_real_stance[:, :-1]
 psu.plot_control(u, U_real_stance, params.T_stance, params.nbNoeuds_stance)
 
 psu.plot_pelvis_force(u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
 psu.plot_GRF(GRF, GRF_real, params.T_stance, params.nbNoeuds_stance)
-psu.plot_torque(torque, params.T_stance, params.nbNoeuds_stance)
+psu.plot_torque(torque, u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
 psu.plot_markers_result(s[:params.nbQ, :], params.T_stance, params.nbNoeuds_stance, params.nbMarker, M_real_stance)
