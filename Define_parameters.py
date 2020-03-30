@@ -22,7 +22,7 @@ class Parameters():
 
         self.nbU      = self.nbMus + self.nbQ                                 # number of controls : muscle activation + articular torque (residual torque)
         self.nbX      = 2 * self.nbQ                                          # number of states : generalized positions + velocities
-        self.nP       = self.nbMus + 1                                        # number of parameters : 1 global + muscles
+        self.nP       = self.nbMus                                            # number of parameters : 1 per muscle
 
         self.nkutta   = 4                                                     # number of iteration for integration
 

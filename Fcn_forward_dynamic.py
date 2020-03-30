@@ -14,7 +14,7 @@ def Set_parameter_forceiso(model, FISO0, p):
     n_muscle = 0
     for nGrp in range(model.nbMuscleGroups()):
         for nMus in range(model.muscleGroup(nGrp).nbMuscles()):
-            model.muscleGroup(nGrp).muscle(nMus).characteristics().setforceisomax(p[0] * p[n_muscle] * FISO0)
+            model.muscleGroup(nGrp).muscle(nMus).characteristics().setforceisomax(p[n_muscle] * FISO0[n_muscle])
             n_muscle += 1
     return [0]
 
@@ -35,24 +35,26 @@ def ffcn_no_contact(x, u, p):
     # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL SWING
     Set_parameter_forceiso(model, FISO0, p)
     # Set_forceISO_max_swing = external('libforce_iso_max', 'libforce_iso_max.so', {'enable_fd': True})
-    # forceISO = p[0] * p[1:] * FISO0
-    # Set_forceISO_max_swing(forceISO)
+    # fiso_mus = MX.sym("f_iso", model.nbMuscleTotal())
+    # for n_mus in range(model.nbMuscleTotal()):
+    #     fiso_mus[n_mus] = FISO0[n_mus] * p[n_mus + 1]
+    # Set_forceISO_max_swing(fiso_mus)
 
     # INPUT
     Q              = x[:model.nbQ()]                            # states
     dQ             = x[model.nbQ():2 * model.nbQ()]
     activations    = u[: model.nbMuscleTotal()]                 # controls
-    res_torque     = u[model.nbMuscleTotal():]
+    torque         = u[model.nbMuscleTotal():]
 
     # COMPUTE MOTOR JOINT TORQUES
     muscularJointTorque = Function('muscular_joint_torque', [activations, Q, dQ], articular_torque(model, activations, Q, dQ)).expand()
     # muscularJointTorque = external('libmuscular_joint_torque', 'libmuscular_joint_torque.so',{'enable_fd': True})
 
     joint_torque  = muscularJointTorque(activations, Q, dQ)
-    joint_torque += u[model.nbMuscleTotal():]                  # add residual torques
-    # joint_torque[0] = u[model.nbMuscleTotal() + 0]           # add force pelvis
-    # joint_torque[1] = u[model.nbMuscleTotal() + 1]
-    # joint_torque[2] = u[model.nbMuscleTotal() + 2]
+    #joint_torque += u[model.nbMuscleTotal():]                  # add residual torques
+    joint_torque[0] = u[model.nbMuscleTotal() + 0]           # add force pelvis
+    joint_torque[1] = u[model.nbMuscleTotal() + 1]
+    joint_torque[2] = u[model.nbMuscleTotal() + 2]
 
     # COMPUTE THE ANGULAR ACCELERATION BY FORWARD DYNAMICS
     Forward_Dynamics_SansContact = Function('Forward_Dynamics_SansContact', [Q, dQ, joint_torque], vertcat(dQ, model.ForwardDynamics(Q, dQ, joint_torque))).expand()

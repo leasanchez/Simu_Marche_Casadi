@@ -1,18 +1,16 @@
 from casadi import *
 from matplotlib import pyplot as plt
 import numpy as np
-import biorbd
 
 # add classes
 from Define_parameters import Parameters
-from Define_casadi_callback import AnimateCallback
 
 # add fcn
 from LoadData import load_data_markers, load_data_emg, load_data_GRF
 from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
-from Marche_Fcn_Integration import int_RK4_swing, int_RK4_stance, int_RK4
-from Fcn_forward_dynamic import ffcn_contact, ffcn_no_contact
-from Fcn_Objective import fcn_objective_activation, fcn_objective_emg, fcn_objective_markers, fcn_objective_GRF
+from Marche_Fcn_Integration import int_RK4
+from Fcn_forward_dynamic import ffcn_no_contact
+from Fcn_Objective import fcn_objective_activation, fcn_objective_emg, fcn_objective_markers
 from Fcn_print_data import save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
 
 # SET PARAMETERS
@@ -111,7 +109,6 @@ u0[params.nbMus + 2, :] = [0] * params.nbNoeuds_swing
 q0  = load_initialguess_q(params, 'swing')
 dq0 = np.gradient(q0)
 dq0 = dq0[0]
-# dq0       = np.zeros((nbQ, (nbNoeuds + 1)))
 
 X0                 = np.zeros((params.nbX, (params.nbNoeuds_swing + 1)))
 X0[:params.nbQ, :] = q0
@@ -138,9 +135,20 @@ res = solver(lbg = lbg,
 
 
 # RESULTS
-sol_U  = res["x"][:params.nbU * params.nbNoeuds]
-sol_X  = res["x"][params.nbU * params.nbNoeuds: -params.nP]
+sol_U  = res["x"][:params.nbU * params.nbNoeuds_swing]
+sol_X  = res["x"][params.nbU * params.nbNoeuds_swing: -params.nP]
 sol_p  = res["x"][-params.nP:]
+
+# save txt file
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_sol_swing.txt'
+f = open(file, 'a')
+f.write('STATE\n\n')
+np.savetxt(f, sol_X, delimiter = '\n')
+f.write('\n\nCONTROL\n\n')
+np.savetxt(f, sol_U, delimiter = '\n')
+f.write('\n\nPARAMETER\n\n')
+np.savetxt(f, sol_p, delimiter = '\n')
+f.close()
 
 sol_q  = [sol_X[0::params.nbX], sol_X[1::params.nbX], sol_X[2::params.nbX], sol_X[3::params.nbX], sol_X[4::params.nbX], sol_X[5::params.nbX]]
 sol_dq = [sol_X[6::params.nbX], sol_X[7::params.nbX], sol_X[8::params.nbX], sol_X[9::params.nbX], sol_X[10::params.nbX], sol_X[11::params.nbX]]
