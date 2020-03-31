@@ -51,10 +51,10 @@ def ffcn_no_contact(x, u, p):
     # muscularJointTorque = external('libmuscular_joint_torque', 'libmuscular_joint_torque.so',{'enable_fd': True})
 
     joint_torque  = muscularJointTorque(activations, Q, dQ)
-    #joint_torque += u[model.nbMuscleTotal():]                  # add residual torques
-    joint_torque[0] = u[model.nbMuscleTotal() + 0]           # add force pelvis
-    joint_torque[1] = u[model.nbMuscleTotal() + 1]
-    joint_torque[2] = u[model.nbMuscleTotal() + 2]
+    joint_torque += u[model.nbMuscleTotal():]                  # add residual torques
+    # joint_torque[0] = u[model.nbMuscleTotal() + 0]           # add force pelvis
+    # joint_torque[1] = u[model.nbMuscleTotal() + 1]
+    # joint_torque[2] = u[model.nbMuscleTotal() + 2]
 
     # COMPUTE THE ANGULAR ACCELERATION BY FORWARD DYNAMICS
     Forward_Dynamics_SansContact = Function('Forward_Dynamics_SansContact', [Q, dQ, joint_torque], vertcat(dQ, model.ForwardDynamics(Q, dQ, joint_torque))).expand()
