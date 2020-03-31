@@ -55,9 +55,14 @@ P = p
 # P = MX.sym("P", params.nP)                           # parameters
 G = []                                                 # equality constraints
 Ja = 0                                                 # objective function for muscle activation
+fcn_objective_activation = Function('fcn_objective_activation', [u], [Fcn_Objective.fcn_objective_activation(params.wL, u)]).expand()
 Jm = 0                                                 # objective function for markers
+fcn_objective_markers_stance = Function('fcn_objective_markers', [q, M_real], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real, 'stance')]).expand()
+fcn_objective_markers_swing  = Function('fcn_objective_markers', [q, M_real], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real, 'swing')]).expand()
 Je = 0                                                 # objective function for EMG
+fcn_objective_emg = Function('fcn_objective_emg', [u, U_real], [Fcn_Objective.fcn_objective_emg(params.wU, u, U_real)]).expand()
 JR = 0                                                 # objective function for ground reactions
+fcn_objective_GRF = Function('fcn_objective_GRF', [x, u, GRF_real], [Fcn_Objective.fcn_objective_GRF(params.wR, x, u, GRF_real)]).expand()
 
 # ------------ PHASE 1 : Stance phase
 for k in range(params.nbNoeuds_stance):
@@ -67,11 +72,11 @@ for k in range(params.nbNoeuds_stance):
     G.append(X[params.nbX * (k + 1): params.nbX * (k + 2)] - int_RK4(ffcn_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    [grf, Jr] = Fcn_Objective.fcn_objective_GRF(params.wR, Xk, Uk, GRF_real[:, k])                                                    # tracking ground reaction --> stance
+    [grf, Jr] = fcn_objective_GRF(Xk, Uk, GRF_real[:, k])                                                               # tracking ground reaction --> stance
     JR += Jr
-    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')             # tracking marker
-    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])                                                         # tracking emg
-    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)                                                                       # min muscle activations (no EMG)
+    Jm += fcn_objective_markers_stance(Xk[: params.nbQ], M_real_stance[:, :, k])                                        # tracking marker
+    Je += fcn_objective_emg(Uk, U_real_stance[:, k])                                                                    # tracking emg
+    Ja += fcn_objective_activation(Uk)                                                                                  # min muscle activations (no EMG)
 
 # ------------ PHASE 2 : Swing phase
 for k in range(params.nbNoeuds_swing):
@@ -81,9 +86,9 @@ for k in range(params.nbNoeuds_swing):
     G.append(X[params.nbX * params.nbNoeuds_stance + params.nbX*(k + 1): params.nbX * params.nbNoeuds_stance + params.nbX*(k + 2)] - int_RK4(ffcn_no_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_swing[:, :, k], 'swing')               # tracking marker
-    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, k])                                                          # tracking emg
-    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)                                                                       # min muscular activation
+    Jm += fcn_objective_markers_swing(Xk[: params.nbQ], M_real_swing[:, :, k])                                          # tracking marker
+    Je += fcn_objective_emg(Uk, U_real_swing[:, k])                                                                     # tracking emg
+    Ja += fcn_objective_activation(Uk)                                                                                  # min muscular activation
 
 # ----------------------------- Contraintes ----------------------------------------------------------------------------
 # égalité

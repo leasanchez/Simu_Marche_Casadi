@@ -4,15 +4,14 @@ import numpy as np
 
 # add classes
 from Define_parameters import Parameters
-from Define_casadi_callback import AnimateCallback
 
 # add fcn
-from LoadData import load_data_markers, load_data_emg, load_data_GRF
+import LoadData              # load_data_markers, load_data_emg, load_data_GRF
 from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
-from Marche_Fcn_Integration import int_RK4_swing, int_RK4_stance, int_RK4
-from Fcn_forward_dynamic import ffcn_contact, ffcn_no_contact
-from Fcn_Objective import fcn_objective_activation, fcn_objective_emg, fcn_objective_markers, fcn_objective_GRF
-from Fcn_print_data import save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
+from Marche_Fcn_Integration import int_RK4
+from Fcn_forward_dynamic import ffcn_contact
+import Fcn_Objective            # fcn_objective_activation, fcn_objective_emg, fcn_objective_markers, fcn_objective_GRF
+import Fcn_print_data # save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
 
 # SET PARAMETERS
 params = Parameters()
@@ -24,8 +23,8 @@ activation  = u[:params.nbMus]                                # muscular activat
 torque      = u[params.nbMus:]                                # articular torque
 
 # PARAMETERS
-p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
-
+# p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
+p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5] # MUSCOD results
 # STATE
 x  = MX.sym("x", params.nbX)
 q  = x[:params.nbQ]                                           # generalized coordinates
@@ -33,25 +32,25 @@ dq = x[params.nbQ: 2 * params.nbQ]                            # velocities
 
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
-# GROUND REACTION FORCES & SET TIME
-[GRF_real, params.T, params.T_stance, params.T_swing] = load_data_GRF(params, 'cycle')
-
-# MARKERS POSITION
-M_real_stance = load_data_markers(params, 'stance')
-
-# MUSCULAR EXCITATION
-U_real_stance = load_data_emg(params, 'stance')
+[GRF_real, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'cycle')                         # GROUND REACTION FORCES & SET TIME
+M_real_stance = LoadData.load_data_markers(params, 'stance')                                                            # MARKERS POSITION
+U_real_stance = LoadData.load_data_emg(params, 'stance')                                                                # MUSCULAR EXCITATION
 
 
 # ----------------------------- Movement -------------------------------------------------------------------------------
 U = MX.sym("U", params.nbU * params.nbNoeuds_stance)          # controls
 X = MX.sym("X", params.nbX * (params.nbNoeuds_stance + 1))    # states
-P = MX.sym("P", params.nP)                             # parameters
+# P = MX.sym("P", params.nP)                                    # parameters
+P = p
 G = []                                                 # equality constraints
 Ja = 0                                                 # objective function for muscle activation
+fcn_objective_activation = Function('fcn_objective_activation', [u], [Fcn_Objective.fcn_objective_activation(params.wL, u)]).expand()
 Jm = 0                                                 # objective function for markers
+fcn_objective_markers_stance = Function('fcn_objective_markers', [q, M_real_stance], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real_stance, 'stance')]).expand()
 Je = 0                                                 # objective function for EMG
+fcn_objective_emg = Function('fcn_objective_emg', [u, U_real_stance], [Fcn_Objective.fcn_objective_emg(params.wU, u, U_real_stance)]).expand()
 JR = 0                                                 # objective function for ground reactions
+fcn_objective_GRF = Function('fcn_objective_GRF', [x, u, GRF_real], [Fcn_Objective.fcn_objective_GRF(params.wR, x, u, GRF_real)]).expand()
 
 # ------------ PHASE 1 : Stance phase
 for k in range(params.nbNoeuds_stance):
@@ -61,11 +60,11 @@ for k in range(params.nbNoeuds_stance):
     G.append(X[params.nbX * (k + 1): params.nbX * (k + 2)] - int_RK4(ffcn_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    [grf, Jr] = fcn_objective_GRF(params.wR, Xk, Uk, GRF_real[:, k])                                                    # tracking ground reaction --> stance
+    [grf, Jr] = fcn_objective_GRF(Xk, Uk, GRF_real[:, k])                                                               # tracking ground reaction --> stance
     JR += Jr
-    Jm += fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')             # tracking marker
-    Je += fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])                                                         # tracking emg
-    Ja += fcn_objective_activation(params.wL, Uk)                                                                       # min muscle activations (no EMG)
+    Jm += fcn_objective_markers_stance(Xk[: params.nbQ], M_real_stance[:, :, k])                                        # tracking marker
+    Je += fcn_objective_emg(Uk, U_real_stance[:, k])                                                                    # tracking emg
+    Ja += fcn_objective_activation( Uk)                                                                                 # min muscle activations (no EMG)
 
 
 # ----------------------------- Contraintes ----------------------------------------------------------------------------
@@ -102,7 +101,7 @@ ubx = vertcat(ubu, ubX, ubp)
 
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 # CONTROL
-u0                    = np.zeros((params.nbU, params.nbNoeuds_stance))
+u0                      = np.zeros((params.nbU, params.nbNoeuds_stance))
 u0[: params.nbMus, :]   = np.zeros((params.nbMus, params.nbNoeuds_stance)) + 0.1
 u0[params.nbMus + 0, :] = [0] * params.nbNoeuds_stance                                  # pelvis forces
 u0[params.nbMus + 1, :] = [-500] * params.nbNoeuds_stance

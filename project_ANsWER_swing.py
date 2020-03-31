@@ -10,7 +10,7 @@ from LoadData import load_data_markers, load_data_emg, load_data_GRF
 from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
 from Marche_Fcn_Integration import int_RK4
 from Fcn_forward_dynamic import ffcn_no_contact
-from Fcn_Objective import fcn_objective_activation, fcn_objective_emg, fcn_objective_markers
+import Fcn_Objective # fcn_objective_activation, fcn_objective_emg, fcn_objective_markers
 from Fcn_print_data import save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
 
 # SET PARAMETERS
@@ -18,12 +18,13 @@ params = Parameters()
 
 # ----------------------------- States & controls ----------------------------------------------------------------------
 # CONTROL
-u  = MX.sym("u", params.nbU)
+u           = MX.sym("u", params.nbU)
 activation  = u[:params.nbMus]                                # muscular activation
 torque      = u[params.nbMus:]                                # articular torque
 
 # PARAMETERS
-p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
+# p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
+p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5] # MUSCOD results
 
 # STATE
 x  = MX.sym("x", params.nbX)
@@ -32,24 +33,22 @@ dq = x[params.nbQ: 2 * params.nbQ]                            # velocities
 
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
-# GROUND REACTION FORCES & SET TIME
-[GRF_real, params.T, params.T_stance, params.T_swing] = load_data_GRF(params, 'cycle')
-
-# MARKERS POSITION
-M_real_swing  = load_data_markers(params, 'swing')
-
-# MUSCULAR EXCITATION
-U_real_swing  = load_data_emg(params, 'swing')
+[GRF_real, params.T, params.T_stance, params.T_swing] = load_data_GRF(params, 'cycle')                                  # GROUND REACTION FORCES & SET TIME
+M_real_swing  = load_data_markers(params, 'swing')                                                                      # MARKERS POSITION
+U_real_swing  = load_data_emg(params, 'swing')                                                                          # MUSCULAR EXCITATION
 
 # ----------------------------- Movement -------------------------------------------------------------------------------
 U = MX.sym("U", params.nbU * params.nbNoeuds_swing)          # controls
 X = MX.sym("X", params.nbX * (params.nbNoeuds_swing + 1))    # states
-P = MX.sym("P", params.nP)                             # parameters
+# P = MX.sym("P", params.nP)                                    # parameters
+P = p
 G = []                                                 # equality constraints
 Ja = 0                                                 # objective function for muscle activation
+fcn_objective_activation = Function('fcn_objective_activation', [u], [Fcn_Objective.fcn_objective_activation(params.wL, u)]).expand()
 Jm = 0                                                 # objective function for markers
+fcn_objective_markers_swing = Function('fcn_objective_markers', [q, M_real_swing], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real_swing, 'swing')]).expand()
 Je = 0                                                 # objective function for EMG
-JR = 0                                                 # objective function for ground reactions
+fcn_objective_emg = Function('fcn_objective_emg', [u, U_real_swing], [Fcn_Objective.fcn_objective_emg(params.wU, u, U_real_swing)]).expand()
 
 
 # ------------ PHASE 2 : Swing phase
@@ -60,9 +59,9 @@ for k in range(params.nbNoeuds_swing):
     G.append(X[params.nbX*(k + 1): params.nbX*(k + 2)] - int_RK4(ffcn_no_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    Jm += fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_swing[:, :, k], 'swing')               # tracking marker
-    Je += fcn_objective_emg(params.wU, Uk, U_real_swing[:, k])                                                          # tracking emg
-    Ja += fcn_objective_activation(params.wL, Uk)                                                                       # min muscular activation
+    Jm += fcn_objective_markers_swing(Xk[: params.nbQ], M_real_swing[:, :, k])                                          # tracking marker
+    Je += fcn_objective_emg(Uk, U_real_swing[:, k])                                                                     # tracking emg
+    Ja += fcn_objective_activation(Uk)                                                                                  # min muscular activation
 
 # ----------------------------- Contraintes ----------------------------------------------------------------------------
 # égalité
