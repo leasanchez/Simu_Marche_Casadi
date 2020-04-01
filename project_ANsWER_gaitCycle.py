@@ -8,7 +8,7 @@ from Define_parameters import Parameters
 import LoadData
 from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
 from Marche_Fcn_Integration import int_RK4
-from Fcn_forward_dynamic import ffcn_contact, ffcn_no_contact
+import Fcn_forward_dynamic # ffcn_contact, ffcn_no_contact
 import Fcn_Objective # fcn_objective_activation, fcn_objective_emg, fcn_objective_markers, fcn_objective_GRF
 import Fcn_print_data # save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
 
@@ -28,6 +28,20 @@ p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38,
 x  = MX.sym("x", params.nbX)
 q  = x[:params.nbQ]                                           # generalized coordinates
 dq = x[params.nbQ: 2 * params.nbQ]                            # velocities
+
+# ----------------------------- Define casadi function -----------------------------------------------------------------
+ffcn_contact = casadi.Function("ffcn_contact",
+                                [x, u],
+                                [Fcn_forward_dynamic.ffcn_contact(x, u, p)],
+                                ["states", "controls"],
+                                ["statesdot"]).expand()
+
+ffcn_no_contact = casadi.Function("ffcn_no_contact",
+                                   [x, u],
+                                   [Fcn_forward_dynamic.ffcn_no_contact(x, u, p)],
+                                   ["states", "controls"],
+                                   ["statesdot"]).expand()
+
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
 # GROUND REACTION FORCES & SET TIME
@@ -55,14 +69,10 @@ P = p
 # P = MX.sym("P", params.nP)                           # parameters
 G = []                                                 # equality constraints
 Ja = 0                                                 # objective function for muscle activation
-fcn_objective_activation = Function('fcn_objective_activation', [u], [Fcn_Objective.fcn_objective_activation(params.wL, u)]).expand()
 Jm = 0                                                 # objective function for markers
-fcn_objective_markers_stance = Function('fcn_objective_markers', [q, M_real], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real, 'stance')]).expand()
-fcn_objective_markers_swing  = Function('fcn_objective_markers', [q, M_real], [Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, q, M_real, 'swing')]).expand()
 Je = 0                                                 # objective function for EMG
-fcn_objective_emg = Function('fcn_objective_emg', [u, U_real], [Fcn_Objective.fcn_objective_emg(params.wU, u, U_real)]).expand()
 JR = 0                                                 # objective function for ground reactions
-fcn_objective_GRF = Function('fcn_objective_GRF', [x, u, GRF_real], [Fcn_Objective.fcn_objective_GRF(params.wR, x, u, GRF_real)]).expand()
+Jt = 0                                                 # objective function for residual torque
 
 # ------------ PHASE 1 : Stance phase
 for k in range(params.nbNoeuds_stance):
@@ -72,11 +82,12 @@ for k in range(params.nbNoeuds_stance):
     G.append(X[params.nbX * (k + 1): params.nbX * (k + 2)] - int_RK4(ffcn_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    [grf, Jr] = fcn_objective_GRF(Xk, Uk, GRF_real[:, k])                                                               # tracking ground reaction --> stance
+    [grf, Jr] = Fcn_Objective.fcn_objective_GRF(params.wR, Xk, Uk, GRF_real[:, k])                                                    # tracking ground reaction --> stance
     JR += Jr
-    Jm += fcn_objective_markers_stance(Xk[: params.nbQ], M_real_stance[:, :, k])                                        # tracking marker
-    Je += fcn_objective_emg(Uk, U_real_stance[:, k])                                                                    # tracking emg
-    Ja += fcn_objective_activation(Uk)                                                                                  # min muscle activations (no EMG)
+    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')             # tracking marker
+    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])                                                         # tracking emg
+    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)                                                                       # min muscle activations (no EMG)
+    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])                                                    # min residual torques
 
 # ------------ PHASE 2 : Swing phase
 for k in range(params.nbNoeuds_swing):
@@ -86,9 +97,10 @@ for k in range(params.nbNoeuds_swing):
     G.append(X[params.nbX * params.nbNoeuds_stance + params.nbX*(k + 1): params.nbX * params.nbNoeuds_stance + params.nbX*(k + 2)] - int_RK4(ffcn_no_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    Jm += fcn_objective_markers_swing(Xk[: params.nbQ], M_real_swing[:, :, k])                                          # tracking marker
-    Je += fcn_objective_emg(Uk, U_real_swing[:, k])                                                                     # tracking emg
-    Ja += fcn_objective_activation(Uk)                                                                                  # min muscular activation
+    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_swing[:, :, k], 'swing') # tracking marker
+    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk[:params.nbMus], U_real_swing[:, k])                             # tracking emg
+    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk[:params.nbMus])                                          # min muscular activation
+    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])                                      # min residual torques
 
 # ----------------------------- Contraintes ----------------------------------------------------------------------------
 # égalité
@@ -119,8 +131,8 @@ lbp = [min_pg] + [min_p] * params.nbMus
 ubp = [max_pg] + [max_p] * params.nbMus
 
 
-lbx = vertcat(lbu, lbX, lbp)
-ubx = vertcat(ubu, ubX, ubp)
+lbx = vertcat(lbu, lbX)
+ubx = vertcat(ubu, ubX)
 
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 init_A = 0.1
@@ -147,7 +159,7 @@ X0[params.nbQ: 2 * params.nbQ, :] = dq0
 # PARAMETERS
 p0 = [1] + [1] * params.nbMus
 
-w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T), p0)
+w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T))
 
 # ----------------------------- Save txt -------------------------------------------------------------------------------
 Fcn_print_data.save_GRF_real(params, GRF_real)
@@ -159,11 +171,11 @@ Fcn_print_data.save_initialguess(params, u0, X0, p0)
 
 
 # ----------------------------- Solver ---------------------------------------------------------------------------------
-w = vertcat(U, X, p)
+w = vertcat(U, X)
 J = Ja + Je + Jm + JR
 
 nlp    = {'x': w, 'f': J, 'g': vertcat(*G)}
-opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory"}
+opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57"}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
 res = solver(lbg = lbg,

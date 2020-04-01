@@ -49,7 +49,7 @@ def int_RK4_stance(T, nbNoeuds, nkutta, x, u):
 def int_RK4(fun, params, x, u, p):
     nkutta = params.nkutta
 
-    if fun.__name__ == 'ffcn_contact':
+    if fun.name() == 'ffcn_contact':
         T        = params.T_stance
         nbNoeuds = params.nbNoeuds_stance
     else:
@@ -60,13 +60,13 @@ def int_RK4(fun, params, x, u, p):
     dt = dn / nkutta                 # Time step for iteration
     xj = x
     for i in range(nkutta):
-        k1 = fun(xj, u, p)
+        k1 = fun(xj, u)
         x2 = xj + (dt/2)*k1
-        k2 = fun(x2, u, p)
+        k2 = fun(x2, u)
         x3 = xj + (dt/2)*k2
-        k3 = fun(x3, u, p)
+        k3 = fun(x3, u)
         x4 = xj + dt*k3
-        k4 = fun(x4, u, p)
+        k4 = fun(x4, u)
 
         xj += dt/6 * (k1 + 2*k2 + 2*k3 + k4)
     return xj

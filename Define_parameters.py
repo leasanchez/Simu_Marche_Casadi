@@ -32,6 +32,7 @@ class Parameters():
         self.wMt = 50                                                         # technical marker
         self.wU  = 1                                                          # excitation
         self.wR  = 0.05                                                       # ground reaction
+        self.wt  = 100                                                        # residual torques
 
         # EXP DATAS
         self.name_subject = 'equincocont01'
