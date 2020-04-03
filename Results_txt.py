@@ -8,7 +8,7 @@ import Fcn_Objective as fo
 from Define_parameters import Parameters
 
 # ----------------------------- Load Results from txt file -------------------------------------------------------------
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/sol1_stance/equincocont01_sol_stance.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Swing/equincocont01_sol_swing.txt'
 f = open(file, 'r')
 content = f.read()
 content_divide = content.split('\n')
@@ -16,20 +16,20 @@ content_divide = content.split('\n')
 params = Parameters()
 
 # FIND STATE
-s = np.zeros((params.nbX, (params.nbNoeuds_stance + 1)))
+s = np.zeros((params.nbX, (params.nbNoeuds_swing + 1)))
 idx_init = 2
-for n in range(params.nbNoeuds_stance + 1):
+for n in range(params.nbNoeuds_swing + 1):
     idx = idx_init + params.nbX * n
     for x in range(params.nbX):
         a = content_divide[idx + x]
         s[x, n] = float(a)
 
 # FIND CONTROL
-u = np.zeros((20, (params.nbNoeuds_stance)))
+u = np.zeros((params.nbU, (params.nbNoeuds_swing)))
 idx_u = idx_init + (params.nbNoeuds_stance + 1) * params.nbX + 4
 for n in range(params.nbNoeuds_stance):
-    idx = idx_u + 20 * n
-    for u_id in range(20):
+    idx = idx_u + params.nbU * n
+    for u_id in range(params.nbU):
         a = content_divide[idx + u_id]
         u[u_id, n] = float(a)
 
@@ -41,13 +41,13 @@ for p_id in range(params.nP):
     p[p_id] = float(content_divide[idx])
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
-# GROUND REACTION FORCES & SET TIME
+# Swing
+[GRF_real_swing, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'swing')                   # GROUND REACTION FORCES & SET TIME
+M_real_swing  = LoadData.load_data_markers(params, 'swing')                                                             # MARKERS POSITION
+U_real_swing  = LoadData.load_data_emg(params, 'swing')                                                                 # MUSCULAR EXCITATION
+# Stance
 [GRF_real, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'cycle')
-
-# MARKERS POSITION
 M_real_stance = LoadData.load_data_markers(params, 'stance')
-
-# MUSCULAR EXCITATION
 U_real_stance = LoadData.load_data_emg(params, 'stance')
 
 # ----------------------------- Dynamics -------------------------------------------------------------------------------
@@ -154,12 +154,13 @@ for k in range(params.nbNoeuds_stance):
 
 # ----------------------------- Visualize states and controls ----------------------------------------------------------
 # psu.plot_q_int(s[:params.nbQ, :], q_int, params.T_stance, params.nbNoeuds_stance)
-psu.plot_q(s[:params.nbQ, :], params.T_stance, params.nbNoeuds_stance)
-psu.plot_dq(s[params.nbQ:, :], params.T_stance, params.nbNoeuds_stance)
-# U_real_stance = U_real_stance[:, :-1]
-psu.plot_control(u, U_real_stance, params.T_stance, params.nbNoeuds_stance)
+# psu.plot_q(s[:params.nbQ, :], params.T_stance, params.nbNoeuds_stance)
+psu.plot_q(s[:params.nbQ, :], params.T_swing, params.nbNoeuds_swing)
+psu.plot_dq(s[params.nbQ:, :], params.T_swing, params.nbNoeuds_swing)
+U_real_swing = U_real_swing[:, :-1]
+psu.plot_control(u, U_real_swing, params.T_swing, params.nbNoeuds_swing)
 
 psu.plot_pelvis_force(u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
 psu.plot_GRF(GRF, GRF_real, params.T_stance, params.nbNoeuds_stance)
 psu.plot_torque(torque, u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
-psu.plot_markers_result(s[:params.nbQ, :], params.T_stance, params.nbNoeuds_stance, params.nbMarker, M_real_stance)
+psu.plot_markers_result(s[:params.nbQ, :], params.T_swing, params.nbNoeuds_swing, params.nbMarker, M_real_swing)

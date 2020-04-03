@@ -22,10 +22,11 @@ def plot_callback(callback, params, ubx, lbx, u0, x0, U_real, GRF_real, M_real):
             ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
 
     # CONTROL
-    fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))                                                     # Create figure
+    fig1, axes1 = plt.subplots(6, 4, sharex=True, figsize=(10, 10))                                                     # Create figure
     Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
               'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
-              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']    # Control labels
+              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz',
+              'Hip Rz', 'Knee Rz', 'Ankle Rz']                                                                          # Control labels
     axes1 = axes1.flatten()                                                                                             # Get axes figure (vector)
     u_emg = 9                                                                                                           # init variable for muscle with emg
     for i in range(params.nbU):
@@ -35,7 +36,7 @@ def plot_callback(callback, params, ubx, lbx, u0, x0, U_real, GRF_real, M_real):
         ax.plot([0, params.T], [upperbound_u[i], upperbound_u[i]], 'k--')               # upper bound
         ax.plot([params.T_stance, params.T_stance], [lowerbound_u[i], upperbound_u[i]], 'k:')  # end of the stance phase
         ax.grid(True)
-        if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < (nbMus - 1)):
+        if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < (params.nbMus - 1)):
             ax.plot(t, U_real[u_emg, :], 'r')                                    # plot emg if available
             u_emg -= 1
         if (i > params.nbU - 5):

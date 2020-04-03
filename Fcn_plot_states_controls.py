@@ -1,13 +1,14 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import biorbd
+from casadi import MX
 
 def plot_q(q, T, nbNoeuds):
     # JOINT POSITIONS
     fig, axes = plt.subplots(2, 3, figsize=(20, 10))
     axes = axes.flatten()
     # t = np.linspace(0, T, nbNoeuds + 1)
-    t = np.linspace(0, T +  0.02520833, nbNoeuds + 1)
+    t = np.linspace(0, T, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
     axes[0].plot(t, q[0, :], '+')
@@ -116,7 +117,7 @@ def plot_dq(dq, T, nbNoeuds):
     # Set time
     dt = T/nbNoeuds
     # t = np.linspace(0, T, nbNoeuds + 1)
-    t = np.linspace(0, T + 0.02520833, nbNoeuds + 1)
+    t = np.linspace(0, T, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
     axes[0].plot(t, dq[0, :], '+')
@@ -279,22 +280,16 @@ def plot_pelvis_force(F, T, nbNoeuds):
     plt.figure()
     plt.subplot(311)
     plt.title('Force Pelvis TX')
-    # plt.plot([0, t], [-1000, -1000], 'k--')  # lower bound
-    # plt.plot([0, t], [1000, 1000], 'k--')  # upper bound
     for n in range(nbNoeuds - 1):
         plt.plot([t[n], t[n + 1], t[n + 1]], [F[0, n], F[0, n], F[0, n + 1]], 'b')
 
     plt.subplot(312)
     plt.title('Force Pelvis TY')
-    # plt.plot([0, t[-1]], [-2000, -2000], 'k--')  # lower bound
-    # plt.plot([0, t[-1]], [2000, 2000], 'k--')  # upper bound
     for n in range(nbNoeuds - 1):
         plt.plot([t[n], t[n + 1], t[n + 1]], [F[1, n], F[1, n], F[1, n + 1]], 'b')
 
     plt.subplot(313)
     plt.title('Force Pelvis RZ')
-    # plt.plot([0, t[-1]], [-200, -200], 'k--')  # lower bound
-    # plt.plot([0, t[-1]], [200, 200], 'k--')  # upper bound
     for n in range(nbNoeuds - 1):
         plt.plot([t[n], t[n + 1], t[n + 1]], [F[2, n], F[2, n], F[2, n + 1]], 'b')
 
@@ -302,7 +297,7 @@ def plot_pelvis_force(F, T, nbNoeuds):
 
 
 def plot_control(u, U_real, T, nbNoeuds):
-    nbU = 20
+    nbU = 23
     nbMus = 17
 
     # plot control
@@ -316,10 +311,11 @@ def plot_control(u, U_real, T, nbNoeuds):
     t = np.linspace(0, T, nbNoeuds)
 
     # CONTROL
-    fig1, axes1 = plt.subplots(5, 4, sharex=True, figsize=(10, 10))
+    fig1, axes1 = plt.subplots(6, 4, sharex=True, figsize=(10, 10))
     Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
               'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
-              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz']    # Control labels
+              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz',
+              'Hip Rz', 'Knee Rz', 'Ankle Rz']    # Control labels
     axes1 = axes1.flatten()
     u_emg = 9
     for i in range(nbU):
@@ -379,9 +375,9 @@ def plot_markers_result(sol_q, T_phase, nbNoeuds, nbMarker, M_real):
     # FIND MARKERS POSITIONS
     for k_stance in range(nbNoeuds + 1):
         model   = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
-        markers = model.markers(sol_q[:, k_stance])
+        markers = model.markers(MX(sol_q[:, k_stance]))
         for nMark in range(nbMarker):
-            M_simu[:, nMark, k_stance] = markers[nMark].to_array()
+            M_simu[:, nMark, k_stance] = markers[nMark]
 
         # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
         M_aff = np.zeros((3, 5))
