@@ -15,7 +15,7 @@ states   = MX.sym("x", model_stance.nbQ() * 2, 1)
 controls = MX.sym("u", model_stance.nbQ(), 1)
 dynamics = casadi.Function("ForwardDyn",
                            [states, controls],
-                           [forward_dynamics_torque_driven(states, controls, self.model_stance)],
+                           [forward_dynamics_torque_driven(states, controls, model_stance)],
                            ["states", "controls"],
                            ["statesdot"]).expand()
 a = dynamics(states=DM.ones(12, 1), controls=DM.ones(6, 1))
