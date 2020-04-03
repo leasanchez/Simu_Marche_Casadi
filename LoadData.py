@@ -30,17 +30,6 @@ def Get_Event(file):
 
 def load_data_markers(params, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
-
-    # INPUT
-    # file            = name and path of the c3d file
-    # T               = phase time
-    # nbNoeuds        = shooting point for the phase
-    # nbMarker        = markers number for the model
-    # GaitPhase       = phase of the cycle : stance, swing
-
-    # OUTPUT
-    # M_real          = 3 x nMarker x nbNoeuds : muscular excitation from emg
-
     file     = params.file
     nbMarker = params.nbMarker
     if GaitPhase == 'stance':
@@ -54,14 +43,12 @@ def load_data_markers(params, GaitPhase):
     measurements   = c3d(file)
     points         = measurements['data']['points']
     labels_markers = measurements['parameters']['POINT']['LABELS']['value']
-    freq           = measurements['parameters']['POINT']['RATE']['value'][0]
 
     # GET THE TIME OF TOE OFF & HEEL STRIKE
     [start, stop_stance, stop] = Get_Event(file)
 
     # GET THE MARKERS POSITION (X, Y, Z) AT EACH POINT
     markers = np.zeros((3, nbMarker, len(points[0, 0,:])))
-    # markers = [coord, marker, points de mesures] en mm
 
     # pelvis markers
     markers[:, 0, :]  = points[:3, labels_markers.index("L_IAS"), :] * 1e-3                           # L_IAS
@@ -98,7 +85,7 @@ def load_data_markers(params, GaitPhase):
     if GaitPhase == 'stance':
         # T = T_stance
         t = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
         f = interp1d(t, markers[:, :, int(start): int(stop_stance) + 1], kind='cubic')
         M_real = f(node_t)
 
@@ -116,16 +103,6 @@ def load_data_markers(params, GaitPhase):
 
 def load_data_emg(params, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
-
-    # INPUT
-    # file            = name and path of the c3d file
-    # T               = phase time
-    # nbNoeuds        = shooting point for the phase
-    # nbMuscle        = muscle number for the model
-    # GaitPhase       = phase of the cycle : stance, swing
-
-    # OUTPUT
-    # U_real          = (nMus - 7) x nbNoeuds : muscular excitation from emg
 
     file     = params.file
     nbMuscle = params.nbMus
@@ -163,7 +140,7 @@ def load_data_emg(params, GaitPhase):
     if GaitPhase == 'stance':
         # T = T_stance
         t      = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
         f      = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
         U_real = f(node_t)
 
@@ -181,35 +158,9 @@ def load_data_emg(params, GaitPhase):
 
     return U_real
 
-
-
-def find_TO(input, idx_in):
-    idx_TO = idx_in + 1
-    while input[idx_TO + 1] < input[idx_TO]:
-        idx_TO = idx_TO + 1
-    return idx_TO
-
-def find_HS(input, idx_in):
-    idx_HS = idx_in - 1
-    while input[idx_HS - 1] < input[idx_HS]:
-        idx_HS = idx_HS - 1
-    return idx_HS
-
-
 def load_data_GRF(params, GaitPhase):
     # Load c3d file and get the Ground Reaction Forces from teh force platform
     # based on the vertical GRF estimation of each phase time
-
-    # INPUT
-    # file            = name and path of the c3d file
-    # nbNoeuds_stance = shooting point for the stance phase
-    # nbNoeuds_swing  = shooting point for the swing phase
-    # GaitPhase       = phase of the cycle : stance, swing, cycle
-
-    # OUTPUT
-    # GRF_real        = 3 x nbNoeuds with the Ground Reaction Forces values
-    # T               = gaitcycle time
-    # T_stance        = stance phase time
 
     file            = params.file
     nbNoeuds_stance = params.nbNoeuds_stance
@@ -257,8 +208,8 @@ def load_data_GRF(params, GaitPhase):
     # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     # Stance
     t_stance        = np.linspace(0, T_stance, int(stop_stance - start) + 1)
-    node_t_stance   = np.linspace(0, T_stance, nbNoeuds_stance)
-    f_stance        = interp1d(t_stance, GRF[:, int(start): int(stop_stance + 1)], kind ='cubic')
+    node_t_stance   = np.linspace(0, T_stance, nbNoeuds_stance + 1)
+    f_stance        = interp1d(t_stance, GRF[:, int(start): int(stop_stance) + 1], kind ='cubic')
     GRF_real_stance = f_stance(node_t_stance)
 
     # Swing
@@ -275,14 +226,7 @@ def load_data_GRF(params, GaitPhase):
         GRF_real = GRF_real_stance
 
     elif GaitPhase == 'cycle':
-        # ! Y = mvt !
         GRF_real = np.hstack([GRF_real_stance, GRF_real_swing])
-
-    # # Afichage GRF_real
-    # plt.figure()
-    # node_t = np.hstack([node_t_stance, node_t_stance[-1] + node_t_swing])
-    # plt.plot(node_t, GRF_real[2, :].T, '+-')
-    # plt.plot([T_stance, T_stance], [0, 800], 'k--')
 
     return GRF_real, T, T_stance, T_swing
 
