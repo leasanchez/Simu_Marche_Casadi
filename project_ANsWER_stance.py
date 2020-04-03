@@ -4,14 +4,13 @@ import numpy as np
 
 # add classes
 from Define_parameters import Parameters
+from Fcn_Objective import Fcn_Objective
+from Fcn_forward_dynamic import Dynamics
 
 # add fcn
-import LoadData             # load_data_markers, load_data_emg, load_data_GRF
-from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
+import LoadData
+from Fcn_InitialGuess import load_initialguess_q
 from Marche_Fcn_Integration import int_RK4
-import Fcn_forward_dynamic # ffcn_contact
-import Fcn_Objective       # fcn_objective_activation, fcn_objective_emg, fcn_objective_markers, fcn_objective_GRF
-import Fcn_print_data      # save_GRF_real, save_Markers_real, save_EMG_real, save_params, save_bounds, save_initialguess
 
 # SET PARAMETERS
 params = Parameters()
@@ -23,8 +22,8 @@ activation  = u[:params.nbMus]                                # muscular activat
 torque      = u[params.nbMus:]                                # articular torque
 
 # PARAMETERS
-# p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
-p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5] # MUSCOD results
+p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
+# p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5] # MUSCOD results
 # STATE
 x  = MX.sym("x", params.nbX)
 q  = x[:params.nbQ]                                           # generalized coordinates
@@ -32,9 +31,9 @@ dq = x[params.nbQ: 2 * params.nbQ]                            # velocities
 
 # ----------------------------- Define casadi function -----------------------------------------------------------------
 ffcn_contact = casadi.Function("ffcn_contact",
-                                [x, u],
-                                [Fcn_forward_dynamic.ffcn_contact(x, u, p)],
-                                ["states", "controls"],
+                                [x, u, p],
+                                [Dynamics.ffcn_contact(x, u, p)],
+                                ["states", "controls", "parameters"],
                                 ["statesdot"]).expand()
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
@@ -92,16 +91,14 @@ lbX   = (lowerbound_x) * (params.nbNoeuds_stance + 1)
 ubX   = (upperbound_x) * (params.nbNoeuds_stance + 1)
 
 # parameters
-min_pg = 1
 min_p  = 0.2
 max_p  = 5
-max_pg = 1
-lbp = [min_pg] + [min_p] * params.nbMus
-ubp = [max_pg] + [max_p] * params.nbMus
+lbp = [min_p] * params.nbMus
+ubp = [max_p] * params.nbMus
 
 
-lbx = vertcat(lbu, lbX)
-ubx = vertcat(ubu, ubX)
+lbx = vertcat(lbu, lbX, lbp)
+ubx = vertcat(ubu, ubX, ubp)
 
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 # CONTROL
@@ -119,13 +116,13 @@ X0[:params.nbQ, :] = q0
 X0[params.nbQ: 2 * params.nbQ, :] = dq0
 
 # PARAMETERS
-p0 = [1] + [1] * params.nbMus
+p0 = [1] * params.nbMus
 
-w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T))
+w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T), p0)
 
 
 # ----------------------------- Solver ---------------------------------------------------------------------------------
-w = vertcat(U, X)
+w = vertcat(U, X, P)
 J = Ja + Je + Jm + JR + Jt
 
 nlp    = {'x': w, 'f': J, 'g': vertcat(*G)}
