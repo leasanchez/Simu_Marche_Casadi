@@ -65,3 +65,29 @@ class Dynamics:
         ddQ = model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque).to_mx()
 
         return vertcat(dQ, ddQ)
+
+    @staticmethod
+    def compute_GRF(x, u, p):
+
+        # SET MODEL
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+
+        # SET ISOMETRIC FORCE -- MODEL STANCE
+        Dynamics.Set_parameter_forceiso(model, p)
+
+        # INPUT
+        Q = x[:model.nbQ()]  # states
+        dQ = x[model.nbQ():2 * model.nbQ()]
+        activations = u[: model.nbMuscleTotal()]  # controls
+        torque = u[model.nbMuscleTotal():]
+
+        # COMPUTE MOTOR JOINT TORQUES
+        joint_torque  = Dynamics.articular_torque(model, activations, Q, dQ)
+        joint_torque += torque                  # add residual torques
+
+        # COMPUTE THE GROUND REACTION FORCES
+        C = model.getConstraints()
+        model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque, C)
+        GRF = C.getForce().to_mx()
+
+        return GRF
