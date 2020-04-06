@@ -1,1 +1,0 @@
-/home/leasanchez/programmation/miniconda3/envs/marche/lib/libtime_Derivative_Activation_stance.so
