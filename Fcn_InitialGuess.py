@@ -63,7 +63,11 @@ def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
         T        = params.T_swing
         nbNoeuds = params.nbNoeuds_swing
     else:
-        T        = params.T
+        T_stance = params.T_stance
+        nbNoeuds_stance = params.nbNoeuds_stance
+        T_swing = params.T_swing
+        nbNoeuds_swing = params.nbNoeuds_swing
+        T = params.T
         nbNoeuds = params.nbNoeuds
 
     # LOAD MAT FILE FOR GENERALIZED COORDINATES
@@ -88,9 +92,16 @@ def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
         Q0     = f(node_t)
 
     else:
-        t      = np.linspace(0, T, int(stop - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
-        f      = interp1d(t, Q_real[:, int(start): int(stop) + 1], kind='cubic')
-        Q0     = f(node_t)
+        t_stance      = np.linspace(0, T_stance, int(stop_stance - start) + 1)
+        node_t_stance = np.linspace(0, T_stance, nbNoeuds_stance + 1)
+        f_stance      = interp1d(t_stance, Q_real[:, int(start): int(stop_stance) + 1], kind='cubic')
+        Q0_stance     = f_stance(node_t_stance)
+
+        t_swing      = np.linspace(0, T_swing, int(stop - stop_stance) + 1)
+        node_t_swing = np.linspace(0, T_swing, nbNoeuds_swing + 1)
+        f_swing      = interp1d(t_swing, Q_real[:, int(stop_stance): int(stop) + 1], kind='cubic')
+        Q0_swing     = f_swing(node_t_swing)
+
+        Q0 = np.hstack([Q0_stance[:, :-1], Q0_swing])
 
     return Q0

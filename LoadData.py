@@ -220,10 +220,19 @@ def load_data_GRF(params, GaitPhase):
         GRF_real = f_stance(node_t_stance)
 
     elif GaitPhase == 'cycle':
-        t = np.linspace(0, T, int(stop - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
-        f = interp1d(t, GRF[:, int(start): int(stop) + 1], kind='cubic')
-        GRF_real = f(node_t)
+        t_stance = np.linspace(0, T_stance, int(stop_stance - start) + 1)
+        node_t_stance = np.linspace(0, T_stance, nbNoeuds_stance + 1)
+        f_stance = interp1d(t_stance, GRF[:, int(start): int(stop_stance) + 1], kind='cubic')
+        GRF_real_stance = f_stance(node_t_stance)
+
+        t_swing = np.linspace(0, T_swing, int(stop - stop_stance) + 1)
+        node_t_swing = np.linspace(0, T_swing, nbNoeuds_swing + 1)
+        f_swing = interp1d(t_swing, GRF[:, int(stop_stance): int(stop) + 1], kind='cubic')
+        GRF_real_swing = f_swing(node_t_swing)
+
+        GRF_real = np.hstack([GRF_real_stance[:, :-1], GRF_real_swing])
+
+
 
     return GRF_real, T, T_stance, T_swing
 
