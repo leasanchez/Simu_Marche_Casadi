@@ -133,3 +133,19 @@ class Fcn_Objective:
         JR  = wR * ((GRF[0] - GRF_real[1]) * (GRF[0] - GRF_real[1]))         # Fx
         JR += wR * ((GRF[1] - GRF_real[2]) * (GRF[1] - GRF_real[2]))         # Fz
         return GRF, JR
+
+    @staticmethod
+    def fcn_objective_GRF_casadi(wR, GRF, GRF_real):
+        # Tracking ground reaction forces
+
+        # INPUT
+        # wR            = weighting factor for ground reaction forces
+        # GRF           = computed GRF from x, u and p
+        # GRF_real      = real ground reaction forces from force platform
+
+        # OUTPUT
+        # JR            = cost of the difference between real and simulated ground reaction forces
+
+        JR  = wR * ((GRF[0] - GRF_real[1]) * (GRF[0] - GRF_real[1]))         # Fx
+        JR += wR * ((GRF[1] - GRF_real[2]) * (GRF[1] - GRF_real[2]))         # Fz
+        return JR
