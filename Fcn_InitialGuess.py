@@ -59,9 +59,12 @@ def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
     if GaitPhase == 'stance':
         T        = params.T_stance
         nbNoeuds = params.nbNoeuds_stance
-    else:
+    elif GaitPhase == 'swing':
         T        = params.T_swing
         nbNoeuds = params.nbNoeuds_swing
+    else:
+        T        = params.T
+        nbNoeuds = params.nbNoeuds
 
     # LOAD MAT FILE FOR GENERALIZED COORDINATES
     kalman = sio.loadmat(kalman_file)
@@ -72,17 +75,22 @@ def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
     # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
     if GaitPhase == 'swing':
         # T = T_swing
-        t      = np.linspace(0, T, int(stop - stop_stance))
+        t      = np.linspace(0, T, int(stop - stop_stance) + 1)
         node_t = np.linspace(0, T, nbNoeuds + 1)
-        f      = interp1d(t, Q_real[:, int(stop_stance) + 1: int(stop) + 1], kind='cubic')
+        f      = interp1d(t, Q_real[:, int(stop_stance): int(stop) + 1], kind='cubic')
         Q0     = f(node_t)
-
 
     elif GaitPhase == 'stance':
         # T = T_stance
         t      = np.linspace(0, T, int(stop_stance - start) + 1)
         node_t = np.linspace(0, T, nbNoeuds + 1)
         f      = interp1d(t, Q_real[:, int(start): int(stop_stance) + 1], kind='cubic')
+        Q0     = f(node_t)
+
+    else:
+        t      = np.linspace(0, T, int(stop - start) + 1)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
+        f      = interp1d(t, Q_real[:, int(start): int(stop) + 1], kind='cubic')
         Q0     = f(node_t)
 
     return Q0
