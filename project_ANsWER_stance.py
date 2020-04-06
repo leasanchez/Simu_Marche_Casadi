@@ -1,5 +1,4 @@
 from casadi import *
-from matplotlib import pyplot as plt
 import numpy as np
 
 # add classes
@@ -36,6 +35,12 @@ ffcn_contact = casadi.Function("ffcn_contact",
                                 ["states", "controls", "parameters"],
                                 ["statesdot"]).expand()
 
+compute_GRF = casadi.Function("compute_GRF",
+                              [x, u, p],
+                              [Dynamics.compute_GRF(x, u, p)],
+                              ["states", "controls", "parameters"],
+                              ["GRF"]).expand()
+
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
 [GRF_real, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'cycle')                         # GROUND REACTION FORCES & SET TIME
 M_real_stance = LoadData.load_data_markers(params, 'stance')                                                            # MARKERS POSITION
@@ -62,8 +67,9 @@ for k in range(params.nbNoeuds_stance):
     G.append(X[params.nbX * (k + 1): params.nbX * (k + 2)] - int_RK4(ffcn_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    [grf, Jr] = Fcn_Objective.fcn_objective_GRF(params.wR, Xk, Uk, GRF_real[:, k])                                                    # tracking ground reaction --> stance
-    JR += Jr
+    # [grf, Jr] = Fcn_Objective.fcn_objective_GRF(params.wR, Xk, Uk, GRF_real[:, k])
+    GRF = compute_GRF(Xk, Uk, P)
+    JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF, GRF_real[:, k])                                                      # tracking ground reaction --> stance
     Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')             # tracking marker
     Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])                                                         # tracking emg
     Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)                                                                       # min muscle activations (no EMG)
@@ -142,7 +148,7 @@ sol_X  = res["x"][params.nbU * params.nbNoeuds_stance: -params.nP]
 sol_p  = res["x"][-params.nP:]
 
 # save txt file
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_sol4_stance.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
 f = open(file, 'a')
 f.write('STATE\n\n')
 np.savetxt(f, sol_X, delimiter = '\n')
