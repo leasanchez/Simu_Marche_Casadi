@@ -8,7 +8,7 @@ import Fcn_Objective as fo
 from Define_parameters import Parameters
 
 # ----------------------------- Load Results from txt file -------------------------------------------------------------
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Swing/equincocont01_sol_swing.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
 f = open(file, 'r')
 content = f.read()
 content_divide = content.split('\n')
@@ -46,7 +46,7 @@ for p_id in range(params.nP):
 M_real_swing  = LoadData.load_data_markers(params, 'swing')                                                             # MARKERS POSITION
 U_real_swing  = LoadData.load_data_emg(params, 'swing')                                                                 # MUSCULAR EXCITATION
 # Stance
-[GRF_real, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'cycle')
+[GRF_real_stance, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'stance')
 M_real_stance = LoadData.load_data_markers(params, 'stance')
 U_real_stance = LoadData.load_data_emg(params, 'stance')
 
@@ -161,6 +161,6 @@ U_real_swing = U_real_swing[:, :-1]
 psu.plot_control(u, U_real_swing, params.T_swing, params.nbNoeuds_swing)
 
 psu.plot_pelvis_force(u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
-psu.plot_GRF(GRF, GRF_real, params.T_stance, params.nbNoeuds_stance)
+psu.plot_GRF(GRF, GRF_real_stance, params.T_stance, params.nbNoeuds_stance)
 psu.plot_torque(torque, u[params.nbMus:, :], params.T_stance, params.nbNoeuds_stance)
 psu.plot_markers_result(s[:params.nbQ, :], params.T_swing, params.nbNoeuds_swing, params.nbMarker, M_real_swing)

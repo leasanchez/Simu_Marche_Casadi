@@ -134,8 +134,8 @@ def save_bounds(params, lbx, ubx):
     lowerbound_u = lbx[:params.nbU]
     upperbound_x = ubx[params.nbU * params.nbNoeuds : params.nbU * params.nbNoeuds + params.nbX]
     lowerbound_x = lbx[params.nbU * params.nbNoeuds: params.nbU * params.nbNoeuds + params.nbX]
-    upperbound_p = ubx[- params.nbP :]
-    lowerbound_p = ubx[- params.nbP :]
+    upperbound_p = ubx[- params.nP :]
+    lowerbound_p = ubx[- params.nP :]
 
 
     f = open(save_dir + filename_param, 'a')
