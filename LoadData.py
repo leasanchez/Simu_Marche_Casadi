@@ -32,12 +32,10 @@ def load_data_markers(params, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
     file     = params.file
     nbMarker = params.nbMarker
-    if GaitPhase == 'stance':
-        T        = params.T_stance
-        nbNoeuds = params.nbNoeuds_stance
-    else:
-        T        = params.T_swing
-        nbNoeuds = params.nbNoeuds_swing
+    T_stance = params.T_stance
+    nbNoeuds_stance = params.nbNoeuds_stance
+    T_swing = params.T_swing
+    nbNoeuds_swing = params.nbNoeuds_swing
 
     # LOAD C3D FILE
     measurements   = c3d(file)
@@ -83,16 +81,14 @@ def load_data_markers(params, GaitPhase):
 
     # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR THE WHOLE CYCLE
     if GaitPhase == 'stance':
-        # T = T_stance
-        t = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, T_stance, int(stop_stance - start + 1))
+        node_t = np.linspace(0, T_stance, nbNoeuds_stance + 1)
         f = interp1d(t, markers[:, :, int(start): int(stop_stance) + 1], kind='cubic')
         M_real = f(node_t)
 
     elif GaitPhase == 'swing':
-        # T = T_swing
-        t = np.linspace(0, T, int(stop - stop_stance) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, T_swing, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, T_swing, nbNoeuds_swing + 1)
         f = interp1d(t, markers[:, :, int(stop_stance): int(stop) + 1], kind='cubic')
         M_real = f(node_t)
     return M_real
@@ -106,13 +102,10 @@ def load_data_emg(params, GaitPhase):
 
     file     = params.file
     nbMuscle = params.nbMus
-
-    if GaitPhase == 'stance':
-        T        = params.T_stance
-        nbNoeuds = params.nbNoeuds_stance
-    else:
-        T        = params.T_swing
-        nbNoeuds = params.nbNoeuds_swing
+    T_stance = params.T_stance
+    nbNoeuds_stance = params.nbNoeuds_stance
+    T_swing = params.T_swing
+    nbNoeuds_swing = params.nbNoeuds_swing
 
     # LOAD C3D FILE
     measurements  = c3d(file)
@@ -138,16 +131,14 @@ def load_data_emg(params, GaitPhase):
 
     # INTERPOLATE AND GET REAL MUSCULAR EXCITATION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     if GaitPhase == 'stance':
-        # T = T_stance
-        t      = np.linspace(0, T, int(stop_stance - start + 1))
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t      = np.linspace(0, T_stance, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, T_stance, nbNoeuds_stance + 1)
         f      = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
         U_real = f(node_t)
 
     elif GaitPhase == 'swing':
-        # T = T_swing
-        t      = np.linspace(0, T, int(stop - stop_stance) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t      = np.linspace(0, T_swing, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, T_swing, nbNoeuds_swing + 1)
         f = interp1d(t, EMG[:, int(stop_stance): int(stop) + 1], kind='cubic')
         U_real = f(node_t)
 
@@ -231,8 +222,6 @@ def load_data_GRF(params, GaitPhase):
         GRF_real_swing = f_swing(node_t_swing)
 
         GRF_real = np.hstack([GRF_real_stance[:, :-1], GRF_real_swing])
-
-
 
     return GRF_real, T, T_stance, T_swing
 
