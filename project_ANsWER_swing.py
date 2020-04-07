@@ -6,10 +6,11 @@ import numpy as np
 from Define_parameters import Parameters
 from Fcn_Objective import Fcn_Objective
 from Fcn_forward_dynamic import Dynamics
+from Fcn_plot_Results import Plot_results
 
 # add fcn
-import LoadData            # load_data_markers, load_data_emg, load_data_GRF
-from Fcn_InitialGuess import load_initialguess_muscularExcitation, load_initialguess_q
+import LoadData
+from Fcn_InitialGuess import load_initialguess_q
 from Marche_Fcn_Integration import int_RK4
 
 
@@ -24,7 +25,6 @@ torque      = u[params.nbMus:]                                # articular torque
 
 # PARAMETERS
 p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
-# p = [1, 0.2,0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5] # MUSCOD results
 
 # STATE
 x  = MX.sym("x", params.nbX)
@@ -100,7 +100,6 @@ ubx = vertcat(ubu, ubX, ubp)
 # ----------------------------- Initial guess --------------------------------------------------------------------------
 # CONTROL
 u0                    = np.zeros((params.nbU, params.nbNoeuds_swing))
-# u0[: params.nbMus, :] = load_initialguess_muscularExcitation(np.hstack([U_real_stance, U_real_swing]))
 u0[: params.nbMus, :] = np.zeros((params.nbMus, params.nbNoeuds_swing)) + 0.1       # muscular activations
 u0[params.nbMus:]     = np.zeros((params.nbQ, params.nbNoeuds_swing))               # residual torques
 
@@ -148,13 +147,3 @@ np.savetxt(f, sol_U, delimiter = '\n')
 f.write('\n\nPARAMETER\n\n')
 np.savetxt(f, sol_p, delimiter = '\n')
 f.close()
-
-# sol_q  = [sol_X[0::params.nbX], sol_X[1::params.nbX], sol_X[2::params.nbX], sol_X[3::params.nbX], sol_X[4::params.nbX], sol_X[5::params.nbX]]
-# sol_dq = [sol_X[6::params.nbX], sol_X[7::params.nbX], sol_X[8::params.nbX], sol_X[9::params.nbX], sol_X[10::params.nbX], sol_X[11::params.nbX]]
-# sol_a  = [sol_U[0::params.nbU], sol_U[1::params.nbU], sol_U[2::params.nbU], sol_U[3::params.nbU], sol_U[4::params.nbU], sol_U[5::params.nbU], sol_U[6::params.nbU],
-#          sol_U[7::params.nbU], sol_U[8::params.nbU], sol_U[9::params.nbU], sol_U[10::params.nbU], sol_U[11::params.nbU], sol_U[12::params.nbU], sol_U[13::params.nbU],
-#          sol_U[14::params.nbU], sol_U[15::params.nbU], sol_U[16::params.nbU]]
-# sol_torque  = [sol_U[17::params.nbU], sol_U[18::params.nbU], sol_U[19::params.nbU]]
-
-nbNoeuds_phase = [params.nbNoeuds_stance, params.nbNoeuds_swing]
-T_phase        = [params.T_stance, params.T_swing]
