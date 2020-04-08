@@ -150,7 +150,8 @@ X0[:params.nbQ, :] = q0
 X0[params.nbQ: 2 * params.nbQ, :] = dq0
 
 # PARAMETERS
-p0 = [1] * params.nbMus
+# p0 = [1] * params.nbMus
+p0 = [0.2, 0.21, 0.524, 0.223, 0.2, 0.2, 1.68, 0.28, 0.2, 2.84, 0.2, 0.2, 0.38, 4.97, 5, 1.18, 5]
 
 w0 = vertcat(vertcat(*u0.T), vertcat(*X0.T), p0)
 
@@ -190,12 +191,13 @@ sol_U  = res["x"][:params.nbU * params.nbNoeuds]
 sol_X  = res["x"][params.nbU * params.nbNoeuds: -params.nP]
 sol_p  = res["x"][-params.nP:]
 
-sol_q  = [sol_X[0::params.nbX], sol_X[1::params.nbX], sol_X[2::params.nbX], sol_X[3::params.nbX], sol_X[4::params.nbX], sol_X[5::params.nbX]]
-sol_dq = [sol_X[6::params.nbX], sol_X[7::params.nbX], sol_X[8::params.nbX], sol_X[9::params.nbX], sol_X[10::params.nbX], sol_X[11::params.nbX]]
-sol_a  = [sol_U[0::params.nbU], sol_U[1::params.nbU], sol_U[2::params.nbU], sol_U[3::params.nbU], sol_U[4::params.nbU], sol_U[5::params.nbU], sol_U[6::params.nbU],
-         sol_U[7::params.nbU], sol_U[8::params.nbU], sol_U[9::params.nbU], sol_U[10::params.nbU], sol_U[11::params.nbU], sol_U[12::params.nbU], sol_U[13::params.nbU],
-         sol_U[14::params.nbU], sol_U[15::params.nbU], sol_U[16::params.nbU]]
-sol_F  = [sol_U[17::params.nbU], sol_U[18::params.nbU], sol_U[19::params.nbU]]
-
-nbNoeuds_phase = [params.nbNoeuds_stance, params.nbNoeuds_swing]
-T_phase        = [params.T_stance, params.T_swing]
+# save txt file
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_gait.txt'
+f = open(file, 'a')
+f.write('STATE\n\n')
+np.savetxt(f, sol_X, delimiter = '\n')
+f.write('\n\nCONTROL\n\n')
+np.savetxt(f, sol_U, delimiter = '\n')
+f.write('\n\nPARAMETER\n\n')
+np.savetxt(f, sol_p, delimiter = '\n')
+f.close()
