@@ -95,6 +95,20 @@ class Fcn_Objective:
         return Jm
 
     @staticmethod
+    def fcn_objective_markers_casadi(model, wMa, wMt, M, M_real):
+        # Tracking markers position
+
+        Jm = 0
+        for nMark in range(model.nbMarkers()):
+            if model.marker(nMark).isAnatomical():
+                Jm += wMa * ((M[0, nMark] - M_real[0, nMark]) * (M[0, nMark] - M_real[0, nMark]))
+                Jm += wMa * ((M[2, nMark] - M_real[2, nMark]) * (M[2, nMark] - M_real[2, nMark]))
+            else:
+                Jm += wMt * ((M[0, nMark] - M_real[0, nMark]) * (M[0, nMark] - M_real[0, nMark]))
+                Jm += wMt * ((M[2, nMark] - M_real[2, nMark]) * (M[2, nMark] - M_real[2, nMark]))
+        return Jm
+
+    @staticmethod
     def fcn_objective_GRF(wR, x, u, GRF_real):
         # Tracking ground reaction forces
 
