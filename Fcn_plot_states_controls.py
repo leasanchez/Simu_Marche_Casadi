@@ -3,11 +3,17 @@ import numpy as np
 import biorbd
 from casadi import MX
 
+
+# plot control
+def plot_control(ax, t, x):
+    nbPoints = len(np.array(x))
+    for n in range(nbPoints - 1):
+        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
+
 def plot_q(q, T, nbNoeuds):
     # JOINT POSITIONS
-    fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(10, 5))
     axes = axes.flatten()
-    # t = np.linspace(0, T, nbNoeuds + 1)
     t = np.linspace(0, T, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
@@ -111,30 +117,25 @@ def plot_q_int(q, q_int, T, nbNoeuds):
 
 def plot_dq(dq, T, nbNoeuds):
     # JOINT VELOCITIES
-    fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 3, sharex= True, figsize=(10, 5))
     axes = axes.flatten()
 
     # Set time
-    dt = T/nbNoeuds
-    # t = np.linspace(0, T, nbNoeuds + 1)
     t = np.linspace(0, T, nbNoeuds + 1)
 
     axes[0].set_title('Pelvis_Trans_X')
     axes[0].plot(t, dq[0, :], '+')
     axes[0].plot([T, T], [min(dq[0, :]), max(dq[0, :])], 'k:')
-    axes[0].set_xlabel('time (s)')
     axes[0].set_ylabel('speed (m/s)')
 
     axes[1].set_title('Pelvis_Trans_Y')
     axes[1].plot(t, dq[1, :], '+')
     axes[1].plot([T, T], [min(dq[1, :]), max(dq[1, :])], 'k:')
-    axes[1].set_xlabel('time (s)')
     axes[1].set_ylabel('speed (m/s)')
 
     axes[2].set_title('Pelvis_Rot_Z')
     axes[2].plot(t, dq[2, :], '+')
     axes[2].plot([T, T], [min(dq[2, :]), max(dq[2, :])], 'k:')
-    axes[2].set_xlabel('time (s)')
     axes[2].set_ylabel('speed (rad/s)')
 
     axes[3].set_title('R_Hip_Rot_Z')
@@ -157,61 +158,23 @@ def plot_dq(dq, T, nbNoeuds):
 
     plt.show(block=False)
 
-def plot_torque(torque, F, T, nbNoeuds):
+def plot_torque(torque, T, nbNoeuds):
     # JOINT TORQUES
-    fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 3, sharex=True, figsize=(10, 5))
     axes = axes.flatten()
 
     # Set time
     dt = T/nbNoeuds
-    # t = np.linspace(0, T - dt, nbNoeuds)
-    t = np.linspace(0, T, nbNoeuds)
+    t = np.linspace(0, T - dt, nbNoeuds)
+    Labels = ['Pelvis_Trans_X', 'Pelvis_Trans_Y', 'Pelvis_Rot_Z', 'R_Hip_Rot_Z', 'R_Knee_Rot_Z', 'R_Ankle_Rot_Z']
 
-    # plot control
-    def plot_control(ax, t, x):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'r', alpha = 0.5)
-
-    axes[0].set_title('Pelvis_Trans_X')
-    axes[0].plot(t, torque[0, :], 'b+-')
-    plot_control(axes[0], t, F[0, :])
-    axes[0].plot([T, T], [min(torque[0, :]), max(torque[0, :])], 'k:')
-    axes[0].set_xlabel('time (s)')
-    axes[0].set_ylabel('Force (N)')
-
-    axes[1].set_title('Pelvis_Trans_Y')
-    axes[1].plot(t, torque[1, :], 'b+-')
-    plot_control(axes[1], t, F[1, :])
-    axes[1].plot([T, T], [min(torque[1, :]), max(torque[1, :])], 'k:')
-    axes[1].set_xlabel('time (s)')
-    axes[1].set_ylabel('force (N)')
-
-    axes[2].set_title('Pelvis_Rot_Z')
-    axes[2].plot(t, torque[2, :], 'b+-')
-    plot_control(axes[2], t, F[2, :])
-    axes[2].plot([T, T], [min(torque[2, :]), max(torque[2, :])], 'k:')
-    axes[2].set_xlabel('time (s)')
-    axes[2].set_ylabel('torque (Nm)')
-
-    axes[3].set_title('R_Hip_Rot_Z')
-    axes[3].plot(t, torque[3, :], 'b+-')
-    axes[3].plot([T, T], [min(torque[3, :]), max(torque[3, :])], 'k:')
-    axes[3].set_xlabel('time (s)')
-    axes[3].set_ylabel('torque (Nm)')
-
-    axes[4].set_title('R_Knee_Rot_Z')
-    axes[4].plot(t, torque[4, :], 'b+-')
-    axes[4].plot([T, T], [min(torque[4, :]), max(torque[4, :])], 'k:')
-    axes[4].set_xlabel('time (s)')
-    axes[4].set_ylabel('torque (Nm)')
-
-    axes[5].set_title('R_Ankle_Rot_Z')
-    axes[5].plot(t, torque[5, :], 'b+-')
-    axes[5].plot([T, T], [min(torque[5, :]), max(torque[5, :])], 'k:')
-    axes[5].set_xlabel('time (s)')
-    axes[5].set_ylabel('torque (Nm)')
-
+    for i in range(len(torque[:, 0])):
+        axes[i].set_title(Labels[i])
+        plot_control(axes[i], t, torque[i, :])
+        axes[i].set_ylabel('Force (N)')
+        if i > 2:
+            axes[i].set_xlabel('time (s)')
+            axes[i].set_ylim([-25, 25])
     plt.show(block=False)
 
 
@@ -271,74 +234,39 @@ def plot_emg_heatmap(diff_U):
     cbar.ax.set_ylabel('squared differences ', rotation=-90, va="bottom")
 
 
-def plot_pelvis_force(F, T, nbNoeuds):
-    # Set time
-    dt = T/nbNoeuds
-    # t = np.linspace(0, T - dt, nbNoeuds)
-    t = np.linspace(0, T, nbNoeuds)
-
-    plt.figure()
-    plt.subplot(311)
-    plt.title('Force Pelvis TX')
-    for n in range(nbNoeuds - 1):
-        plt.plot([t[n], t[n + 1], t[n + 1]], [F[0, n], F[0, n], F[0, n + 1]], 'b')
-
-    plt.subplot(312)
-    plt.title('Force Pelvis TY')
-    for n in range(nbNoeuds - 1):
-        plt.plot([t[n], t[n + 1], t[n + 1]], [F[1, n], F[1, n], F[1, n + 1]], 'b')
-
-    plt.subplot(313)
-    plt.title('Force Pelvis RZ')
-    for n in range(nbNoeuds - 1):
-        plt.plot([t[n], t[n + 1], t[n + 1]], [F[2, n], F[2, n], F[2, n + 1]], 'b')
-
-    plt.show(block=False)
-
-
-def plot_control(u, U_real, T, nbNoeuds):
-    nbU = 23
-    nbMus = 17
-
-    # plot control
-    def plot_control(ax, t, x):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], 'b')
+def plot_activation(params, u, U_real, T, nbNoeuds):
+    nbMus = params.nbMus
 
     # Set time
-    # t = np.linspace(0, T, nbNoeuds + 1)
-    t = np.linspace(0, T, nbNoeuds)
+    t = np.linspace(0, T, nbNoeuds + 1)
+    t = t[:-1]
 
     # CONTROL
-    fig1, axes1 = plt.subplots(6, 4, sharex=True, figsize=(10, 10))
+    fig1, axes1 = plt.subplots(6, 3, figsize=(10, 10))
     Labels = ['GLUT_MAX1', 'GLUT_MAX2', 'GLUT_MAX3', 'GLUT_MED1', 'GLUT_MED2', 'GLUT_MED3',
               'R_SEMIMEM', 'R_SEMITEN', 'R_BI_FEM_LH', 'R_RECTUS_FEM', 'R_VAS_MED', 'R_VAS_INT',
-              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT', 'Pelvis Tx', 'Pelvis Ty', 'Pelvis Rz',
-              'Hip Rz', 'Knee Rz', 'Ankle Rz']    # Control labels
+              'R_VAS_LAT', 'R_GAS_MED', 'R_GAS_LAT', 'R_SOLEUS', 'R_TIB_ANT']
     axes1 = axes1.flatten()
     u_emg = 9
-    for i in range(nbU):
-        ax = axes1[i]  # get the correct subplot
-        ax.set_title(Labels[i])  # put control label
-        ax.plot([T, T], [0, 1], 'k:')  # end of the stance phase
+    for i in range(nbMus):
+        ax = axes1[i]
+        ax.set_title(Labels[i])
         plot_control(ax, t, u[i, :])
         ax.grid(True)
-        if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12) and (i < nbMus):
+        ax.plot([0, t[-1]], [0, 0], 'k--')  # lower bound
+        ax.plot([0, t[-1]], [1, 1], 'k--')  # upper bound
+        ax.yaxis.set_ticks(np.arange(0, 1.5, 0.5))
+        ax.set_xlabel('time (s)')
+        if (i != 1) and (i != 2) and (i != 3) and (i != 5) and (i != 6) and (i != 11) and (i != 12):
             ax.plot(t, U_real[u_emg, :], 'r')  # plot emg if available
             u_emg -= 1
-        if (i > nbU - 5):
-            ax.set_xlabel('time (s)')
-        if (i < (nbMus)):
-            ax.plot([0, t[-1]], [0, 0], 'k--')  # lower bound
-            ax.plot([0, t[-1]], [1, 1], 'k--')  # upper bound
-            ax.yaxis.set_ticks(np.arange(0, 1.5, 0.5))
+
     plt.show(block=False)
 
 
 def plot_GRF(GRF, GRF_real, T, nbNoeuds):
     # Set time
-    t = np.linspace(0, T , nbNoeuds + 1)
+    t = np.linspace(0, T, nbNoeuds + 1)
 
     fig, axes = plt.subplots(2, 1, sharex=True)
     axes.flatten()
@@ -354,7 +282,7 @@ def plot_GRF(GRF, GRF_real, T, nbNoeuds):
     ax_v.set_title('GRF vertical')
     ax_v.plot(t, GRF_real[2, :nbNoeuds + 1], 'r')
     ax_v.plot([T, T], [min(GRF_real[2, :]), max(GRF_real[2, :])], 'k:')
-    ax_v.plot(t, GRF[2, :], 'b', alpha = 0.5)
+    ax_v.plot(t, GRF[1, :], 'b', alpha = 0.5)
     ax_v.set_xlabel('time (s)')
     ax_v.grid(True)
     fig.tight_layout()
@@ -389,23 +317,6 @@ def plot_markers_result(sol_q, T_phase, nbNoeuds, nbMarker, M_real):
         plt.plot(M_aff[0, :], M_aff[2, :], 'bo-', alpha=0.5)
         plt.plot([M_real[0, 2, k_stance], M_real[0, 4, k_stance], M_real[0, 11, k_stance], M_real[0, 19, k_stance], M_real[0, 22, k_stance]],
                  [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance], M_real[2, 22, k_stance]], 'r+')
-
-    # for k_swing in range(nbNoeuds_phase[1] + 1):
-    #     model = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
-    #     markers = model.markers(sol_q[:, nbNoeuds_phase[0] + k_swing])
-    #     for nMark in range(nbMarker):
-    #         M_simu[:, nMark, nbNoeuds_phase[0] + k_swing] = markers[nMark].to_array()
-    #
-    #     # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
-    #     M_aff = np.zeros((3, 5))
-    #     M_aff[:, 0] = M_simu[:, 2, nbNoeuds_phase[0] + k_swing]
-    #     M_aff[:, 1] = M_simu[:, 4, nbNoeuds_phase[0] + k_swing]
-    #     M_aff[:, 2] = M_simu[:, 11, nbNoeuds_phase[0] + k_swing]
-    #     M_aff[:, 3] = M_simu[:, 19, nbNoeuds_phase[0] + k_swing]
-    #     M_aff[:, 4] = M_simu[:, 22, nbNoeuds_phase[0] + k_swing]
-    #     plt.plot(M_aff[0, :], M_aff[2, :], 'go-', alpha=0.5)
-    #     plt.plot([M_real[0, 2, nbNoeuds_phase[0] + k_swing], M_real[0, 4, nbNoeuds_phase[0] + k_swing], M_real[0, 11, nbNoeuds_phase[0] + k_swing], M_real[0, 19, nbNoeuds_phase[0] + k_swing], M_real[0, 22, nbNoeuds_phase[0] + k_swing]],
-    #              [M_real[2, 2, nbNoeuds_phase[0] + k_swing], M_real[2, 4, nbNoeuds_phase[0] + k_swing], M_real[2, 11, nbNoeuds_phase[0] + k_swing], M_real[2, 19, nbNoeuds_phase[0] + k_swing], M_real[2, 22, nbNoeuds_phase[0] + k_swing]], 'm+')
 
     plt.plot([-0.5, 1.5], [0, 0], 'k--')
 
