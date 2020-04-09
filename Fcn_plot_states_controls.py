@@ -322,3 +322,18 @@ def plot_markers_result(sol_q, T_phase, nbNoeuds, nbMarker, M_real):
 
     plt.show(block = False)
 
+def plot_markers(nbNoeuds, M, M_real):
+    # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
+    for k_stance in range(nbNoeuds):
+        Mk = M[k_stance]
+        M_aff = np.zeros((3, 5))
+        M_aff[:, 0] = np.array(Mk[:, 2]).squeeze()
+        M_aff[:, 1] = np.array(Mk[:, 4]).squeeze()
+        M_aff[:, 2] = np.array(Mk[:, 11]).squeeze()
+        M_aff[:, 3] = np.array(Mk[:, 19]).squeeze()
+        M_aff[:, 4] = np.array(Mk[:, 22]).squeeze()
+        plt.plot(M_aff[0, :], M_aff[2, :], 'bo-', alpha=0.5)
+        plt.plot([M_real[0, 2, k_stance], M_real[0, 4, k_stance], M_real[0, 11, k_stance], M_real[0, 19, k_stance],
+                  M_real[0, 22, k_stance]],
+                 [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance],
+                  M_real[2, 22, k_stance]], 'r+')

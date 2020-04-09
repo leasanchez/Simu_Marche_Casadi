@@ -11,8 +11,7 @@ from Define_parameters import Parameters
 from Marche_Fcn_Integration import int_RK4
 
 # ----------------------------- Load Results from txt file -------------------------------------------------------------
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
-file_obj = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equicocont01_resSolver_stance'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Swing/equincocont01_sol_swing.txt'
 f = open(file, 'r')
 content = f.read()
 content_divide = content.split('\n')
@@ -130,6 +129,7 @@ JR = 0                                                 # objective function for 
 Jt = 0
 constraints = 0
 GRF = DM.zeros(2, params.nbNoeuds_stance + 1)
+M = []
 x_int_interval = DM.zeros(params.nbX, (params.nbNoeuds_swing + 1) * 3)
 
 # ------------ PHASE 1 : Stance phase
@@ -139,20 +139,21 @@ for k in range(params.nbNoeuds_stance):
     Xk = X[:, k]
 
     # OBJECTIVE FUNCTION
-    M = markers(Xk)
+    Mk= markers(Xk)
+    M.append(Mk)
     Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)
     Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])
 
     if file.__contains__('stance'):
         GRF[:, k] = compute_GRF(Xk, Uk, P)
         JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF[:, k], GRF_real_stance[:, k])
-        Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, M, M_real_stance[:, :, k])
+        Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, Mk, M_real_stance[:, :, k])
         Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
 
         X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
         constraints += X[:, k + 1] - X_int
     else:
-        Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, M, M_real_swing[:, :, k])
+        Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, Mk, M_real_swing[:, :, k])
         Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, k])
 
         X_int = int_RK4(ffcn_no_contact, params, Xk, Uk, P)
@@ -170,6 +171,7 @@ if file.__contains__('stance'):
     psu.plot_activation(params, np.array(U), U_real_stance[:, :-1], params.T_stance, params.nbNoeuds_stance)
     psu.plot_torque(np.array(U[params.nbMus:, :]), params.T_stance, params.nbNoeuds_stance)
     psu.plot_GRF(np.array(GRF), GRF_real_stance, params.T_stance, params.nbNoeuds_stance)
+    psu.plot_markers(params.nbNoeuds_stance, M, M_real_stance)
 
     print('Global                 : ' + str(Jm + Ja + Je + Jt + JR))
     print('activation             : ' + str(Ja))
@@ -183,6 +185,7 @@ else:
     psu.plot_dq(np.array(X[params.nbQ:, :]), params.T_swing, params.nbNoeuds_swing)
     psu.plot_activation(params, np.array(U), U_real_swing[:, :-1], params.T_swing, params.nbNoeuds_swing)
     psu.plot_torque(np.array(U[params.nbMus:, :]), params.T_swing, params.nbNoeuds_swing)
+    psu.plot_markers(params.nbNoeuds_swing, M, M_real_swing)
 
     print('Global                 : ' + str(Jm + Ja + Je + Jt))
     print('activation             : ' + str(Ja))
