@@ -10,58 +10,65 @@ from Fcn_forward_dynamic import Dynamics
 from Define_parameters import Parameters
 from Marche_Fcn_Integration import int_RK4
 
+params = Parameters()
+# ----------------------------- Load Data from c3d file ----------------------------------------------------------------
+# Swing
+[GRF_real_swing, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'swing')                   # GROUND REACTION FORCES & SET TIME
+M_real_swing = LoadData.load_data_markers(params, 'swing')                                                             # MARKERS POSITION
+U_real_swing = LoadData.load_data_emg(params, 'swing')                                                                 # MUSCULAR EXCITATION
+# Stance
+[GRF_real_stance, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'stance')
+M_real_stance = LoadData.load_data_markers(params, 'stance')
+U_real_stance = LoadData.load_data_emg(params, 'stance')
+
+
 # ----------------------------- Load Results from txt file -------------------------------------------------------------
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Swing/equincocont01_sol_swing.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
 f = open(file, 'r')
 content = f.read()
 content_divide = content.split('\n')
 
-params = Parameters()
+if file.__contains__('stance'):
+    nbNoeuds = params.nbNoeuds_stance
+    T = params.T_stance
+elif file.__contains__('swing'):
+    nbNoeuds = params.nbNoeuds_swing
+    T = params.T_swing
+else:
+    nbNoeuds = params.nbNoeuds
+    T = params.T
 
 # FIND STATE
-# s = np.zeros((params.nbX, (params.nbNoeuds_swing + 1)))
-X = DM.zeros(params.nbX, (params.nbNoeuds_swing + 1))
+X = DM.zeros(params.nbX, (nbNoeuds + 1))
 idx_init = 2
-for n in range(params.nbNoeuds_swing + 1):
+for n in range(nbNoeuds + 1):
     idx = idx_init + params.nbX * n
     for x in range(params.nbX):
         a = content_divide[idx + x]
         X[x, n] = float(a)
 
 # FIND CONTROL
-# u = np.zeros((params.nbU, (params.nbNoeuds_swing)))
-U = DM.zeros(params.nbU, (params.nbNoeuds_swing))
-idx_u = idx_init + (params.nbNoeuds_swing + 1) * params.nbX + 4
-for n in range(params.nbNoeuds_swing):
+U = DM.zeros(params.nbU, (nbNoeuds))
+idx_u = idx_init + (nbNoeuds + 1) * params.nbX + 4
+for n in range(nbNoeuds):
     idx = idx_u + params.nbU * n
     for u_id in range(params.nbU):
         a = content_divide[idx + u_id]
         U[u_id, n] = float(a)
 
 # FIND PARAMETERS
-# p = np.zeros((params.nP))
 P = DM.zeros(params.nP)
-idx_p = idx_init + (params.nbNoeuds_swing + 1) * params.nbX + 4 + params.nbNoeuds_swing * params.nbU + 4
+idx_p = idx_init + (nbNoeuds + 1) * params.nbX + 4 + nbNoeuds * params.nbU + 4
 for p_id in range(params.nP):
     idx = idx_p + p_id
     P[p_id] = float(content_divide[idx])
 f.close()
 
-# ----------------------------- Load Data from c3d file ----------------------------------------------------------------
-# Swing
-[GRF_real_swing, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'swing')                   # GROUND REACTION FORCES & SET TIME
-M_real_swing  = LoadData.load_data_markers(params, 'swing')                                                             # MARKERS POSITION
-U_real_swing  = LoadData.load_data_emg(params, 'swing')                                                                 # MUSCULAR EXCITATION
-# Stance
-[GRF_real_stance, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'stance')
-M_real_stance = LoadData.load_data_markers(params, 'stance')
-U_real_stance = LoadData.load_data_emg(params, 'stance')
-
 # ----------------------------- States & controls ----------------------------------------------------------------------
 # CONTROL
-u  = MX.sym("u", params.nbU)
-activation  = u[:params.nbMus]                                # muscular activation
-torque      = u[params.nbMus:]                                # residual joint torque
+u = MX.sym("u", params.nbU)
+activation = u[:params.nbMus]                                # muscular activation
+torque = u[params.nbMus:]                                # residual joint torque
 
 # PARAMETERS
 p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
@@ -132,8 +139,7 @@ GRF = DM.zeros(2, params.nbNoeuds_stance + 1)
 M = []
 x_int_interval = DM.zeros(params.nbX, (params.nbNoeuds_swing + 1) * 3)
 
-# ------------ PHASE 1 : Stance phase
-for k in range(params.nbNoeuds_stance):
+for k in range(nbNoeuds):
     # DYNAMIQUE
     Uk = U[:, k]
     Xk = X[:, k]
@@ -152,46 +158,63 @@ for k in range(params.nbNoeuds_stance):
 
         X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
         constraints += X[:, k + 1] - X_int
-    else:
+    elif file.__contains__('swing'):
         Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, Mk, M_real_swing[:, :, k])
         Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, k])
 
         X_int = int_RK4(ffcn_no_contact, params, Xk, Uk, P)
         constraints += X[:, k + 1] - X_int
-    #
+    else:
+        if k < params.nbNoeuds_stance:
+            GRF[:, k] = compute_GRF(Xk, Uk, P)
+            JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF[:, k], GRF_real_stance[:, k])
+            Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, Mk,M_real_stance[:, :, k])
+            Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
+
+            X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
+            constraints += X[:, k + 1] - X_int
+        else:
+            Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, Mk, M_real_swing[:, :, (k - params.nbNoeuds_stance)])
+            Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, (k - params.nbNoeuds_stance)])
+
+            X_int = int_RK4(ffcn_no_contact, params, Xk, Uk, P)
+            constraints += X[:, k + 1] - X_int
+
     # # INTEGRATION
     # x_int_interval[:, k * 3] = Xk
     # for i in range(3):
     #     x_int_interval[:, (k * 3) + i + 1] = int_RK4(ffcn_contact, params, x_int_interval[:, (k * 3) + i], Uk, P)
 
 # ----------------------------- Visualize states and controls ----------------------------------------------------------
-if file.__contains__('stance'):
-    psu.plot_q(np.array(X[:params.nbQ, :]), params.T_stance, params.nbNoeuds_stance)
-    psu.plot_dq(np.array(X[params.nbQ:, :]), params.T_stance, params.nbNoeuds_stance)
-    psu.plot_activation(params, np.array(U), U_real_stance[:, :-1], params.T_stance, params.nbNoeuds_stance)
-    psu.plot_torque(np.array(U[params.nbMus:, :]), params.T_stance, params.nbNoeuds_stance)
-    psu.plot_GRF(np.array(GRF), GRF_real_stance, params.T_stance, params.nbNoeuds_stance)
-    psu.plot_markers(params.nbNoeuds_stance, M, M_real_stance)
+print('Global                 : ' + str(Jm + Ja + Je + Jt + JR))
+print('activation             : ' + str(Ja))
+print('emg                    : ' + str(Je))
+print('marker                 : ' + str(Jm))
+print('ground reaction forces : ' + str(JR))
+print('residual torques       : ' + str(Jt))
 
-    print('Global                 : ' + str(Jm + Ja + Je + Jt + JR))
-    print('activation             : ' + str(Ja))
-    print('emg                    : ' + str(Je))
-    print('marker                 : ' + str(Jm))
-    print('ground reaction forces : ' + str(JR))
-    print('residual torques       : ' + str(Jt))
-
+if file.__contains__('gait'):
+    psu.plot_q(np.array(X[:params.nbQ, :]), T, nbNoeuds, gait=True, params=params)
+    psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds, gait=True, params=params)
+    psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds, gait=True, params=params)
+    psu.plot_GRF(np.array(GRF[:, :params.nbNoeuds_stance + 1]), GRF_real_stance, params.T_stance, params.nbNoeuds_stance)
+    psu.plot_activation(params, np.array(U), np.hstack([U_real_stance[:, :-1], U_real_swing[:, :-1]]), T, nbNoeuds, gait = True)
+    M_real          = np.zeros((3, params.nbMarker, (params.nbNoeuds + 1)))
+    M_real[0, :, :] = np.hstack([M_real_stance[0, :, :-1], M_real_swing[0, :, :]])
+    M_real[1, :, :] = np.hstack([M_real_stance[1, :, :-1], M_real_swing[1, :, :]])
+    M_real[2, :, :] = np.hstack([M_real_stance[2, :, :-1], M_real_swing[2, :, :]])
+    psu.plot_markers(nbNoeuds, M, M_real)
 else:
-    psu.plot_q(np.array(X[:params.nbQ, :]), params.T_swing, params.nbNoeuds_swing)
-    psu.plot_dq(np.array(X[params.nbQ:, :]), params.T_swing, params.nbNoeuds_swing)
-    psu.plot_activation(params, np.array(U), U_real_swing[:, :-1], params.T_swing, params.nbNoeuds_swing)
-    psu.plot_torque(np.array(U[params.nbMus:, :]), params.T_swing, params.nbNoeuds_swing)
-    psu.plot_markers(params.nbNoeuds_swing, M, M_real_swing)
-
-    print('Global                 : ' + str(Jm + Ja + Je + Jt))
-    print('activation             : ' + str(Ja))
-    print('emg                    : ' + str(Je))
-    print('marker                 : ' + str(Jm))
-    print('residual torques       : ' + str(Jt))
+    psu.plot_q(np.array(X[:params.nbQ, :]), T, nbNoeuds)
+    psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds)
+    psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
+    if file.__contains__('stance'):
+        psu.plot_activation(params, np.array(U), U_real_stance[:, :-1], T, nbNoeuds)
+        psu.plot_GRF(np.array(GRF), GRF_real_stance, T, nbNoeuds)
+        psu.plot_markers(nbNoeuds, M, M_real_stance)
+    else:
+        psu.plot_activation(params, np.array(U), U_real_swing[:, :-1], T, nbNoeuds)
+        psu.plot_markers(nbNoeuds, M, M_real_swing)
 
 print('0')
 
