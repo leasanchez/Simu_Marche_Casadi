@@ -17,16 +17,16 @@ params = Parameters()
 
 # ----------------------------- States & controls ----------------------------------------------------------------------
 # CONTROL
-u  = MX.sym("u", params.nbU)
-activation  = u[:params.nbMus]                                # muscular activation
-torque      = u[params.nbMus:]                                # residual joint torque
+u = MX.sym("u", params.nbU)
+activation = u[:params.nbMus]                                 # muscular activation
+torque = u[params.nbMus:]                                     # residual joint torque
 
 # PARAMETERS
-p  = MX.sym("p", params.nP)                                   # maximal isometric force adjustment
+p = MX.sym("p", params.nP)                                    # maximal isometric force adjustment
 
 # STATE
-x  = MX.sym("x", params.nbX)
-q  = x[:params.nbQ]                                           # generalized coordinates
+x = MX.sym("x", params.nbX)
+q = x[:params.nbQ]                                            # generalized coordinates
 dq = x[params.nbQ: 2 * params.nbQ]                            # velocities
 
 # ----------------------------- Define casadi function -----------------------------------------------------------------
@@ -48,6 +48,11 @@ ffcn_no_contact = casadi.Function("ffcn_no_contact",
                                    ["states", "controls", "parameters"],
                                    ["statesdot"]).expand()
 
+markers = Function("markers",
+                   [x],
+                   [params.model_stance.markers(x[:params.nbQ])],
+                   ["states"],
+                   ["markers"]).expand()
 
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
 # GROUND REACTION FORCES & SET TIME
@@ -82,11 +87,12 @@ for k in range(params.nbNoeuds_stance):
 
     # OBJECTIVE FUNCTION
     GRF = compute_GRF(Xk, Uk, P)
-    JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF, GRF_real[:, k])                                                      # tracking ground reaction --> stance
-    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')             # tracking marker
-    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])                                                         # tracking emg
-    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)                                                                       # min muscle activations (no EMG)
-    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])                                                    # min residual torques
+    JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF, GRF_real[:, k])
+    M = markers(Xk)
+    Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, M, M_real_stance[:, :, k])
+    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
+    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)
+    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])
 
 # ------------ PHASE 2 : Swing phase
 for k in range(params.nbNoeuds_swing):
@@ -96,10 +102,11 @@ for k in range(params.nbNoeuds_swing):
     G.append(X[params.nbX * params.nbNoeuds_stance + params.nbX*(k + 1): params.nbX * params.nbNoeuds_stance + params.nbX*(k + 2)] - int_RK4(ffcn_no_contact, params, Xk, Uk, P))
 
     # OBJECTIVE FUNCTION
-    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_swing[:, :, k], 'swing') # tracking marker
-    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk[:params.nbMus], U_real_swing[:, k])                             # tracking emg
-    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk[:params.nbMus])                                          # min muscular activation
-    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])                                      # min residual torques
+    M = markers(Xk)
+    Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, M, M_real_swing[:, :, k])
+    Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk[:params.nbMus], U_real_swing[:, k])
+    Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk[:params.nbMus])
+    Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])
 
 # ----------------------------- Contraintes ----------------------------------------------------------------------------
 # égalité
@@ -118,12 +125,12 @@ ubu = (upperbound_u) * params.nbNoeuds
 # states
 lowerbound_x = [-10, -0.5, -np.pi/4, -np.pi/9, -np.pi/2, -np.pi/3, 0.5, -0.5, -1.7453, -5.2360, -5.2360, -5.2360]
 upperbound_x = [10, 1.5, np.pi/4, np.pi/3, 0.0873, np.pi/9, 1.5, 0.5, 1.7453, 5.2360, 5.2360, 5.2360]
-lbX   = (lowerbound_x) * (params.nbNoeuds + 1)
-ubX   = (upperbound_x) * (params.nbNoeuds + 1)
+lbX = (lowerbound_x) * (params.nbNoeuds + 1)
+ubX = (upperbound_x) * (params.nbNoeuds + 1)
 
 # parameters
-min_p  = 0.2
-max_p  = 5
+min_p = 0.2
+max_p = 5
 lbp = [min_p] * params.nbMus
 ubp = [max_p] * params.nbMus
 
@@ -136,18 +143,14 @@ init_A = 0.1
 
 # CONTROL
 u0                    = np.zeros((params.nbU, params.nbNoeuds))
-# u0[: params.nbMus, :] = load_initialguess_muscularExcitation(np.hstack([U_real_stance[:, :-1], U_real_swing[:, :-1]]))
-u0[: params.nbMus, :]   = np.zeros((params.nbMus, params.nbNoeuds)) + init_A
+u0[: params.nbMus, :] = load_initialguess_muscularExcitation(np.hstack([U_real_stance[:, :-1], U_real_swing[:, :-1]]))
+# u0[: params.nbMus, :]   = np.zeros((params.nbMus, params.nbNoeuds)) + init_A
 u0[params.nbMus + 1, :] = [-500] * params.nbNoeuds_stance + [0] * params.nbNoeuds_swing
 
 # STATE
-q0  = load_initialguess_q(params, 'cycle')
-dq0 = np.gradient(q0)
-dq0 = dq0[0]
-
 X0                 = np.zeros((params.nbX, (params.nbNoeuds + 1)))
-X0[:params.nbQ, :] = q0
-X0[params.nbQ: 2 * params.nbQ, :] = dq0
+X0[:params.nbQ, :] = load_initialguess_q(params, 'cycle')
+X0[params.nbQ: 2 * params.nbQ, :] = np.gradient(X0[:params.nbQ, :])[0]
 
 # PARAMETERS
 # p0 = [1] * params.nbMus
@@ -176,7 +179,7 @@ w = vertcat(U, X, P)
 J = Ja + Je + Jm + JR + Jt
 
 nlp    = {'x': w, 'f': J, 'g': vertcat(*G)}
-opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57"}
+opts   = {"ipopt.tol": 1e-2, "ipopt.linear_solver": "ma57", "ipopt.hessian_approximation":"limited-memory","ipopt.acceptable_obj_change_tol": 1e2}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 
 res = solver(lbg = lbg,
@@ -187,12 +190,12 @@ res = solver(lbg = lbg,
 
 
 # RESULTS
-sol_U  = res["x"][:params.nbU * params.nbNoeuds]
-sol_X  = res["x"][params.nbU * params.nbNoeuds: -params.nP]
-sol_p  = res["x"][-params.nP:]
+sol_U = res["x"][:params.nbU * params.nbNoeuds]
+sol_X = res["x"][params.nbU * params.nbNoeuds: -params.nP]
+sol_p = res["x"][-params.nP:]
 
 # save txt file
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_gait.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/equincocont01_gait_2.txt'
 f = open(file, 'a')
 f.write('STATE\n\n')
 np.savetxt(f, sol_X, delimiter = '\n')

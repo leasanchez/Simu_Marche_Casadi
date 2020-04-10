@@ -178,7 +178,7 @@ def save_initialguess(params, u0, x0, p0):
     for n in range(nbNoeuds + 1):
         f.write('\nx0   ' + str(n) + '\n')
         np.savetxt(f, x0[:, n], delimiter='\n')
-        f.write('\n\nParameter\n')
+    f.write('\n\nParameter\n')
     np.savetxt(f, p0, delimiter='\n')
     f.close()
 
