@@ -55,6 +55,55 @@ class Dynamics:
         return vertcat(dQ, ddQ)
 
     @staticmethod
+    def ffcn_contact(x, u, p):
+        # SET MODEL
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+
+        # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL STANCE
+        Dynamics.Set_parameter_forceiso(model, p)
+
+        # INPUT
+        Q           = x[:model.nbQ()]                            # states
+        dQ          = x[model.nbQ():2*model.nbQ()]
+        activations = u[: model.nbMuscleTotal()]                 # controls
+        torque      = u[model.nbMuscleTotal():]
+
+        # COMPUTE MOTOR JOINT TORQUES
+        joint_torque  = Dynamics.articular_torque(model, activations, Q, dQ)
+        joint_torque += torque                  # add residual torques
+
+        # COMPUTE THE ACCELERATION -- FORWARD DYNAMICS
+        ddQ = model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque).to_mx()
+
+        return vertcat(dQ, ddQ)
+
+    @staticmethod
+    def ffcn_impact(x, u, p):
+        # SET MODEL
+        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
+
+        # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL STANCE
+        Dynamics.Set_parameter_forceiso(model, p)
+
+        # INPUT
+        Q           = x[:model.nbQ()]                            # states
+        dQ          = x[model.nbQ():2*model.nbQ()]
+        activations = u[: model.nbMuscleTotal()]                 # controls
+        torque      = u[model.nbMuscleTotal():]
+
+        # IMPACT -- COMPUTE QDOT PLUS
+        dQ_plus = model.computeQdot(Q, dQ).to_mx()
+
+        # COMPUTE MOTOR JOINT TORQUES
+        joint_torque  = Dynamics.articular_torque(model, activations, Q, dQ_plus)
+        joint_torque += torque                  # add residual torques
+
+        # COMPUTE THE ACCELERATION -- FORWARD DYNAMICS
+        ddQ = model.ForwardDynamicsConstraintsDirect(Q, dQ_plus, joint_torque).to_mx()
+
+        return vertcat(dQ_plus, ddQ)
+
+    @staticmethod
     def ffcn_no_contact_excitation(x, u, p):
         # SET MODEL
         model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod')
@@ -80,29 +129,6 @@ class Dynamics:
         ddQ = model.ForwardDynamics(Q, dQ, joint_torque).to_mx()
 
         return vertcat(dQ, ddQ, activationsDot)
-
-    @staticmethod
-    def ffcn_contact(x, u, p):
-        # SET MODEL
-        model = biorbd.Model('/home/leasanchez/programmation/Simu_Marche_Casadi/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
-
-        # FIND THE PARAMETERS P OPTIMISING THE MAXIMUM ISOMETRIC FORCES -- MODEL STANCE
-        Dynamics.Set_parameter_forceiso(model, p)
-
-        # INPUT
-        Q           = x[:model.nbQ()]                            # states
-        dQ          = x[model.nbQ():2*model.nbQ()]
-        activations = u[: model.nbMuscleTotal()]                 # controls
-        torque      = u[model.nbMuscleTotal():]
-        # COMPUTE MOTOR JOINT TORQUES
-        joint_torque  = Dynamics.articular_torque(model, activations, Q, dQ)
-        joint_torque += torque                  # add residual torques
-
-        # COMPUTE THE ACCELERATION -- FORWARD DYNAMICS
-        ddQ = model.ForwardDynamicsConstraintsDirect(Q, dQ, joint_torque).to_mx()
-
-        return vertcat(dQ, ddQ)
-
     @staticmethod
     def ffcn_contact_excitation(x, u, p):
         # SET MODEL
