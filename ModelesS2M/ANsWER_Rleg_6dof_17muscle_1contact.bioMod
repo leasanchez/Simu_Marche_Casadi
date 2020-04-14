@@ -327,6 +327,11 @@ contact    c_meta_r
 	position    0.200778 -0.02 0.0127656  //R_FM2_proj
 	axis    xz
 endcontact
+marker	contact_c_meta_r
+	parent	foot_marker_r
+	position	0.200778 -0.02 0.0127656 
+	technical	1
+endmarker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment

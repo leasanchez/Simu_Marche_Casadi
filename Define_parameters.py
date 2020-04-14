@@ -11,7 +11,7 @@ class Parameters():
 
         self.nbMus     = self.model_stance.nbMuscleTotal()                    # number of muscles
         self.nbQ       = self.model_stance.nbDof()                            # number of DoFs
-        self.nbMarker  = self.model_stance.nbMarkers()                        # number of markers
+        self.nbMarker  = self.model_stance.nbMarkers() - 1                    # number of markers (remove marker to check contact)
         self.nbBody    = self.model_stance.nbSegment()                        # number of body segments
         self.nbContact = self.model_stance.nbContacts()                       # number of contact (2 forces --> plan)
 

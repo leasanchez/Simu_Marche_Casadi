@@ -271,40 +271,6 @@ def plot_GRF(GRF, GRF_real, T, nbNoeuds):
     fig.tight_layout()
     plt.show(block=False)
 
-def plot_markers_result(sol_q, T_phase, nbNoeuds, nbMarker, M_real):
-    # Plot leg trajectory with 5 markers
-
-    # INPUT
-    # sol_q          = optimized joint position (nbQ x nbNoeuds)
-    # nbNoeuds_phase = shooting points for each phase (nbPhase)
-    # nbMarker       = number of markers
-
-    # PARAMETERS
-    M_simu   = np.zeros((3, nbMarker, nbNoeuds + 1))
-
-    plt.figure()
-    # FIND MARKERS POSITIONS
-    for k_stance in range(nbNoeuds + 1):
-        model   = biorbd.Model('/home/leasanchez/programmation/Marche_Florent/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod')
-        markers = model.markers(MX(sol_q[:, k_stance]))
-        for nMark in range(nbMarker):
-            M_simu[:, nMark, k_stance] = markers[nMark]
-
-        # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
-        M_aff = np.zeros((3, 5))
-        M_aff[:, 0] = M_simu[:, 2, k_stance]
-        M_aff[:, 1] = M_simu[:, 4, k_stance]
-        M_aff[:, 2] = M_simu[:, 11, k_stance]
-        M_aff[:, 3] = M_simu[:, 19, k_stance]
-        M_aff[:, 4] = M_simu[:, 22, k_stance]
-        plt.plot(M_aff[0, :], M_aff[2, :], 'bo-', alpha=0.5)
-        plt.plot([M_real[0, 2, k_stance], M_real[0, 4, k_stance], M_real[0, 11, k_stance], M_real[0, 19, k_stance], M_real[0, 22, k_stance]],
-                 [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance], M_real[2, 22, k_stance]], 'r+')
-
-    plt.plot([-0.5, 1.5], [0, 0], 'k--')
-
-    plt.show(block = False)
-
 def plot_markers(nbNoeuds, M, M_real):
     # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
     plt.figure()
@@ -317,6 +283,7 @@ def plot_markers(nbNoeuds, M, M_real):
         M_aff[:, 3] = np.array(Mk[:, 19]).squeeze()
         M_aff[:, 4] = np.array(Mk[:, 22]).squeeze()
         plt.plot(M_aff[0, :], M_aff[2, :], 'bo-', alpha=0.5)
+        plt.plot(np.array(Mk[0, -1]), np.array(Mk[2, -1]), 'g+',)
         plt.plot([M_real[0, 2, k_stance], M_real[0, 4, k_stance], M_real[0, 11, k_stance], M_real[0, 19, k_stance],
                   M_real[0, 22, k_stance]],
                  [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance],
