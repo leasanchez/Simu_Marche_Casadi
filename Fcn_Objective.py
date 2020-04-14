@@ -99,7 +99,23 @@ class Fcn_Objective:
         # Tracking markers position
 
         Jm = 0
-        for nMark in range(model.nbMarkers()):
+        for nMark in range(model.nbMarkers() - 1):
+            if model.marker(nMark).isAnatomical():
+                Jm += wMa * ((M[0, nMark] - M_real[0, nMark]) * (M[0, nMark] - M_real[0, nMark]))
+                Jm += wMa * ((M[2, nMark] - M_real[2, nMark]) * (M[2, nMark] - M_real[2, nMark]))
+            else:
+                Jm += wMt * ((M[0, nMark] - M_real[0, nMark]) * (M[0, nMark] - M_real[0, nMark]))
+                Jm += wMt * ((M[2, nMark] - M_real[2, nMark]) * (M[2, nMark] - M_real[2, nMark]))
+        return Jm
+
+    @staticmethod
+    def fcn_objective_markers_casadi_maxfoot(model, wMa, wMt, M, M_real):
+        # Tracking markers position
+
+        Jm = 0
+        for nMark in range(model.nbMarkers() - 1):
+            if nMark > 18:
+                wMa = wMt = 150
             if model.marker(nMark).isAnatomical():
                 Jm += wMa * ((M[0, nMark] - M_real[0, nMark]) * (M[0, nMark] - M_real[0, nMark]))
                 Jm += wMa * ((M[2, nMark] - M_real[2, nMark]) * (M[2, nMark] - M_real[2, nMark]))

@@ -41,6 +41,12 @@ compute_GRF = casadi.Function("compute_GRF",
                               ["states", "controls", "parameters"],
                               ["GRF"]).expand()
 
+markers = Function("markers",
+                   [x],
+                   [params.model_stance.markers(x[:params.nbQ])],
+                   ["states"],
+                   ["markers"]).expand()
+
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
 [GRF_real, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'cycle')
 M_real_stance = LoadData.load_data_markers(params, 'stance')
@@ -67,8 +73,9 @@ for k in range(params.nbNoeuds_stance):
 
     # OBJECTIVE FUNCTION
     GRF = compute_GRF(Xk, Uk, P)
+    M = markers(Xk)
     JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF, GRF_real[:, k])
-    Jm += Fcn_Objective.fcn_objective_markers(params.wMa, params.wMt, Xk[: params.nbQ], M_real_stance[:, :, k], 'stance')
+    Jm += Fcn_Objective.fcn_objective_markers_casadi_maxfoot(params.model_stance, params.wMa, params.wMt, M, M_real_stance[:, :, k])
     Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk[:params.nbMus], U_real_stance[:, k])
     Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk[:params.nbMus])
     Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])
@@ -94,8 +101,8 @@ lbX   = (lowerbound_x) * (params.nbNoeuds_stance + 1)
 ubX   = (upperbound_x) * (params.nbNoeuds_stance + 1)
 
 # PARAMETERS
-min_p  = 0.2
-max_p  = 5
+min_p = 0.2
+max_p = 5
 lbp = [min_p] * params.nbMus
 ubp = [max_p] * params.nbMus
 
@@ -136,12 +143,12 @@ res = solver(lbg = lbg,
 
 
 # RESULTS
-sol_U  = res["x"][:params.nbU * params.nbNoeuds_stance]
-sol_X  = res["x"][params.nbU * params.nbNoeuds_stance: -params.nP]
-sol_p  = res["x"][-params.nP:]
+sol_U = res["x"][:params.nbU * params.nbNoeuds_stance]
+sol_X = res["x"][params.nbU * params.nbNoeuds_stance: -params.nP]
+sol_p = res["x"][-params.nP:]
 
 # save txt file
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
+file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance_2.txt'
 f = open(file, 'a')
 f.write('STATE\n\n')
 np.savetxt(f, sol_X, delimiter = '\n')
