@@ -9,8 +9,11 @@ from Fcn_forward_dynamic import Dynamics
 
 from Define_parameters import Parameters
 from Marche_Fcn_Integration import int_RK4
+from Read_Muscod import Muscod
 
 params = Parameters()
+muscod = Muscod(params.name_subject)
+
 # ----------------------------- Load Data from c3d file ----------------------------------------------------------------
 # Swing
 [GRF_real_swing, params.T, params.T_stance, params.T_swing] = LoadData.load_data_GRF(params, 'swing')                   # GROUND REACTION FORCES & SET TIME
@@ -21,9 +24,8 @@ U_real_swing = LoadData.load_data_emg(params, 'swing')                          
 M_real_stance = LoadData.load_data_markers(params, 'stance')
 U_real_stance = LoadData.load_data_emg(params, 'stance')
 
-
 # ----------------------------- Load Results from txt file -------------------------------------------------------------
-file = '/home/leasanchez/programmation/Simu_Marche_Casadi/Resultats/equincocont01/RES/Stance/equincocont01_stance.txt'
+file = params.save_dir + 'Gait/' + params.name_subject + '_gait_cv_2.txt'
 f = open(file, 'r')
 content = f.read()
 content_divide = content.split('\n')
@@ -34,6 +36,9 @@ if file.__contains__('stance'):
 elif file.__contains__('swing'):
     nbNoeuds = params.nbNoeuds_swing
     T = params.T_swing
+elif file.__contains__('impact'):
+    nbNoeuds = params.nbNoeuds + 1
+    T = params.T
 else:
     nbNoeuds = params.nbNoeuds
     T = params.T
@@ -97,6 +102,12 @@ ffcn_no_contact = Function("ffcn_no_contact",
                                    ["states", "controls", "parameters"],
                                    ["statesdot"]).expand()
 
+ffcn_impact = Function("ffcn_impact",
+                                   [x, u, p],
+                                   [Dynamics.ffcn_impact(x, u, p)],
+                                   ["states", "controls", "parameters"],
+                                   ["statesdot"]).expand()
+
 markers = Function("markers",
                    [x],
                    [params.model_stance.markers(x[:params.nbQ])],
@@ -153,7 +164,7 @@ for k in range(nbNoeuds):
     if file.__contains__('stance'):
         GRF[:, k] = compute_GRF(Xk, Uk, P)
         JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF[:, k], GRF_real_stance[:, k])
-        Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, Mk, M_real_stance[:, :, k])
+        Jm += Fcn_Objective.fcn_objective_markers_casadi_maxfoot(params.model_stance, params.wMa, params.wMt, Mk, M_real_stance[:, :, k])
         Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
 
         X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
@@ -164,11 +175,34 @@ for k in range(nbNoeuds):
 
         X_int = int_RK4(ffcn_no_contact, params, Xk, Uk, P)
         constraints += X[:, k + 1] - X_int
+
+    elif file.__contains__('impact'):
+        if k < params.nbNoeuds_stance:
+            GRF[:, k] = compute_GRF(Xk, Uk, P)
+            JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF[:, k], GRF_real_stance[:, k])
+            Jm += Fcn_Objective.fcn_objective_markers_casadi_maxfoot(params.model_stance, params.wMa, params.wMt, Mk,M_real_stance[:, :, k])
+            Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
+
+            X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
+            constraints += X[:, k + 1] - X_int
+        elif (k < (params.nbNoeuds_stance + params.nbNoeuds_swing)):
+            Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_swing, params.wMa, params.wMt, Mk, M_real_swing[:, :, (k - params.nbNoeuds_stance)])
+            Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, (k - params.nbNoeuds_stance)])
+
+            X_int = int_RK4(ffcn_no_contact, params, Xk, Uk, P)
+            constraints += X[:, k + 1] - X_int
+        else:
+            Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, Mk, M_real_swing[:, :, -1])
+            Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_swing[:, -1])
+
+            X_int = int_RK4(ffcn_impact, params, Xk, Uk, P)
+            constraints += X[:, k + 1] - X_int
+
     else:
         if k < params.nbNoeuds_stance:
             GRF[:, k] = compute_GRF(Xk, Uk, P)
             JR += Fcn_Objective.fcn_objective_GRF_casadi(params.wR, GRF[:, k], GRF_real_stance[:, k])
-            Jm += Fcn_Objective.fcn_objective_markers_casadi(params.model_stance, params.wMa, params.wMt, Mk,M_real_stance[:, :, k])
+            Jm += Fcn_Objective.fcn_objective_markers_casadi_maxfoot(params.model_stance, params.wMa, params.wMt, Mk,M_real_stance[:, :, k])
             Je += Fcn_Objective.fcn_objective_emg(params.wU, Uk, U_real_stance[:, k])
 
             X_int = int_RK4(ffcn_contact, params, Xk, Uk, P)
@@ -194,26 +228,38 @@ print('ground reaction forces : ' + str(JR))
 print('residual torques       : ' + str(Jt))
 
 if file.__contains__('gait'):
-    psu.plot_q(np.array(X[:params.nbQ, :]), T, nbNoeuds, gait=True, params=params)
-    psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds, gait=True, params=params)
-    psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds, gait=True, params=params)
+    if file.__contains__('impact'):
+        impact = True
+        U_real = np.hstack([U_real_stance[:, :-1], U_real_swing[:, :]])
+    else:
+        impact = False
+        U_real = np.hstack([U_real_stance[:, :-1], U_real_swing[:, :-1]])
+    # psu.plot_q(np.array(X[:params.nbQ, :]), T, nbNoeuds, gait=True, impact=impact, params=params)
+    psu.plot_q_muscod(np.array(X[:params.nbQ, :]), params, muscod, Gaitphase='gait')
+    psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds, gait=True, impact=impact, params=params)
+    psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds, gait=True, impact=impact, params=params)
     psu.plot_GRF(np.array(GRF[:, :params.nbNoeuds_stance + 1]), GRF_real_stance, params.T_stance, params.nbNoeuds_stance)
-    psu.plot_activation(params, np.array(U), np.hstack([U_real_stance[:, :-1], U_real_swing[:, :-1]]), T, nbNoeuds, gait = True)
+    # psu.plot_activation(params, np.array(U), U_real, T, nbNoeuds, gait=True, impact=impact)
+    psu.plot_activation_muscod(params, np.array(U), U_real, muscod, Gaitphase='gait', impact=impact)
+
     M_real          = np.zeros((3, params.nbMarker, (params.nbNoeuds + 1)))
     M_real[0, :, :] = np.hstack([M_real_stance[0, :, :-1], M_real_swing[0, :, :]])
     M_real[1, :, :] = np.hstack([M_real_stance[1, :, :-1], M_real_swing[1, :, :]])
     M_real[2, :, :] = np.hstack([M_real_stance[2, :, :-1], M_real_swing[2, :, :]])
     psu.plot_markers(nbNoeuds, M, M_real)
 else:
-    psu.plot_q(np.array(X[:params.nbQ, :]), T, nbNoeuds)
-    psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds)
-    psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
     if file.__contains__('stance'):
-        psu.plot_activation(params, np.array(U), U_real_stance[:, :-1], T, nbNoeuds)
+        psu.plot_q_muscod(np.array(X[:params.nbQ, :]), params, muscod, Gaitphase='stance')
+        psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds)
+        psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
+        psu.plot_activation_muscod(params, np.array(U), U_real_stance[:, :-1], muscod, Gaitphase='stance')
         psu.plot_GRF(np.array(GRF), GRF_real_stance, T, nbNoeuds)
         psu.plot_markers(nbNoeuds, M, M_real_stance)
     else:
-        psu.plot_activation(params, np.array(U), U_real_swing[:, :-1], T, nbNoeuds)
+        psu.plot_q_muscod(np.array(X[:params.nbQ, :]), params, muscod, Gaitphase='swing')
+        psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds)
+        psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
+        psu.plot_activation_muscod(params, np.array(U), U_real_stance[:, :-1], muscod, Gaitphase='stance')
         psu.plot_markers(nbNoeuds, M, M_real_swing)
 
 print('0')
