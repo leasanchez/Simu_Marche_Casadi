@@ -37,10 +37,43 @@ def load_initialguess_muscularExcitation(U_real):
     U0[14, :] = U_real[2, :]  # gas_lat_r
     U0[15, :] = U_real[1, :]  # soleus_r
     U0[16, :] = U_real[0, :]  # tib_ant_r
-
     return U0
 
-def load_initialguess_q(params, GaitPhase):  # A MODIFIER !!
+def load_initialguess_muscularExcitation_2(U_real):
+    # Create initial vector for muscular excitation (nbNoeuds x nbMus)
+    # Based on EMG from the c3d file
+
+    # INPUT
+    # U_real          = muscular excitation from the c3d file
+
+    # OUTPUT
+    # U0             = initial guess for muscular excitation (3 x nbNoeuds)
+
+    nbNoeuds = len(U_real[0, :])
+    nbMus    = len(U_real[:, 0])
+
+    U0 = np.zeros((nbMus + 7, nbNoeuds))
+
+    U0[0, :]  = U_real[9, :]  # glut_max1_r
+    U0[1, :]  = np.zeros(nbNoeuds) + 0.1 # glut_max2_r
+    U0[2, :]  = np.zeros(nbNoeuds) + 0.1  # glut_max3_r
+    U0[3, :]  = np.zeros(nbNoeuds) + 0.1  # glut_med1_r
+    U0[4, :]  = U_real[8, :]  # glut_med2_r
+    U0[5, :]  = np.zeros(nbNoeuds) + 0.1  # glut_med3_r
+    U0[6, :]  = np.zeros(nbNoeuds) + 0.1  # semimem_r
+    U0[7, :]  = U_real[7, :]  # semiten_r
+    U0[8, :]  = U_real[6, :]  # bi_fem_r
+    U0[9, :]  = U_real[5, :]  # rectus_fem_r
+    U0[10, :] = U_real[4, :]  # vas_med_r
+    U0[11, :] = np.zeros(nbNoeuds) + 0.1  # vas_int_r
+    U0[12, :] = np.zeros(nbNoeuds) + 0.1  # vas_lat_r
+    U0[13, :] = U_real[3, :]  # gas_med_r
+    U0[14, :] = U_real[2, :]  # gas_lat_r
+    U0[15, :] = U_real[1, :]  # soleus_r
+    U0[16, :] = U_real[0, :]  # tib_ant_r
+    return U0
+
+def load_initialguess_q(params, GaitPhase):
     # Create initial vector for joint position (nbNoeuds x nbQ)
     # Based on Kalman filter??
 
