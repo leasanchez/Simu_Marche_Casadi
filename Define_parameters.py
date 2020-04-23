@@ -16,8 +16,8 @@ class Parameters():
         self.nbContact = self.model_stance.nbContacts()                       # number of contact (2 forces --> plan)
 
         # SET PROBLEME PARAMETERS
-        self.nbNoeuds_stance = 25                                             # shooting points for stance phase
-        self.nbNoeuds_swing  = 25                                             # shooting points for swing phase
+        self.nbNoeuds_stance = 50                                             # shooting points for stance phase
+        self.nbNoeuds_swing  = 40                                             # shooting points for swing phase
         self.nbNoeuds        = self.nbNoeuds_stance + self.nbNoeuds_swing     # total shooting points
 
         self.nbU      = self.nbMus + self.nbQ                                 # number of controls : muscle activation + articular torque (residual torque)
@@ -27,15 +27,15 @@ class Parameters():
         self.nkutta   = 4                                                     # number of iteration for integration
 
         # SET WEIGHTING FACTORS
-        self.wL  = 1                                                          # activation
+        self.wL  = 0.01                                                          # activation
         self.wMa = 30                                                         # anatomical marker
-        self.wMt = 100                                                         # technical marker
+        self.wMt = 50                                                         # technical marker
         self.wU  = 1                                                          # excitation
-        self.wR  = 0.05                                                       # ground reaction
-        self.wt  = 10                                                        # residual torques
+        self.wR  = 0.01                                                       # ground reaction
+        self.wt  = 100                                                        # residual torques
 
         # EXP DATAS
-        self.name_subject = 'equincocont02'
+        self.name_subject = 'equincocont01'
         self.file         = './DonneesMouvement/' + self.name_subject + '_out.c3d'
         self.kalman_file  = './DonneesMouvement/' + self.name_subject + '_out_MOD5000_leftHanded_GenderF_Florent_.Q2'
         self.save_dir     = './Resultats/' + self.name_subject + '/RES/'
