@@ -15,8 +15,8 @@ class Muscod():
         self.T_swing = 0.37
 
         self.t_stance = np.linspace(0, self.T_stance, self.nbNoeuds_stance + 1)
-        self.t_swing = self.T_stance + np.linspace(0, self.T_swing, self.nbNoeuds_swing + 1)
-        self.t = np.hstack([self.t_stance[:-1], self.t_swing])
+        self.t_swing = np.linspace(0, self.T_swing, self.nbNoeuds_swing + 1)
+        self.t = np.hstack([self.t_stance[:-1], self.T_stance + self.t_swing])
 
         self.U_muscod, self.X_muscod, self.P_muscod = self.Read_MUSCOD()
 

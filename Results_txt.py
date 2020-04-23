@@ -114,6 +114,12 @@ markers = Function("markers",
                    ["states"],
                    ["markers"]).expand()
 
+CoM = Function("CoM",
+               [x],
+               [params.model_stance.CoM(x[:params.nbQ]).to_mx()],
+               ["states"],
+               ["CoM"]).expand()
+
 def RK_intervall(fun, params, x, u, p):
     nkutta = params.nkutta
     if fun.name() == 'ffcn_contact':
@@ -148,6 +154,7 @@ Jt = 0
 constraints = 0
 GRF = DM.zeros(2, params.nbNoeuds_stance + 1)
 M = []
+COM = []
 x_int_interval = DM.zeros(params.nbX, (params.nbNoeuds_swing + 1) * 3)
 
 for k in range(nbNoeuds):
@@ -157,7 +164,9 @@ for k in range(nbNoeuds):
 
     # OBJECTIVE FUNCTION
     Mk= markers(Xk)
+    CoMk = CoM(Xk)
     M.append(Mk)
+    COM.append(CoMk)
     Ja += Fcn_Objective.fcn_objective_activation(params.wL, Uk)
     Jt += Fcn_Objective.fcn_objective_residualtorque(params.wt, Uk[params.nbMus:])
 
@@ -246,7 +255,7 @@ if file.__contains__('gait'):
     M_real[0, :, :] = np.hstack([M_real_stance[0, :, :-1], M_real_swing[0, :, :]])
     M_real[1, :, :] = np.hstack([M_real_stance[1, :, :-1], M_real_swing[1, :, :]])
     M_real[2, :, :] = np.hstack([M_real_stance[2, :, :-1], M_real_swing[2, :, :]])
-    psu.plot_markers(nbNoeuds, M, M_real)
+    psu.plot_markers(nbNoeuds, M, M_real, COM)
 else:
     if file.__contains__('stance'):
         psu.plot_q_muscod(np.array(X[:params.nbQ, :]), params, muscod, Gaitphase='stance')
@@ -254,13 +263,13 @@ else:
         psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
         psu.plot_activation_muscod(params, np.array(U), U_real_stance[:, :-1], muscod, Gaitphase='stance')
         psu.plot_GRF(np.array(GRF), GRF_real_stance, T, nbNoeuds)
-        psu.plot_markers(nbNoeuds, M, M_real_stance)
+        psu.plot_markers(nbNoeuds, M, M_real_stance, COM)
     else:
         psu.plot_q_muscod(np.array(X[:params.nbQ, :]), params, muscod, Gaitphase='swing')
         psu.plot_dq(np.array(X[params.nbQ:, :]), T, nbNoeuds)
         psu.plot_torque(np.array(U[params.nbMus:, :]), T, nbNoeuds)
-        psu.plot_activation_muscod(params, np.array(U), U_real_stance[:, :-1], muscod, Gaitphase='stance')
-        psu.plot_markers(nbNoeuds, M, M_real_swing)
+        psu.plot_activation_muscod(params, np.array(U), U_real_swing[:, :-1], muscod, Gaitphase='swing')
+        psu.plot_markers(nbNoeuds, M, M_real_swing, COM)
 
 print('0')
 
