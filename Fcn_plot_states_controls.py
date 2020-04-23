@@ -68,13 +68,13 @@ def plot_q_muscod(q, params, muscod, Gaitphase = 'gait', impact = False):
         axes[i].grid = True
         if (i < 2):
             axes[i].plot(t, q[i, :], 'b+', Label='simu')
-            axes[i].plot(t_muscod, q_muscod[i, :], 'r+', Label='muscod')
+            axes[i].plot(t_muscod, q_muscod[i, :], 'g+', Label='muscod')
             axes[i].set_ylabel('position (m)')
         else:
             q[i, :] = q[i, :] * 180 / np.pi
             q_muscod[i, :] = q_muscod[i, :] * 180 / np.pi
             axes[i].plot(t, q[i, :], 'b+',  Label='simu')
-            axes[i].plot(t_muscod, q_muscod[i, :], 'r+', Label='muscod')
+            axes[i].plot(t_muscod, q_muscod[i, :], 'g+', Label='muscod')
             axes[i].set_ylabel('angle (deg)')
         if Gaitphase == 'gait':
             axes[i].plot([params.T_stance, params.T_stance], [min(q[i, :]), max(q[i, :])], 'k:')
@@ -371,11 +371,12 @@ def plot_GRF(GRF, GRF_real, T, nbNoeuds):
     fig.tight_layout()
     plt.show(block=False)
 
-def plot_markers(nbNoeuds, M, M_real):
+def plot_markers(nbNoeuds, M, M_real, COM):
     # PLOT ARTIFICIAL SEGMENTS TO FOLLOW LEG MOVEMENT
     plt.figure()
     for k_stance in range(nbNoeuds):
         Mk = M[k_stance]
+        CoM = COM[k_stance]
         M_aff = np.zeros((3, 5))
         M_aff[:, 0] = np.array(Mk[:, 2]).squeeze()
         M_aff[:, 1] = np.array(Mk[:, 4]).squeeze()
@@ -384,6 +385,7 @@ def plot_markers(nbNoeuds, M, M_real):
         M_aff[:, 4] = np.array(Mk[:, 22]).squeeze()
         plt.plot(M_aff[0, :], M_aff[2, :], 'bo-', alpha=0.5)
         # plt.plot(np.array(Mk[0, -1]), np.array(Mk[2, -1]), 'g+',)
+        plt.plot(np.array(CoM[0]), np.array(CoM[2]), 'g+', markersize=10)
         plt.plot([M_real[0, 2, k_stance], M_real[0, 4, k_stance], M_real[0, 11, k_stance], M_real[0, 19, k_stance],
                   M_real[0, 22, k_stance]],
                  [M_real[2, 2, k_stance], M_real[2, 4, k_stance], M_real[2, 11, k_stance], M_real[2, 19, k_stance],
