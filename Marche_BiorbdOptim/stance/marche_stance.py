@@ -81,13 +81,16 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
-    final_time = 0.605
     n_shooting_points = 25
     Gaitphase = 'stance'
 
     # Generate data from file
-    from marche.LoadData import load_data_markers, load_data_q, load_data_emg
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
+
     name_subject = "equincocont01"
+    grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
+    final_time = T_stance
+
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
@@ -99,12 +102,13 @@ if __name__ == "__main__":
             idx_emg += 1
 
     # Track these data
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")  # To allow for non free variable, the model must be reloaded
+    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
         n_shooting_points,
         markers_ref,
+        activation_ref,
         show_online_optim=False,
     )
 
