@@ -136,21 +136,42 @@ if __name__ == "__main__":
     n_mark = ocp.nlp[0]["model"].nbMarkers()
     n_frames = q.shape[1]
 
-    markers = np.ndarray((3, n_mark, q.shape[1]))
-    markers_func = []
-    for i in range(n_mark):
-        markers_func.append(
-            Function(
-                "ForwardKin",
-                [ocp.symbolic_states],
-                [biorbd_model.marker(ocp.symbolic_states[:n_q], i).to_mx()],
-                ["q"],
-                ["marker_" + str(i)],
-            ).expand()
-        )
-    for i in range(n_frames):
-        for j, mark_func in enumerate(markers_func):
-            markers[:, j, i] = np.array(mark_func(np.append(q[:, i], qdot[:, i]))).squeeze()
+    # markers = np.ndarray((3, n_mark, q.shape[1]))
+    # markers_func = []
+    # for i in range(n_mark):
+    #     markers_func.append(
+    #         Function(
+    #             "ForwardKin",
+    #             [ocp.symbolic_states],
+    #             [biorbd_model.marker(ocp.symbolic_states[:n_q], i).to_mx()],
+    #             ["q"],
+    #             ["marker_" + str(i)],
+    #         ).expand()
+    #     )
+    # for i in range(n_frames):
+    #     for j, mark_func in enumerate(markers_func):
+    #         markers[:, j, i] = np.array(mark_func(np.append(q[:, i], qdot[:, i]))).squeeze()
+
+
+    # --- Plot --- #
+    figure, axes = plt.subplots(3, biorbd_model.nbQ())
+    axes = axes.flatten()
+    for i in range(biorbd_model.nbQ()):
+        axes[i].plot(t, q[i, :])
+        axes[i].plot(t, q_ref[i, :], 'r')
+        axes[i + biorbd_model.nbQ()].plot(t, qdot[i, :])
+        axes[i + 2*biorbd_model.nbQ()].plot(t, tau[i, :])
+
+    figure2, axes2 = plt.subplots(4, 5)
+    axes2 = axes2.flatten()
+    for i in range(biorbd_model.nbMuscleTotal()):
+        axes2[i].plot(t[:-1], activation_ref[i, :], 'r')
+        axes2[i].plot(t[:-1], mus[i, :-1])
+
+    plt.figure('Contact forces')
+    plt.plot(t, contact_forces.T, 'b')
+    plt.plot(t, grf_ref.T, 'r')
+
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
