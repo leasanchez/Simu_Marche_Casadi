@@ -115,8 +115,23 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     sol = ocp.solve()
 
-    # # --- Show the results --- #
+    # --- Compute ground reaction forces --- #
+    contact_forces = np.zeros((2, ocp.nlp[0]["ns"] + 1))
+    CS_func = Function(
+        "Contact_force",
+        [ocp.symbolic_states, ocp.symbolic_controls],
+        [ocp.nlp[0]["model"].getConstraints().getForce().to_mx()],
+        ["x", "u"],
+        ["CS"],
+    ).expand()
+
     q, qdot, tau, mus = ProblemType.get_data_from_V(ocp, sol["x"])
+    x = vertcat(q, qdot)
+    u = vertcat(tau, mus)
+    contact_forces[:, : ocp.nlp[0]["ns"] + 1] = CS_func(x, u)
+
+
+    # --- Show the results --- #
     n_q = ocp.nlp[0]["model"].nbQ()
     n_mark = ocp.nlp[0]["model"].nbMarkers()
     n_frames = q.shape[1]
