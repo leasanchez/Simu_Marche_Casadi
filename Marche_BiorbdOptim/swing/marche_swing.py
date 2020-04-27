@@ -1,19 +1,23 @@
-from scipy.integrate import solve_ivp
 import numpy as np
-import biorbd
 from casadi import MX, Function
 from matplotlib import pyplot as plt
 import sys
 
 sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
-from biorbd_optim import OptimalControlProgram
-from biorbd_optim.mapping import Mapping
-from biorbd_optim.dynamics import Dynamics
-from biorbd_optim.plot import PlotOcp
-from biorbd_optim.problem_type import ProblemType
-from biorbd_optim.objective_functions import ObjectiveFunction
-from biorbd_optim.path_conditions import Bounds, QAndQDotBounds, InitialConditions
-# from biorbd_optim.plot import ShowResult
+import biorbd
+
+from biorbd_optim import (
+    Instant,
+    OptimalControlProgram,
+    ProblemType,
+    Objective,
+    Constraint,
+    Bounds,
+    QAndQDotBounds,
+    InitialConditions,
+    ShowResult,
+    OdeSolver,
+)
 
 def prepare_ocp(
     biorbd_model,
@@ -29,13 +33,14 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = (
-        {"type": ObjectiveFunction.minimize_torque, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": ObjectiveFunction.minimize_muscle, "weight": 1, "data_to_track":activation_ref.T},
-        {"type": ObjectiveFunction.minimize_markers, "weight": 100, "data_to_track": markers_ref}
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref}
     )
 
     # Dynamics
-    variable_type = ProblemType.muscles_and_torque_driven
+    variable_type = ProblemType.muscle_activations_and_torque_driven
+    # variable_type = ProblemType.muscle_excitations_and_torque_driven # excitation
 
     # Constraints
     constraints = ()
@@ -140,9 +145,10 @@ if __name__ == "__main__":
     figure2, axes2 = plt.subplots(4, 5)
     axes2 = axes2.flatten()
     for i in range(biorbd_model.nbMuscleTotal()):
-        axes2[i].plot(t[:-1], activation_ref[i, :])
+        axes2[i].plot(t[:-1], activation_ref[i, :], 'r')
+        axes2[i].plot(t[:-1], mus[i, :-1])
 
-    # # --- Show results --- #
-    # result = ShowResult(ocp, sol)
-    # result.animate(show_meshes=False)
-    # result.graphs()
+    # --- Show results --- #
+    result = ShowResult(ocp, sol)
+    result.animate(show_meshes=False)
+    result.graphs()

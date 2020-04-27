@@ -1,18 +1,24 @@
 from scipy.integrate import solve_ivp
 import numpy as np
-import biorbd
-from casadi import MX, Function
+from casadi import MX, Function, vertcat
 from matplotlib import pyplot as plt
+import sys
 
-from biorbd_optim import OptimalControlProgram
-from biorbd_optim.mapping import Mapping
-from biorbd_optim.dynamics import Dynamics
-from biorbd_optim.plot import PlotOcp
-from biorbd_optim.problem_type import ProblemType
-from biorbd_optim.objective_functions import ObjectiveFunction
-from biorbd_optim.path_conditions import Bounds, QAndQDotBounds, InitialConditions
-from biorbd_optim.plot import ShowResult
+sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
+import biorbd
 
+from biorbd_optim import (
+    Instant,
+    OptimalControlProgram,
+    ProblemType,
+    Objective,
+    Constraint,
+    Bounds,
+    QAndQDotBounds,
+    InitialConditions,
+    ShowResult,
+    OdeSolver,
+)
 
 
 def prepare_ocp(
@@ -27,11 +33,11 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-    objective_functions = [
-        {"type": ObjectiveFunction.minimize_torque, "weight": 1, "controls_idx": [3, 4, 5]},
-        # {"type": ObjectiveFunction.minimize_muscle, "weight": 1, "data_to_track": activation_ref.T},
-        {"type": ObjectiveFunction.minimize_markers, "weight": 100, "data_to_track": markers_ref}
-    ]
+    objective_functions = (
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref}
+    )
 
     # Dynamics
     variable_type = ProblemType.muscles_and_torque_driven_with_contact
