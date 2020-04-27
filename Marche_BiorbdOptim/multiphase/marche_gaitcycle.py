@@ -30,6 +30,7 @@ def prepare_ocp(
     show_online_optim,
 ):
     # Problem parameters
+    nb_phases = len(biorbd_model)
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
@@ -41,7 +42,10 @@ def prepare_ocp(
     )
 
     # Dynamics
-    variable_type = ProblemType.muscles_and_torque_driven_with_contact
+    problem_type = (
+        ProblemType.muscle_activations_and_torque_driven,
+        ProblemType.muscles_and_torque_driven_with_contact,
+    )
 
     # Constraints
     constraints = ()
@@ -65,7 +69,7 @@ def prepare_ocp(
 
     return OptimalControlProgram(
         biorbd_model,
-        variable_type,
+        problem_type,
         nb_shooting,
         final_time,
         objective_functions,
@@ -80,10 +84,15 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
-    final_time = 0.605
-    n_shooting_points = 25
-    Gaitphase = 'stance'
+    # Model path
+    biorbd_model = (
+        biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
+        biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+    )
+
+    # Problem parameters
+    number_shooting_points = [25, 25]
+    Gaitphase = 'cycle'
 
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg
@@ -99,7 +108,10 @@ if __name__ == "__main__":
             idx_emg += 1
 
     # Track these data
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = (
+        biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
+        biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+    )
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
