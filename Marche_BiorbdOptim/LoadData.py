@@ -133,10 +133,19 @@ def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitP
     [start, stop_stance, stop] = Get_Event(c3d_file)
 
     # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
-    t      = np.linspace(0, T, int(stop - stop_stance) + 1)
-    node_t = np.linspace(0, T, nbNoeuds + 1)
-    f      = interp1d(t, Q_real[:, int(stop_stance): int(stop) + 1], kind='cubic')
-    q_ref  = f(node_t)
+    if GaitPhase == 'stance':
+        t      = np.linspace(0, T, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
+        f      = interp1d(t, Q_real[:, int(start): int(stop_stance) + 1], kind='cubic')
+        q_ref  = f(node_t)
+    elif GaitPhase == 'swing':
+        t      = np.linspace(0, T, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, T, nbNoeuds + 1)
+        f      = interp1d(t, Q_real[:, int(stop_stance): int(stop) + 1], kind='cubic')
+        q_ref  = f(node_t)
+    else:
+        raise RuntimeError("Gaitphase doesn't exist")
+
     return q_ref
 
 def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
