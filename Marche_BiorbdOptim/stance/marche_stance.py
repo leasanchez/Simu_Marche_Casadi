@@ -26,7 +26,8 @@ def prepare_ocp(
     final_time,
     nb_shooting,
     markers_ref,
-    show_online_optim=False,
+    activation_ref,
+    show_online_optim,
 ):
     # Problem parameters
     torque_min, torque_max, torque_init = -1000, 1000, 0
@@ -90,6 +91,12 @@ if __name__ == "__main__":
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
+    activation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points))
+    idx_emg = 0
+    for i in range(biorbd_model.nbMuscleTotal()):
+        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
+            activation_ref[i, :] = emg_ref[idx_emg, :-1]
+            idx_emg += 1
 
     # Track these data
     biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")  # To allow for non free variable, the model must be reloaded
