@@ -26,6 +26,33 @@ def Get_Event(file):
 
     return start, stop_stance, stop
 
+def GetForces(file):
+    measurements  = c3d(file)
+    analog        = measurements['data']['analogs']
+    labels_analog = measurements['parameters']['ANALOG']['LABELS']['value']
+    nbPF          = measurements['parameters']['FORCE_PLATFORM']['USED']['value'][0][0]
+
+    F = np.zeros((len(analog[0, 0,:]), 3, nbPF))
+    for p in range(nbPF):
+        F[:, 0, p] = analog[0, labels_analog.index("Fx" + str(p + 1)), :].squeeze()  # Fx
+        F[:, 1, p] = analog[0, labels_analog.index("Fy" + str(p + 1)), :].squeeze()  # Fy
+        F[:, 2, p] = analog[0, labels_analog.index("Fz" + str(p + 1)), :].squeeze()  # Fz
+
+    return F
+
+def GetGroundReactionForces(file):
+    measurements  = c3d(file)
+    analog        = measurements['data']['analogs']
+    labels_analog = measurements['parameters']['ANALOG']['LABELS']['value']
+    nbPF          = measurements['parameters']['FORCE_PLATFORM']['USED']['value'][0][0]
+
+    GRF = np.zeros((len(analog[0, 0,:]), 3, nbPF))
+    for p in range(nbPF):
+        GRF[:, 0, p] = analog[0, labels_analog.index("Fx" + str(p + 1)), :].squeeze()    # Fx
+        GRF[:, 1, p] = analog[0, labels_analog.index("Fy" + str(p + 1)), :].squeeze()    # Fy
+        GRF[:, 2, p] = - analog[0, labels_analog.index("Fz" + str(p + 1)), :].squeeze()  # Fz
+    return GRF
+
 def load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
     file = "../DonnesMvt/" + name_subject + "_out.c3d"
@@ -161,3 +188,40 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
     emg_ref[emg_ref > 1]  = 1
 
     return emg_ref
+
+def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
+    # Load c3d file and get the muscular excitation from emg
+    file = "../DonnesMvt/" + name_subject + "_out.c3d"
+    nbMuscle = biorbd_model.nbMuscleTotal()
+    nbNoeuds = n_shooting_points
+
+    # LOAD C3D FILE
+    measurements = c3d(file)
+    freq         = measurements['parameters']['ANALOG']['RATE']['value'][0]
+
+    # GET GROUND REACTION WRENCHES
+    GRW = GetGroundReactionForces(file)
+
+    [start, stop_stance, stop] = Get_Event(file)
+
+    # time
+    T        = 1/freq * (int(stop) - int(start) + 1)
+    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)  # point stop stance inclus
+    T_swing  = 1/freq * (int(stop) - int(stop_stance) + 1)
+
+    # FIND FORCE PLATFORM FOR RIGHT FOOT -- GET FORCES FOR MODEL
+    P1 = sum(GRW[int(start): int(stop_stance) + 1, 2, 0])
+    P2 = sum(GRW[int(start): int(stop_stance) + 1, 2, 1])
+
+    if P1 > P2 :
+        GRF = GRW[:, :, 0].T
+    else:
+        GRF = GRW[:, :, 1].T
+
+    # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+    t_stance = np.linspace(0, T_stance, int(stop_stance - start) + 1)
+    node_t_stance = np.linspace(0, T_stance, nbNoeuds + 1)
+    f_stance = interp1d(t_stance, GRF[:, int(start): int(stop_stance) + 1], kind='cubic')
+    GRF_real = f_stance(node_t_stance)
+
+    return GRF_real, T, T_stance, T_swing
