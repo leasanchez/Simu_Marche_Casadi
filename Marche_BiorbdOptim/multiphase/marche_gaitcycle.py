@@ -95,16 +95,32 @@ if __name__ == "__main__":
     Gaitphase = 'cycle'
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
+
     name_subject = "equincocont01"
-    t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    activation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points))
+    grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, number_shooting_points[0])
+    phase_time = [T_stance, T_swing]
+
+    # phase stance
+    t_stance, markers_ref_stance = load_data_markers(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
+    q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
+    emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
+    activation_ref_stance = np.zeros((biorbd_model[0].nbMuscleTotal(), number_shooting_points[0]))
     idx_emg = 0
-    for i in range(biorbd_model.nbMuscleTotal()):
+    for i in range(biorbd_model[0].nbMuscleTotal()):
         if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref[i, :] = emg_ref[idx_emg, :-1]
+            activation_ref_stance[i, :] = emg_ref_stance[idx_emg, :-1]
+            idx_emg += 1
+
+    # phase stance
+    t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
+    q_ref_swing = load_data_q(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
+    emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
+    activation_ref_swing = np.zeros((biorbd_model[1].nbMuscleTotal(), number_shooting_points[1]))
+    idx_emg = 0
+    for i in range(biorbd_model[0].nbMuscleTotal()):
+        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
+            activation_ref_swing[i, :] = emg_ref_swing[idx_emg, :-1]
             idx_emg += 1
 
     # Track these data
@@ -114,10 +130,10 @@ if __name__ == "__main__":
     )
     ocp = prepare_ocp(
         biorbd_model,
-        final_time,
-        n_shooting_points,
-        markers_ref,
-        activation_ref,
+        phase_time,
+        number_shooting_points,
+        markers_ref = [markers_ref_stance, markers_ref_swing],
+        activation_ref = [activation_ref_stance, activation_ref_swing],
         show_online_optim=False,
     )
 
