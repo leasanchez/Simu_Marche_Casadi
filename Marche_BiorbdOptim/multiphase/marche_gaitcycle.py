@@ -1,5 +1,5 @@
 import numpy as np
-from casadi import MX, Function
+from casadi import MX, Function, vertcat
 from matplotlib import pyplot as plt
 import sys
 
@@ -56,19 +56,22 @@ def prepare_ocp(
     constraints = ()
 
     # Path constraint
-    X_bounds = QAndQDotBounds(biorbd_model)
+    X_bounds = [QAndQDotBounds(biorbd_model[i])for i in range(nb_phases)]
 
     # Initial guess
-    X_init = InitialConditions([0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()))
+    X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()))for i in range(nb_phases)]
 
     # Define control path constraint
-    U_bounds = Bounds(
-        [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
-        [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
+    U_bounds = [
+        Bounds(
+        min_bound = [torque_min] * biorbd_model[i].nbGeneralizedTorque() + [activation_min] * biorbd_model[i].nbMuscleTotal(),
+        max_bound = [torque_max] * biorbd_model[i].nbGeneralizedTorque() + [activation_max] * biorbd_model[i].nbMuscleTotal(),
     )
-    U_init = InitialConditions(
-        [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    )
+        for i in range(nb_phases)]
+
+    U_init = [ InitialConditions(
+        [torque_init] * biorbd_model[i].nbGeneralizedTorque() + [activation_init] * biorbd_model[i].nbMuscleTotal()
+    ) for i in range(nb_phases)]
 
     # ------------- #
 
