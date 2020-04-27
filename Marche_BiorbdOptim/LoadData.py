@@ -57,8 +57,6 @@ def load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points,
     # Load c3d file and get the muscular excitation from emg
     file = "../DonnesMvt/" + name_subject + "_out.c3d"
     nbMarker = biorbd_model.nbMarkers()
-    T = final_time
-    nbNoeuds = n_shooting_points
 
     # LOAD C3D FILE
     measurements   = c3d(file)
@@ -104,13 +102,13 @@ def load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points,
 
     # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR THE SWING PHASE
     if GaitPhase == 'stance':
-        t = np.linspace(0, T, int(stop_stance - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, final_time, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f = interp1d(t, markers[:, :, int(start): int(stop_stance) + 1], kind='cubic')
         markers_ref = f(node_t)
     elif GaitPhase == 'swing':
-        t = np.linspace(0, T, int(stop - stop_stance) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, final_time, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f = interp1d(t, markers[:, :, int(stop_stance): int(stop) + 1], kind='cubic')
         markers_ref = f(node_t)
     else:
@@ -123,8 +121,6 @@ def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitP
     # Based on Kalman filter??
     c3d_file = "../DonnesMvt/" + name_subject + "_out.c3d"
     kalman_file = "../DonnesMvt/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
-    T        = final_time
-    nbNoeuds = n_shooting_points
 
     # LOAD MAT FILE FOR GENERALIZED COORDINATES
     kalman = sio.loadmat(kalman_file)
@@ -134,13 +130,13 @@ def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitP
 
     # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
     if GaitPhase == 'stance':
-        t      = np.linspace(0, T, int(stop_stance - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t      = np.linspace(0, final_time, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f      = interp1d(t, Q_real[:, int(start): int(stop_stance) + 1], kind='cubic')
         q_ref  = f(node_t)
     elif GaitPhase == 'swing':
-        t      = np.linspace(0, T, int(stop - stop_stance) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t      = np.linspace(0, final_time, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f      = interp1d(t, Q_real[:, int(stop_stance): int(stop) + 1], kind='cubic')
         q_ref  = f(node_t)
     else:
@@ -152,8 +148,6 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
     # Load c3d file and get the muscular excitation from emg
     file = "../DonnesMvt/" + name_subject + "_out.c3d"
     nbMuscle = biorbd_model.nbMuscleTotal()
-    T = final_time
-    nbNoeuds = n_shooting_points
 
     # LOAD C3D FILE
     measurements  = c3d(file)
@@ -179,13 +173,13 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
 
     # INTERPOLATE AND GET REAL MUSCULAR EXCITATION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     if GaitPhase == 'stance':
-        t = np.linspace(0, T, int(stop_stance - start) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, final_time, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind='cubic')
         emg_ref = f(node_t)
     elif GaitPhase == 'swing':
-        t = np.linspace(0, T, int(stop - stop_stance) + 1)
-        node_t = np.linspace(0, T, nbNoeuds + 1)
+        t = np.linspace(0, final_time, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
         f = interp1d(t, EMG[:, int(stop_stance): int(stop) + 1], kind='cubic')
         emg_ref = f(node_t)
     else:
@@ -201,7 +195,6 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
 def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # Load c3d file and get the muscular excitation from emg
     file = "../DonnesMvt/" + name_subject + "_out.c3d"
-    nbMuscle = biorbd_model.nbMuscleTotal()
     nbNoeuds = n_shooting_points
 
     # LOAD C3D FILE
