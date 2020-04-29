@@ -27,6 +27,7 @@ def prepare_ocp(
     nb_shooting,
     markers_ref,
     activation_ref,
+    grf_ref,
     show_online_optim,
 ):
     # Problem parameters
@@ -37,7 +38,8 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
         {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref}
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T}
     )
 
     # Dynamics
@@ -109,6 +111,7 @@ if __name__ == "__main__":
         n_shooting_points,
         markers_ref,
         activation_ref,
+        grf_ref=grf_ref[1:, :],
         show_online_optim=False,
     )
 
@@ -135,23 +138,6 @@ if __name__ == "__main__":
     n_q = ocp.nlp[0]["model"].nbQ()
     n_mark = ocp.nlp[0]["model"].nbMarkers()
     n_frames = q.shape[1]
-
-    # markers = np.ndarray((3, n_mark, q.shape[1]))
-    # markers_func = []
-    # for i in range(n_mark):
-    #     markers_func.append(
-    #         Function(
-    #             "ForwardKin",
-    #             [ocp.symbolic_states],
-    #             [biorbd_model.marker(ocp.symbolic_states[:n_q], i).to_mx()],
-    #             ["q"],
-    #             ["marker_" + str(i)],
-    #         ).expand()
-    #     )
-    # for i in range(n_frames):
-    #     for j, mark_func in enumerate(markers_func):
-    #         markers[:, j, i] = np.array(mark_func(np.append(q[:, i], qdot[:, i]))).squeeze()
-
 
     # --- Plot --- #
     figure, axes = plt.subplots(3, biorbd_model.nbQ())
