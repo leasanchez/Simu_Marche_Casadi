@@ -51,6 +51,8 @@ segment pelvis
 		0	0	0	1
 	translations	xy
 	rotations	z
+    rangesQ -10 10 -0.5 1.5 -pi/4 pi/4
+    rangesQdot -2 2 -2 2 -5.2360 5.2360
 	mass	7.8384
 	inertia
 		0.058836	0	0
@@ -87,12 +89,14 @@ endmarker
 segment femur_r
 	parent pelvis
     RTinMatrix	1
-	RT 
+	RT
 		1	0	0	-0.083804
 		0	1	0	-0.09161
 		0	0	1	0.082232
 		0	0	0	1
 	rotations	z
+    rangesQ -pi/9 pi/3
+    rangesQdot -5.2360 5.2360
 	mass	9.8454
 	inertia
 		0.14317	0	0
@@ -144,12 +148,14 @@ endmarker
 segment tibia_r
 	parent femur_r
     RTinMatrix	1
-	RT 
+	RT
 		1	0	0	0
 		0	1	0	-0.3627
 		0	0	1	0
 		0	0	0	1
 	rotations	z
+    rangesQ -pi/2 0.0873
+    rangesQdot -5.2360 5.2360
 	mass	3.0385
 	inertia
 		0.027795	0	0
@@ -170,32 +176,32 @@ marker	R_TTC
 endmarker
 marker	R_Shank_Top
 	parent	tibia_r
-	position	-0.0325225	-0.190916	0.0504195 
+	position	-0.0325225	-0.190916	0.0504195
 	anatomical	1
 endmarker
 marker	R_Shank_Down
 	parent	tibia_r
-	position	-0.0251773	-0.26157	0.0481634 
+	position	-0.0251773	-0.26157	0.0481634
 	anatomical	1
 endmarker
 marker	R_Shank_Front
 	parent	tibia_r
-	position	0.0110749	-0.221199	0.0498432 
+	position	0.0110749	-0.221199	0.0498432
 	anatomical	1
 endmarker
 marker	R_Shank_Tibia
 	parent	tibia_r
-	position	0.0350151	-0.216442	-0.00246147 
+	position	0.0350151	-0.216442	-0.00246147
 	anatomical	1
 endmarker
 marker	R_FAL
 	parent	tibia_r
-	position	-0.0110108	-0.41033	0.0507917 
+	position	-0.0110108	-0.41033	0.0507917
 	anatomical	1
 endmarker
 marker	R_TAM
 	parent	tibia_r
-	position	0.00917708	-0.384122	-0.0353354 
+	position	0.00917708	-0.384122	-0.0353354
 	anatomical	1
 endmarker
 
@@ -206,7 +212,7 @@ endmarker
 segment patella_r
 	parent tibia_r
     RTinMatrix	1
-	RT 
+	RT
 		0.99916	0.041062	0	0.0496
 		-0.041062	0.99916	0	-0.022712
 		0	0	1	0.0024
@@ -228,12 +234,14 @@ endsegment
 segment talus_r
 	parent tibia_r
     RTinMatrix	1
-	RT 
+	RT
 		1	0	0	0
 		0	1	0	-0.42392
 		0	0	1	0
 		0	0	0	1
 	rotations	z
+    rangesQ -pi/3 pi/9
+    rangesQdot -5.2360 5.2360
 	mass	0.042104
 	inertia
 		2.7894e-06	0	0
@@ -245,13 +253,13 @@ endsegment
 // no marker
 
 // --------------------------------------------------------------------------------------------------------
-// Informations about foot_r segment 
+// Informations about foot_r segment
 // --------------------------------------------------------------------------------------------------------
 // ---- Segment
 segment foot_r
 	parent talus_r
     RTinMatrix	1
-	RT 
+	RT
 		1	0	0	-0.048617
 		0	1	0	-0.041819
 		0	0	1	0.0078952
@@ -273,7 +281,7 @@ endsegment
 segment foot_marker_r
 	parent foot_r
     RTinMatrix	1
-	RT 
+	RT
 		1	0	0	-0.019937
 		0	1	0	0.017944
 		0	0	1	-0.0099687
@@ -288,37 +296,37 @@ endsegment
 // ---- Markers
 marker	R_FCC
 	parent	foot_marker_r
-	position	0.0054278	0.00177226	0.00220395 
+	position	0.0054278	0.00177226	0.00220395
 	technical	1
 endmarker
 marker	R_FM1
 	parent	foot_marker_r
-	position	0.19973	-0.00594403	-0.0323195 
+	position	0.19973	-0.00594403	-0.0323195
 	technical	1
 endmarker
 marker	R_FMP1
 	parent	foot_marker_r
-	position	0.144628	0.00808546	-0.030874 
+	position	0.144628	0.00808546	-0.030874
 	technical	1
 endmarker
 marker	R_FM2
 	parent	foot_marker_r
-	position	0.200778	-0.00525585	0.0127656 
+	position	0.200778	-0.00525585	0.0127656
 	technical	1
 endmarker
 marker	R_FMP2
 	parent	foot_marker_r
-	position	0.135043	0.0244291	0.00583628 
+	position	0.135043	0.0244291	0.00583628
 	technical	1
 endmarker
 marker	R_FM5
 	parent	foot_marker_r
-	position	0.156485	-0.00712829	0.0638694 
+	position	0.156485	-0.00712829	0.0638694
 	technical	1
 endmarker
 marker	R_FMP5
 	parent	foot_marker_r
-	position	0.096359	0.00353103	0.0532144 
+	position	0.096359	0.00353103	0.0532144
 	technical	1
 endmarker
 // ---- Contact
@@ -327,11 +335,6 @@ contact    c_meta_r
 	position    0.200778 -0.02 0.0127656  //R_FM2_proj
 	axis    xz
 endcontact
-marker	contact_c_meta_r
-	parent	foot_marker_r
-	position	0.200778 -0.02 0.0127656 
-	technical	1
-endmarker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment
