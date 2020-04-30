@@ -5,3 +5,4 @@ Resultats/
 DonneesMouvements/
 
 .idea/
+*.npy
