@@ -18,8 +18,24 @@ from biorbd_optim import (
     InitialConditions,
     ShowResult,
     OdeSolver,
+    Dynamics,
 )
 
+def get_last_contact_forces(ocp, nlp, t, x, u, contacts_idx=(), data_to_track=()):
+    CS_func = Function(
+        "Contact_force",
+        [ocp.symbolic_states, ocp.symbolic_controls],
+        [
+            Dynamics.forces_from_forward_dynamics_torque_muscle_driven_with_contact(
+                ocp.symbolic_states, ocp.symbolic_controls, nlp
+            )
+        ],
+        ["x", "u"],
+        ["CS"],
+    ).expand()
+    force = CS_func(x[-1], u[-1])
+    val = force[contacts_idx] - data_to_track[t[-1], contacts_idx]
+    return val
 
 def prepare_ocp(
     biorbd_model,
@@ -37,9 +53,10 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":activation_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T}
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
+        {"type": Objective.Lagrange.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "instant": Instant.ALL}
     )
 
     # Dynamics
@@ -83,7 +100,7 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
-    n_shooting_points = 25
+    n_shooting_points = 35
     Gaitphase = 'stance'
 
     # Generate data from file
@@ -112,7 +129,7 @@ if __name__ == "__main__":
         markers_ref,
         activation_ref,
         grf_ref=grf_ref[1:, :],
-        show_online_optim=False,
+        show_online_optim=True,
     )
 
     # --- Solve the program --- #
@@ -156,7 +173,7 @@ if __name__ == "__main__":
 
     plt.figure('Contact forces')
     plt.plot(t, contact_forces.T, 'b')
-    plt.plot(t, grf_ref.T, 'r')
+    plt.plot(t, grf_ref[1:, :].T, 'r')
 
 
     # --- Show results --- #
