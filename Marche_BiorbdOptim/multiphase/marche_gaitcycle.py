@@ -1,5 +1,5 @@
 import numpy as np
-from casadi import MX, Function, vertcat
+from casadi import dot, Function, vertcat
 from matplotlib import pyplot as plt
 import sys
 
@@ -34,7 +34,7 @@ def get_last_contact_forces(ocp, nlp, t, x, u, data):
     ).expand()
     force = CS_func(x[-1], u[-1])
     val = force - data[t[-1], :]
-    return val
+    return dot(val, val)
 
 
 def prepare_ocp(
@@ -53,11 +53,11 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ((
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
         {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[0].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-        {"type": Objective.Lagrange.CUSTOM, "function": get_last_contact_forces, "data":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
+        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
@@ -138,7 +138,7 @@ if __name__ == "__main__":
             activation_ref_stance[i, :] = emg_ref_stance[idx_emg, :]
             idx_emg += 1
 
-    # phase stance
+    # phase swing
     t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     q_ref_swing = load_data_q(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         markers_ref = [markers_ref_stance, markers_ref_swing],
         activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     plt.figure('Contact forces')
     plt.plot(t, contact_forces.T, 'b')
     plt.plot(t, grf.T, 'r')
-    # plt.plot([T_stance, T_stance], [np.min(grf[2, :]), np.max(grf[2, :])], 'k--')
+    plt.plot([T_stance, T_stance], [np.min(grf[1, :]), np.max(grf[1, :])], 'k--')
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
