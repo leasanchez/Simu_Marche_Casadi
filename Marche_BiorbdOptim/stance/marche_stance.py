@@ -200,7 +200,10 @@ if __name__ == "__main__":
                        sum(hist_diff_track[2, :]) / nb_markers]
 
     # --- Plot --- #
-    figure, axes = plt.subplots(3, biorbd_model.nbQ())
+    def plot_control(ax, t, x, color='b'):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
     axes = axes.flatten()
     for i in range(biorbd_model.nbQ()):
         axes[i].plot(t, q[i, :])
@@ -208,11 +211,13 @@ if __name__ == "__main__":
         axes[i + biorbd_model.nbQ()].plot(t, qdot[i, :])
         axes[i + 2*biorbd_model.nbQ()].plot(t, tau[i, :])
 
-    figure2, axes2 = plt.subplots(4, 5)
+    figure2, axes2 = plt.subplots(4, 5, sharex=True)
     axes2 = axes2.flatten()
     for i in range(biorbd_model.nbMuscleTotal()):
-        axes2[i].plot(t[:-1], activation_ref[i, :], 'r')
-        axes2[i].plot(t[:-1], mus[i, :-1])
+        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
+        plot_control(axes2[i], t[:-1], activation_ref[i, :], color='r')
+        plot_control(axes2[i], t[:-1], mus[i, :-1])
+        axes2[i].set_title(name_mus)
 
     plt.figure('Contact forces')
     plt.plot(t, contact_forces.T, 'b')
