@@ -95,8 +95,8 @@ segment femur_r
 		0	0	1	0.082232
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/9 pi/3
-    rangesQdot -5.2360 5.2360
+    rangesQ -pi/9 pi/4
+    rangesQdot -4 4.5
 	mass	9.8454
 	inertia
 		0.14317	0	0
@@ -155,7 +155,7 @@ segment tibia_r
 		0	0	0	1
 	rotations	z
     rangesQ -pi/2 0.0873
-    rangesQdot -5.2360 5.2360
+    rangesQdot -7 7
 	mass	3.0385
 	inertia
 		0.027795	0	0
@@ -240,7 +240,7 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/3 pi/9
+    rangesQ -pi/6 pi/9
     rangesQdot -5.2360 5.2360
 	mass	0.042104
 	inertia
