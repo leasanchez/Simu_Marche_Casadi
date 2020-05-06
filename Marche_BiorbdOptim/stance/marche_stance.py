@@ -204,12 +204,14 @@ if __name__ == "__main__":
         nbPoints = len(np.array(x))
         for n in range(nbPoints - 1):
             ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+
+    figure, axes = plt.subplots(2,3)
     axes = axes.flatten()
     for i in range(biorbd_model.nbQ()):
+        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
+        axes[i].set_title(name_dof)
         axes[i].plot(t, q[i, :])
         axes[i].plot(t, q_ref[i, :], 'r')
-        axes[i + biorbd_model.nbQ()].plot(t, qdot[i, :])
-        axes[i + 2*biorbd_model.nbQ()].plot(t, tau[i, :])
 
     figure2, axes2 = plt.subplots(4, 5, sharex=True)
     axes2 = axes2.flatten()
