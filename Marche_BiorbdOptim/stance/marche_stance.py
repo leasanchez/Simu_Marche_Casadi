@@ -19,6 +19,7 @@ from biorbd_optim import (
     ShowResult,
     OdeSolver,
     Dynamics,
+    Data,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -133,8 +134,14 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     sol = ocp.solve()
 
+    # --- Get Results --- #
+    states, controls = Data.get_data_from_V(ocp, sol["x"])
+    q = states["q"].to_matrix()
+    q_dot = states["q_dot"].to_matrix()
+    tau = controls["tau"].to_matrix()
+    mus = controls["muscles"].to_matrix()
+
     # --- Compute ground reaction forces --- #
-    contact_forces = np.zeros((2, ocp.nlp[0]["ns"] + 1))
     CS_func = Function(
         "Contact_force",
         [ocp.symbolic_states, ocp.symbolic_controls],
@@ -143,16 +150,13 @@ if __name__ == "__main__":
         ["CS"],
     ).expand()
 
-    q, qdot, tau, mus = ProblemType.get_data_from_V(ocp, sol["x"])
-    x = vertcat(q, qdot)
+    x = vertcat(q, q_dot)
     u = vertcat(tau, mus)
-    contact_forces[:, : ocp.nlp[0]["ns"] + 1] = CS_func(x, u)
+    contact_forces = CS_func(x, u)
 
 
-    # --- Show the results --- #
-    n_q = ocp.nlp[0]["model"].nbQ()
-    n_mark = ocp.nlp[0]["model"].nbMarkers()
-    n_frames = q.shape[1]
+    markers_sol = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
+    markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
 
     # --- Plot --- #
     figure, axes = plt.subplots(3, biorbd_model.nbQ())
