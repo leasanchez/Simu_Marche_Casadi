@@ -17,6 +17,7 @@ from biorbd_optim import (
     InitialConditions,
     ShowResult,
     OdeSolver,
+    Data,
     Dynamics,
 )
 
@@ -62,8 +63,8 @@ def prepare_ocp(
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
         {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]})
-    )
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
+    ))
 
     # Dynamics
     problem_type = (
@@ -161,7 +162,7 @@ if __name__ == "__main__":
         markers_ref = [markers_ref_stance, markers_ref_swing],
         activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
-        show_online_optim=False,
+        show_online_optim=True,
     )
 
     # --- Solve the program --- #
@@ -170,13 +171,6 @@ if __name__ == "__main__":
     # --- Compute ground reaction forces --- #
     contact_forces = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     grf = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-    q_sol = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-    qdot_sol = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-    tau_sol = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-    mus_sol = np.zeros((biorbd_model[0].nbMuscleTotal(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-
-    q_ref = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-    activation_ref = np.zeros((biorbd_model[0].nbMuscleTotal(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
 
     CS_func = Function(
         "Contact_force",
@@ -185,30 +179,51 @@ if __name__ == "__main__":
         ["x", "u"],
         ["CS"],
     ).expand()
-    q, qdot, tau, mus = ProblemType.get_data_from_V(ocp, sol["x"], 0)
-    x = vertcat(q, qdot)
+    states, controls = Data.get_data_from_V(ocp, sol["x"])
+    q = states["q"].to_matrix(phase_idx=0)
+    q_dot = states["q_dot"].to_matrix(phase_idx=0)
+    tau = controls["tau"].to_matrix(phase_idx=0)
+    mus = controls["muscles"].to_matrix(phase_idx=0)
+
+    x = vertcat(q, q_dot)
     u = vertcat(tau, mus)
     contact_forces[:, : ocp.nlp[0]["ns"] + 1] = CS_func(x, u)
+    grf[:, : ocp.nlp[0]["ns"] + 1] = grf_ref[1:, :]
 
-    for i, nlp in enumerate(ocp.nlp):
-        q, q_dot, tau, mus = ProblemType.get_data_from_V(ocp, sol["x"], i)
-        x = vertcat(q, q_dot)
-        u = vertcat(mus, tau)
-        if i == 0:
-            grf[:, : nlp["ns"] + 1] = grf_ref[1:, :]
-            q_sol[:, : nlp["ns"] + 1] = q
-            qdot_sol[:, : nlp["ns"] + 1] = q_dot
-            tau_sol[:, : nlp["ns"] + 1] = tau
-            mus_sol[:, : nlp["ns"] + 1] = mus
-            q_ref[:, : nlp["ns"] + 1] = q_ref_stance
-            activation_ref[:, : nlp["ns"] + 1] = activation_ref_stance
-        else:
-            q_sol[:, ocp.nlp[i - 1]["ns"] : ocp.nlp[i - 1]["ns"] + nlp["ns"] + 1] = q
-            qdot_sol[:, ocp.nlp[i - 1]["ns"]: ocp.nlp[i - 1]["ns"] + nlp["ns"] + 1] = q_dot
-            tau_sol[:, ocp.nlp[i - 1]["ns"]: ocp.nlp[i - 1]["ns"] + nlp["ns"] + 1] = tau
-            mus_sol[:, ocp.nlp[i - 1]["ns"]: ocp.nlp[i - 1]["ns"] + nlp["ns"]+1] = mus
-            q_ref[:, ocp.nlp[i - 1]["ns"] : ocp.nlp[i - 1]["ns"] + nlp["ns"] + 1] = q_ref_swing
-            activation_ref[:, ocp.nlp[i - 1]["ns"]: ocp.nlp[i - 1]["ns"] + nlp["ns"] + 1] = activation_ref_swing
+    # --- Get Results --- #
+    q_ref = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+    activation_ref = np.zeros((biorbd_model[0].nbMuscleTotal(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+
+    q_sol = states["q"].to_matrix()         # no phase_idx = value for all phases
+    q_dot_sol = states["q_dot"].to_matrix()
+    tau_sol = controls["tau"].to_matrix()
+    mus_sol = controls["muscles"].to_matrix()
+
+    q_ref[:, : ocp.nlp[0]["ns"] + 1] = q_ref_stance
+    activation_ref[:, : ocp.nlp[0]["ns"] + 1] = activation_ref_stance
+    q_ref[:, ocp.nlp[0]["ns"] : ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = q_ref_swing
+    activation_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = activation_ref_swing
+
+    # --- Get markers position from ref q --- #
+    nb_markers = biorbd_model[0].nbMarkers()
+    nb_q = biorbd_model[0].nbQ()
+
+    markers = np.ndarray((3, nb_markers, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+
+    markers_func = []
+    for i in range(nb_markers):
+        markers_func.append(
+            Function(
+                "ForwardKin",
+                [ocp.symbolic_states],
+                [biorbd_model.marker(ocp.symbolic_states[:nb_q], i).to_mx()],
+                ["q"],
+                ["marker_" + str(i)],
+            ).expand()
+        )
+    for i in range(ocp.nlp[0]['ns']):
+        for j, mark_func in enumerate(markers_func):
+            markers[:, j, i] = np.array(mark_func(q_ref[:, i])).squeeze()
 
     # --- Plot --- #
     t = np.hstack([t_stance[:-1], T_stance + t_swing])
@@ -218,7 +233,7 @@ if __name__ == "__main__":
     for i in range(biorbd_model[0].nbQ()):
         axes[i].plot(t, q_sol[i, :])
         axes[i].plot(t, q_ref[i, :], 'r')
-        axes[i + biorbd_model[0].nbQ()].plot(t, qdot_sol[i, :])
+        axes[i + biorbd_model[0].nbQ()].plot(t, q_dot_sol[i, :])
         axes[i + 2*biorbd_model[0].nbQ()].plot(t, tau_sol[i, :])
         axes[i].plot([T_stance, T_stance], [np.min(q_sol[i, :]), np.max(q_sol[i, :])], 'k--')
 
@@ -234,7 +249,9 @@ if __name__ == "__main__":
     plt.plot(t, grf.T, 'r')
     plt.plot([T_stance, T_stance], [np.min(grf[1, :]), np.max(grf[1, :])], 'k--')
 
+    plt.show()
+
     # --- Show results --- #
     result = ShowResult(ocp, sol)
-    result.animate(show_meshes=False)
+    result.animate()
     # result.graphs()
