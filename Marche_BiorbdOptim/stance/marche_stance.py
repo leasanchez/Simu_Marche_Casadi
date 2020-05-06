@@ -225,6 +225,38 @@ if __name__ == "__main__":
     plt.plot(t, contact_forces.T, 'b')
     plt.plot(t, grf_ref[1:, :].T, 'r')
 
+    # markers
+    label_markers = []
+    title_markers = ['x', 'y', 'z']
+    for mark in range(nb_markers):
+        label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
+
+    figure, axes = plt.subplots(1, 3)
+    axes = axes.flatten()
+    for i in range(3):
+        axes[i].plot(diff_ref[i, :, :])
+    plt.legend(label_markers)
+
+    figure, axes = plt.subplots(2, 3)
+    axes = axes.flatten()
+    title_markers = ['x', 'y', 'z']
+    for i in range(3):
+        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_ref[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i].set_xticks(np.arange(nb_markers))
+        axes[i].set_xticklabels(label_markers, rotation=90)
+        axes[i].set_title(title_markers[i])
+        axes[i].plot([0, nb_markers], [mean_diff_ref[i], mean_diff_ref[i]], '--r')
+
+        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 3].set_xticks(np.arange(nb_markers))
+        axes[i + 3].set_xticklabels(label_markers, rotation=90)
+        axes[i + 3].set_title(title_markers[i])
+        axes[i + 3].plot([0, nb_markers], [mean_diff_track[i], mean_diff_track[i]], '--r')
+
+        if (i==1):
+            axes[i].set_title('markers differences between kalman and exp')
+            axes[i + 3].set_title('markers differences between sol and exp')
+    plt.show()
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
