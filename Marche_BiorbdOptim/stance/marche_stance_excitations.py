@@ -203,8 +203,12 @@ if __name__ == "__main__":
     for i in range(biorbd_model.nbQ()):
         name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
         axes[i].set_title(name_dof)
-        axes[i].plot(t, q[i, :])
-        axes[i].plot(t, q_ref[i, :], 'r')
+        if (i > 1) :
+            axes[i].plot(t, q[i, :]*180/np.pi)
+            axes[i].plot(t, q_ref[i, :]*180/np.pi, 'r')
+        else:
+            axes[i].plot(t, q[i, :])
+            axes[i].plot(t, q_ref[i, :], 'r')
 
     figure2, axes2 = plt.subplots(4, 5, sharex=True)
     axes2 = axes2.flatten()
