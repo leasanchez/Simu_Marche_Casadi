@@ -32,7 +32,7 @@ def prepare_ocp(
     final_time,
     nb_shooting,
     markers_ref,
-    activation_ref,
+    excitation_ref,
     grf_ref,
     show_online_optim,
 ):
@@ -44,14 +44,14 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = ((
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[0].T},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
         {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[1].T},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
     ))
 
@@ -66,9 +66,15 @@ def prepare_ocp(
 
     # Path constraint
     X_bounds = [QAndQDotBounds(biorbd_model[i])for i in range(nb_phases)]
+    X_bounds.concatenate([
+            Bounds(
+                min_bound=[activation_min] * biorbd_model[i].nbMuscles(),
+                max_bound=[activation_max] * biorbd_model[i].nbMuscles(),
+            )
+            for i in range(nb_phases)])
 
     # Initial guess
-    X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()))for i in range(nb_phases)]
+    X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()) + [0.1] * biorbd_model[i].nbMuscleTotal())for i in range(nb_phases)]
 
     # Define control path constraint
     U_bounds = [
