@@ -137,9 +137,10 @@ if __name__ == "__main__":
     n_mus = ocp.nlp[0]["model"].nbMuscleTotal()
     n_frames = q.shape[1]
 
+    # --- Compute ground reaction forces --- #
     x = vertcat(q, q_dot)
     u = vertcat(tau, mus)
-    contact_forces = CS_func(x, u)
+    contact_forces = ocp.nlp[0]["contact_forces_func"](x, u)
 
     # --- Get markers position from q_sol and q_ref --- #
     markers_sol = np.ndarray((3, n_mark, ocp.nlp[0]["ns"] + 1))
