@@ -42,8 +42,9 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx":[0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track":excitation_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 1, "states_idx": [13, 14, 15, 17, 18, 23, 24, 26]},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -121,7 +122,7 @@ if __name__ == "__main__":
         markers_ref,
         excitation_ref,
         grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
