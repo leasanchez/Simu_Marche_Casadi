@@ -42,7 +42,7 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":activation_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
@@ -229,32 +229,25 @@ if __name__ == "__main__":
     for mark in range(nb_markers):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
-    figure, axes = plt.subplots(3, 3)
+    figure, axes = plt.subplots(2, 2)
     axes = axes.flatten()
-    title_markers = ['x', 'y', 'z']
-    for i in range(3):
-        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_ref[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+    title_markers = ['x axis', 'z axis']
+    for i in range(2):
+        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_markers))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_title(title_markers[i])
-        axes[i].plot([0, nb_markers], [mean_diff_ref[i], mean_diff_ref[i]], '--r')
+        axes[i].set_ylabel(['Sum of squared differences in ' + title_markers[i]])
+        axes[i].plot([0, nb_markers], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
 
-        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i + 3].set_xticks(np.arange(nb_markers))
         axes[i + 3].set_xticklabels(label_markers, rotation=90)
-        axes[i + 3].set_title(title_markers[i])
-        axes[i + 3].plot([0, nb_markers], [mean_diff_track[i], mean_diff_track[i]], '--r')
-
-        axes[i + 6].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i + 6].set_xticks(np.arange(nb_markers))
-        axes[i + 6].set_xticklabels(label_markers, rotation=90)
-        axes[i + 6].set_title(title_markers[i])
-        axes[i + 6].plot([0, nb_markers], [mean_diff_sol[i], mean_diff_sol[i]], '--r')
+        axes[i].set_ylabel(['Sum of squared differences in ' + title_markers[i]])
+        axes[i + 3].plot([0, nb_markers], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
 
         if (i==1):
-            axes[i].set_title('markers differences between kalman and exp')
-            axes[i + 3].set_title('markers differences between sol and exp')
-            axes[i + 6].set_title('markers differences between sol and ref')
+            axes[i].set_title('markers differences between sol and exp')
+            axes[i + 3].set_title('markers differences between sol and ref')
     plt.show()
 
     # --- Show results --- #
