@@ -47,7 +47,7 @@ def prepare_ocp(
         {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
+        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
@@ -157,27 +157,28 @@ if __name__ == "__main__":
         markers_ref = [markers_ref_stance, markers_ref_swing],
         excitation_ref = [excitation_ref_stance[:, :-1], excitation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
     sol = ocp.solve()
 
     # --- Get Results --- #
-    states, controls = Data.get_data(ocp, sol["x"])
-    q = states["q"].to_matrix()
-    q_dot = states["q_dot"].to_matrix()
-    tau = controls["tau"].to_matrix()
-    mus = controls["muscles"].to_matrix()
+    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    q = states_sol["q"]
+    q_dot = states_sol["q_dot"]
+    activations = states_sol["muscles"]
+    tau = controls_sol["tau"]
+    excitations = controls_sol["muscles"]
 
     # --- Compute ground reaction forces --- #
     contact_forces = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     grf = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
 
-    q_contact = states["q"].to_matrix(phase_idx=0)
-    q_dot_contact = states["q_dot"].to_matrix(phase_idx=0)
-    tau_contact = controls["tau"].to_matrix(phase_idx=0)
-    mus_contact = controls["muscles"].to_matrix(phase_idx=0)
+    q_contact = states_sol["q"].to_matrix(phase_idx=0)
+    q_dot_contact = states_sol["q_dot"](phase_idx=0)
+    tau_contact = controls_sol["tau"](phase_idx=0)
+    mus_contact = controls_sol["muscles"](phase_idx=0)
 
     x = vertcat(q_contact, q_dot_contact)
     u = vertcat(tau_contact, mus_contact)
@@ -188,9 +189,9 @@ if __name__ == "__main__":
     q_ref = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     activation_ref = np.zeros((biorbd_model[0].nbMuscleTotal(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     q_ref[:, : ocp.nlp[0]["ns"] + 1] = q_ref_stance
-    activation_ref[:, : ocp.nlp[0]["ns"] + 1] = activation_ref_stance
+    activation_ref[:, : ocp.nlp[0]["ns"] + 1] = excitation_ref_stance
     q_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = q_ref_swing
-    activation_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = activation_ref_swing
+    activation_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = excitation_ref_swing
 
     # --- Get markers position from q_sol and q_ref --- #
     nb_markers = biorbd_model[0].nbMarkers()
