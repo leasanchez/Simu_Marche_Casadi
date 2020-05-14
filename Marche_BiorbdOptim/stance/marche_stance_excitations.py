@@ -1,6 +1,5 @@
-from scipy.integrate import solve_ivp
 import numpy as np
-from casadi import dot, Function, vertcat
+from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import sys
 
@@ -142,17 +141,9 @@ if __name__ == "__main__":
     n_frames = q.shape[1]
 
     # --- Compute ground reaction forces --- #
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [ocp.nlp[0]["model"].getConstraints().getForce().to_mx()],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
-
-    x = vertcat(q, q_dot)
-    u = vertcat(tau, mus)
-    contact_forces = CS_func(x, u)
+    x = vertcat(q, q_dot, activations)
+    u = vertcat(tau, excitations)
+    contact_forces = ocp.nlp["contact_forces_func"](x, u)
 
     # --- Get markers position from q_sol and q_ref --- #
     nb_markers = biorbd_model.nbMarkers()
