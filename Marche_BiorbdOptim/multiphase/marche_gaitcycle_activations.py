@@ -1,5 +1,5 @@
 import numpy as np
-from casadi import dot, Function, vertcat
+from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import sys
 
@@ -114,8 +114,8 @@ if __name__ == "__main__":
     # Define the problem
     # Model path
     biorbd_model = (
-        biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
-        biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
     )
 
     # Problem parameters
@@ -152,8 +152,8 @@ if __name__ == "__main__":
 
     # Track these data
     biorbd_model = (
-        biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
-        biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
     )
     ocp = prepare_ocp(
         biorbd_model,
@@ -168,80 +168,109 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     sol = ocp.solve()
 
+    # --- Get Results --- #
+    states, controls = Data.get_data(ocp, sol["x"])
+    q = states["q"].to_matrix()
+    q_dot = states["q_dot"].to_matrix()
+    tau = controls["tau"].to_matrix()
+    mus = controls["muscles"].to_matrix()
+
     # --- Compute ground reaction forces --- #
     contact_forces = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     grf = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
 
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [ocp.nlp[0]["model"].getConstraints().getForce().to_mx()],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
-    states, controls = Data.get_data_from_V(ocp, sol["x"])
-    q = states["q"].to_matrix(phase_idx=0)
-    q_dot = states["q_dot"].to_matrix(phase_idx=0)
-    tau = controls["tau"].to_matrix(phase_idx=0)
-    mus = controls["muscles"].to_matrix(phase_idx=0)
+    q_contact = states["q"].to_matrix(phase_idx=0)
+    q_dot_contact = states["q_dot"].to_matrix(phase_idx=0)
+    tau_contact = controls["tau"].to_matrix(phase_idx=0)
+    mus_contact = controls["muscles"].to_matrix(phase_idx=0)
 
-    x = vertcat(q, q_dot)
-    u = vertcat(tau, mus)
-    contact_forces[:, : ocp.nlp[0]["ns"] + 1] = CS_func(x, u)
+    x = vertcat(q_contact, q_dot_contact)
+    u = vertcat(tau_contact, mus_contact)
+    contact_forces[:, : ocp.nlp[0]["ns"] + 1] = ocp.nlp[0]["contact_forces_func"](x, u)
     grf[:, : ocp.nlp[0]["ns"] + 1] = grf_ref[1:, :]
 
-    # --- Get Results --- #
+    # --- Get References --- #
     q_ref = np.zeros((biorbd_model[0].nbQ(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     activation_ref = np.zeros((biorbd_model[0].nbMuscleTotal(), sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
-
-    q_sol = states["q"].to_matrix()         # no phase_idx = value for all phases
-    q_dot_sol = states["q_dot"].to_matrix()
-    tau_sol = controls["tau"].to_matrix()
-    mus_sol = controls["muscles"].to_matrix()
-
     q_ref[:, : ocp.nlp[0]["ns"] + 1] = q_ref_stance
     activation_ref[:, : ocp.nlp[0]["ns"] + 1] = activation_ref_stance
-    q_ref[:, ocp.nlp[0]["ns"] : ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = q_ref_swing
+    q_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = q_ref_swing
     activation_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = activation_ref_swing
 
-    # --- Get markers position from ref q --- #
+    # --- Get markers position from q_sol and q_ref --- #
     nb_markers = biorbd_model[0].nbMarkers()
     nb_q = biorbd_model[0].nbQ()
 
-    markers = np.ndarray((3, nb_markers, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+    markers_sol = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
+    markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
+    markers_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
+    markers_ref[:, : ocp.nlp[0]["ns"] + 1] = markers_ref_stance
+    markers_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = markers_ref_swing
 
     markers_func = []
+    symbolic_states = MX.sym("x", ocp.nlp["nx"], 1)
+    symbolic_controls = MX.sym("u", ocp.nlp["nu"], 1)
     for i in range(nb_markers):
         markers_func.append(
             Function(
                 "ForwardKin",
-                [ocp.symbolic_states],
-                [biorbd_model.marker(ocp.symbolic_states[:nb_q], i).to_mx()],
+                [symbolic_states],
+                [biorbd_model[0].marker(symbolic_states[:nb_q], i).to_mx()],
                 ["q"],
                 ["marker_" + str(i)],
             ).expand()
         )
     for i in range(ocp.nlp[0]['ns']):
         for j, mark_func in enumerate(markers_func):
-            markers[:, j, i] = np.array(mark_func(q_ref[:, i])).squeeze()
+            markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i]))).squeeze()
+            Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q)])
+            markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
+
+    diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
+    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
+    hist_diff_track = np.zeros((3, nb_markers))
+    hist_diff_sol = np.zeros((3, nb_markers))
+
+    for n_mark in range(nb_markers):
+        hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :]) / nb_markers
+        hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :]) / nb_markers
+        hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :]) / nb_markers
+
+        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :]) / nb_markers
+        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :]) / nb_markers
+        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :]) / nb_markers
+
+    mean_diff_track = [sum(hist_diff_track[0, :]) / nb_markers,
+                       sum(hist_diff_track[1, :]) / nb_markers,
+                       sum(hist_diff_track[2, :]) / nb_markers]
+    mean_diff_sol = [sum(hist_diff_sol[0, :]) / nb_markers,
+                     sum(hist_diff_sol[1, :]) / nb_markers,
+                     sum(hist_diff_sol[2, :]) / nb_markers]
 
     # --- Plot --- #
     t = np.hstack([t_stance[:-1], T_stance + t_swing])
 
-    figure, axes = plt.subplots(3, biorbd_model[0].nbQ())
+    def plot_control(ax, t, x, color='b'):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+
+    figure, axes = plt.subplots(2,3)
     axes = axes.flatten()
     for i in range(biorbd_model[0].nbQ()):
-        axes[i].plot(t, q_sol[i, :])
+        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
+        axes[i].set_title(name_dof)
+        axes[i].plot(t, q[i, :])
         axes[i].plot(t, q_ref[i, :], 'r')
-        axes[i + biorbd_model[0].nbQ()].plot(t, q_dot_sol[i, :])
-        axes[i + 2*biorbd_model[0].nbQ()].plot(t, tau_sol[i, :])
-        axes[i].plot([T_stance, T_stance], [np.min(q_sol[i, :]), np.max(q_sol[i, :])], 'k--')
+        axes[i].plot([T_stance, T_stance], [np.min(q[i, :]), np.max(q[i, :])], 'k--')
 
-    figure2, axes2 = plt.subplots(4, 5)
+    figure2, axes2 = plt.subplots(4, 5, sharex=True)
     axes2 = axes2.flatten()
     for i in range(biorbd_model[0].nbMuscleTotal()):
-        axes2[i].plot(t[:-1], activation_ref[i, :-1], 'r')
-        axes2[i].plot(t[:-1], mus_sol[i, :-1])
+        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
+        plot_control(axes2[i], t, activation_ref[i, :], color='r')
+        plot_control(axes2[i], t, mus[i, :])
+        axes2[i].set_title(name_mus)
         axes2[i].plot([T_stance, T_stance], [0, 1], 'k--')
 
     plt.figure('Contact forces')
