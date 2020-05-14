@@ -1,11 +1,11 @@
-from scipy.integrate import solve_ivp
 import numpy as np
-from casadi import dot, Function, vertcat
+from casadi import MX, Function
 from matplotlib import pyplot as plt
 import sys
 
 sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
 import biorbd
+from casadi import Function, vertcat
 
 from biorbd_optim import (
     Instant,
@@ -18,23 +18,8 @@ from biorbd_optim import (
     InitialConditions,
     ShowResult,
     OdeSolver,
-    Dynamics,
     Data,
 )
-
-def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [Dynamics.forces_from_forward_dynamics_torque_muscle_driven_with_contact(
-                ocp.symbolic_states, ocp.symbolic_controls, nlp
-            )],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
-    force = CS_func(x[-1], u[-1])
-    val = force - data_to_track[t[-1], :]
-    return dot(val, val)
 
 def prepare_ocp(
     biorbd_model,
@@ -42,7 +27,7 @@ def prepare_ocp(
     nb_shooting,
     markers_ref,
     activation_ref,
-    grf_ref,
+    q_ref,
     show_online_optim,
 ):
     # Problem parameters
@@ -50,16 +35,15 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
+    # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":activation_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
-        {"type": Objective.Lagrange.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
+
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref}
     )
 
     # Dynamics
-    variable_type = ProblemType.muscles_and_torque_driven_with_contact
+    variable_type = ProblemType.muscle_activations_and_torque_driven
 
     # Constraints
     constraints = ()
@@ -68,7 +52,9 @@ def prepare_ocp(
     X_bounds = QAndQDotBounds(biorbd_model)
 
     # Initial guess
-    X_init = InitialConditions([0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()))
+    init_x = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot())
+    init_x[:biorbd_model.nbQ()] = q_ref[:, 0]
+    X_init = InitialConditions(init_x)
 
     # Define control path constraint
     U_bounds = Bounds(
@@ -98,17 +84,14 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
+    final_time = 0.37
     n_shooting_points = 25
-    Gaitphase = 'stance'
+    Gaitphase = 'swing'
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
-
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg
     name_subject = "equincocont01"
-    grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
-    final_time = T_stance
-
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
@@ -120,39 +103,53 @@ if __name__ == "__main__":
             idx_emg += 1
 
     # Track these data
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod")  # To allow for non free variable, the model must be reloaded
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
         n_shooting_points,
         markers_ref,
         activation_ref,
-        grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        q_ref,
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
     sol = ocp.solve()
 
     # --- Get Results --- #
-    states, controls = Data.get_data_from_V(ocp, sol["x"])
-    q = states["q"].to_matrix()
-    q_dot = states["q_dot"].to_matrix()
-    tau = controls["tau"].to_matrix()
-    mus = controls["muscles"].to_matrix()
+    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    q = states_sol["q"]
+    q_dot = states_sol["q_dot"]
+    tau = controls_sol["tau"]
+    activations = controls_sol["muscles"]
 
-    # --- Compute ground reaction forces --- #
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [ocp.nlp[0]["model"].getConstraints().getForce().to_mx()],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
+    n_q = ocp.nlp[0]["model"].nbQ()
+    n_qdot = ocp.nlp[0]["model"].nbQdot()
+    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    n_frames = q.shape[1]
 
-    x = vertcat(q, q_dot)
-    u = vertcat(tau, mus)
-    contact_forces = CS_func(x, u)
+    # --- Plot --- #
+    def plot_control(ax, t, x, color='b'):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+
+    figure, axes = plt.subplots(2,3)
+    axes = axes.flatten()
+    for i in range(biorbd_model.nbQ()):
+        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
+        axes[i].set_title(name_dof)
+        axes[i].plot(t, q[i, :])
+        axes[i].plot(t, q_ref[i, :], 'r')
+
+    figure2, axes2 = plt.subplots(4, 5, sharex=True)
+    axes2 = axes2.flatten()
+    for i in range(biorbd_model.nbMuscleTotal()):
+        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
+        plot_control(axes2[i], t[:-1], activation_ref[i, :], color='r')
+        plot_control(axes2[i], t[:-1], activations[i, :-1])
+        axes2[i].set_title(name_mus)
 
     # --- Get markers position from q_sol and q_ref --- #
     nb_markers = biorbd_model.nbMarkers()
@@ -178,85 +175,51 @@ if __name__ == "__main__":
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q)])
             markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
 
-    diff_ref = (markers_from_q_ref - markers_ref) * (markers_from_q_ref - markers_ref)
     diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
-    hist_diff_ref = np.zeros((3,nb_markers))
+    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
     hist_diff_track = np.zeros((3, nb_markers))
+    hist_diff_sol = np.zeros((3, nb_markers))
 
     for n_mark in range(nb_markers):
-        hist_diff_ref[0, n_mark] = sum(diff_ref[0, n_mark, :])/nb_markers
-        hist_diff_ref[1, n_mark] = sum(diff_ref[1, n_mark, :])/nb_markers
-        hist_diff_ref[2, n_mark] = sum(diff_ref[2, n_mark, :])/nb_markers
-
         hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :])/nb_markers
         hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :])/nb_markers
         hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :])/nb_markers
 
-    mean_diff_ref = [sum(hist_diff_ref[0, :])/nb_markers,
-                     sum(hist_diff_ref[1, :])/nb_markers,
-                     sum(hist_diff_ref[2, :])/nb_markers]
+        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :])/nb_markers
+        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :])/nb_markers
+        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :])/nb_markers
+
     mean_diff_track = [sum(hist_diff_track[0, :]) / nb_markers,
                        sum(hist_diff_track[1, :]) / nb_markers,
                        sum(hist_diff_track[2, :]) / nb_markers]
-
-    # --- Plot --- #
-    def plot_control(ax, t, x, color='b'):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-
-    figure, axes = plt.subplots(2,3)
-    axes = axes.flatten()
-    for i in range(biorbd_model.nbQ()):
-        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
-        axes[i].set_title(name_dof)
-        axes[i].plot(t, q[i, :])
-        axes[i].plot(t, q_ref[i, :], 'r')
-
-    figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    axes2 = axes2.flatten()
-    for i in range(biorbd_model.nbMuscleTotal()):
-        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], activation_ref[i, :], color='r')
-        plot_control(axes2[i], t[:-1], mus[i, :-1])
-        axes2[i].set_title(name_mus)
-
-    plt.figure('Contact forces')
-    plt.plot(t, contact_forces.T, 'b')
-    plt.plot(t, grf_ref[1:, :].T, 'r')
-
+    mean_diff_sol = [sum(hist_diff_sol[0, :]) / nb_markers,
+                       sum(hist_diff_sol[1, :]) / nb_markers,
+                       sum(hist_diff_sol[2, :]) / nb_markers]
     # markers
     label_markers = []
     title_markers = ['x', 'y', 'z']
     for mark in range(nb_markers):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
-    figure, axes = plt.subplots(1, 3)
-    axes = axes.flatten()
-    for i in range(3):
-        axes[i].plot(diff_ref[i, :, :])
-    plt.legend(label_markers)
-
     figure, axes = plt.subplots(2, 3)
     axes = axes.flatten()
     title_markers = ['x', 'y', 'z']
     for i in range(3):
-        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_ref[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_markers))
         axes[i].set_xticklabels(label_markers, rotation=90)
         axes[i].set_title(title_markers[i])
-        axes[i].plot([0, nb_markers], [mean_diff_ref[i], mean_diff_ref[i]], '--r')
+        axes[i].plot([0, nb_markers], [mean_diff_track[i], mean_diff_track[i]], '--r')
 
-        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i + 3].set_xticks(np.arange(nb_markers))
         axes[i + 3].set_xticklabels(label_markers, rotation=90)
         axes[i + 3].set_title(title_markers[i])
-        axes[i + 3].plot([0, nb_markers], [mean_diff_track[i], mean_diff_track[i]], '--r')
+        axes[i + 3].plot([0, nb_markers], [mean_diff_sol[i], mean_diff_sol[i]], '--r')
 
         if (i==1):
-            axes[i].set_title('markers differences between kalman and exp')
-            axes[i + 3].set_title('markers differences between sol and exp')
-    plt.show()
+            axes[i].set_title('markers differences between sol and exp')
+            axes[i + 3].set_title('markers differences between sol and ref')
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
