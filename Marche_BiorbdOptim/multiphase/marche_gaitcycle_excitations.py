@@ -65,13 +65,13 @@ def prepare_ocp(
     constraints = ()
 
     # Path constraint
-    X_bounds = [QAndQDotBounds(biorbd_model[i])for i in range(nb_phases)]
-    X_bounds.concatenate([
-            Bounds(
-                min_bound=[activation_min] * biorbd_model[i].nbMuscles(),
-                max_bound=[activation_max] * biorbd_model[i].nbMuscles(),
-            )
-            for i in range(nb_phases)])
+    X_bounds = []
+    for i in range(nb_phases):
+        XB = QAndQDotBounds(biorbd_model[i])
+        XB.concatenate(
+            Bounds([activation_min] * biorbd_model[i].nbMuscles(), [activation_max] * biorbd_model[i].nbMuscles())
+        )
+        X_bounds.append(XB)
 
     # Initial guess
     X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()) + [0.1] * biorbd_model[i].nbMuscleTotal())for i in range(nb_phases)]
