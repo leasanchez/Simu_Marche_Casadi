@@ -126,20 +126,17 @@ if __name__ == "__main__":
     sol = ocp.solve()
 
     # --- Get Results --- #
-    states, controls = Data.get_data_from_V(ocp, sol["x"])
+    states, controls = Data.get_data(ocp, sol["x"])
     q = states["q"].to_matrix()
     q_dot = states["q_dot"].to_matrix()
     tau = controls["tau"].to_matrix()
     mus = controls["muscles"].to_matrix()
 
-    # --- Compute ground reaction forces --- #
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [ocp.nlp[0]["model"].getConstraints().getForce().to_mx()],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
+    n_q = ocp.nlp[0]["model"].nbQ()
+    n_qdot = ocp.nlp[0]["model"].nbQdot()
+    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    n_mus = ocp.nlp[0]["model"].nbMuscleTotal()
+    n_frames = q.shape[1]
 
     x = vertcat(q, q_dot)
     u = vertcat(tau, mus)
