@@ -137,13 +137,14 @@ if __name__ == "__main__":
 
     n_q = ocp.nlp[0]["model"].nbQ()
     n_qdot = ocp.nlp[0]["model"].nbQdot()
-    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    n_mark = biorbd_model.nbMarkers()
+    n_mus = ocp.nlp[0]["model"].nbMuscleTotal()
     n_frames = q.shape[1]
 
     # --- Compute ground reaction forces --- #
     x = vertcat(q, q_dot, activations)
     u = vertcat(tau, excitations)
-    contact_forces = ocp.nlp["contact_forces_func"](x, u)
+    contact_forces = ocp.nlp[0]["contact_forces_func"](x, u)
 
     # --- Get markers position from q_sol and q_ref --- #
     markers_sol = np.ndarray((3, n_mark, ocp.nlp[0]["ns"] + 1))
@@ -222,31 +223,43 @@ if __name__ == "__main__":
 
     # markers
     label_markers = []
-    title_markers = ['x', 'y', 'z']
-    for mark in range(nb_markers):
+    for mark in range(n_mark):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
     figure, axes = plt.subplots(2, 2)
     axes = axes.flatten()
     title_markers = ['x axis', 'z axis']
     for i in range(2):
-        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i].set_xticks(np.arange(nb_markers))
+        axes[i].bar(np.linspace(0,n_mark, n_mark), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i].set_xticks(np.arange(n_mark))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_ylabel(['Sum of squared differences in ' + title_markers[i]])
-        axes[i].plot([0, nb_markers], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i].plot([0, n_mark], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i + 3].set_xticks(np.arange(nb_markers))
-        axes[i + 3].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_ylabel(['Sum of squared differences in ' + title_markers[i]])
-        axes[i + 3].plot([0, nb_markers], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
+        axes[i + 2].bar(np.linspace(0,n_mark, n_mark), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 2].set_xticks(np.arange(n_mark))
+        axes[i + 2].set_xticklabels(label_markers, rotation=90)
+        axes[i + 2].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i + 2].plot([0, n_mark], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
+        axes[i + 2].set_title('markers differences between sol and ref')
+    plt.show()
 
-        if (i==1):
-            axes[i].set_title('markers differences between sol and exp')
-            axes[i + 3].set_title('markers differences between sol and ref')
+    figure, axes = plt.subplots(2, 2)
+    axes = axes.flatten()
+    title_markers = ['x axis', 'z axis']
+    for i in range(2):
+        axes[i].plot(t, diff_track[i, :, :].T)
+        axes[i].set_xlabel('time (s)')
+        axes[i].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i].set_title('markers differences between sol and exp')
+
+        axes[i + 2].plot(t, diff_sol[2*i, :, :].T)
+        axes[i + 2].set_xlabel('time (s)')
+        axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i + 2].set_title('markers differences between sol and ref')
     plt.show()
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
-    result.graphs()
+    result.animate()
