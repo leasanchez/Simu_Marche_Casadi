@@ -153,12 +153,14 @@ if __name__ == "__main__":
     markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
 
     markers_func = []
+    symbolic_states = MX.sym("x", ocp.nlp["nx"], 1)
+    symbolic_controls = MX.sym("u", ocp.nlp["nu"], 1)
     for i in range(nb_markers):
         markers_func.append(
             Function(
                 "ForwardKin",
-                [ocp.symbolic_states],
-                [biorbd_model.marker(ocp.symbolic_states[:nb_q], i).to_mx()],
+                [symbolic_states],
+                [biorbd_model.marker(symbolic_states[:nb_q], i).to_mx()],
                 ["q"],
                 ["marker_" + str(i)],
             ).expand()
@@ -169,18 +171,12 @@ if __name__ == "__main__":
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q)])
             markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
 
-    diff_ref = (markers_from_q_ref - markers_ref) * (markers_from_q_ref - markers_ref)
     diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
     diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
-    hist_diff_ref = np.zeros((3,nb_markers))
     hist_diff_track = np.zeros((3, nb_markers))
     hist_diff_sol = np.zeros((3, nb_markers))
 
     for n_mark in range(nb_markers):
-        hist_diff_ref[0, n_mark] = sum(diff_ref[0, n_mark, :])/nb_markers
-        hist_diff_ref[1, n_mark] = sum(diff_ref[1, n_mark, :])/nb_markers
-        hist_diff_ref[2, n_mark] = sum(diff_ref[2, n_mark, :])/nb_markers
-
         hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :])/nb_markers
         hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :])/nb_markers
         hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :])/nb_markers
@@ -189,9 +185,6 @@ if __name__ == "__main__":
         hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :])/nb_markers
         hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :])/nb_markers
 
-    mean_diff_ref = [sum(hist_diff_ref[0, :])/nb_markers,
-                     sum(hist_diff_ref[1, :])/nb_markers,
-                     sum(hist_diff_ref[2, :])/nb_markers]
     mean_diff_track = [sum(hist_diff_track[0, :]) / nb_markers,
                        sum(hist_diff_track[1, :]) / nb_markers,
                        sum(hist_diff_track[2, :]) / nb_markers]
