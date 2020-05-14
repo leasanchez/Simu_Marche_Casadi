@@ -89,7 +89,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
     n_shooting_points = 50
     Gaitphase = 'stance'
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             idx_emg += 1
 
     # Track these data
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,

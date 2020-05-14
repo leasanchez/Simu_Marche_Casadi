@@ -98,7 +98,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
     final_time = 0.37
     n_shooting_points = 50
     Gaitphase = 'swing'
@@ -117,7 +117,7 @@ if __name__ == "__main__":
             idx_emg += 1
 
     # Track these data
-    biorbd_model = biorbd.Model("ANsWER_Rleg_6dof_17muscle_0contact.bioMod")  # To allow for non free variable, the model must be reloaded
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")  # To allow for non free variable, the model must be reloaded
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
