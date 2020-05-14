@@ -214,8 +214,9 @@ if __name__ == "__main__":
     axes2 = axes2.flatten()
     for i in range(biorbd_model.nbMuscleTotal()):
         name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], activation_ref[i, :], color='r')
-        plot_control(axes2[i], t[:-1], mus[i, :-1])
+        plot_control(axes2[i], t[:-1], excitation_ref[i, :], color='r')
+        plot_control(axes2[i], t[:-1], excitations[i, :-1])
+        axes2[i].plot(t[:-1], activations[i, :-1])
         axes2[i].set_title(name_mus)
 
     plt.figure('Contact forces')
