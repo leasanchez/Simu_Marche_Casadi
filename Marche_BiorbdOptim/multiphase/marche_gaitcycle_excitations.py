@@ -57,8 +57,8 @@ def prepare_ocp(
 
     # Dynamics
     problem_type = (
-        ProblemType.muscles_and_torque_driven_with_contact,
-        ProblemType.muscle_activations_and_torque_driven,
+        ProblemType.muscle_excitations_and_torque_driven_with_contact,
+        ProblemType.muscle_excitations_and_torque_driven,
     )
 
     # Constraints
@@ -121,22 +121,22 @@ if __name__ == "__main__":
     t_stance, markers_ref_stance = load_data_markers(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
-    activation_ref_stance = np.zeros((biorbd_model[0].nbMuscleTotal(), number_shooting_points[0] + 1))
+    excitation_ref_stance = np.zeros((biorbd_model[0].nbMuscleTotal(), number_shooting_points[0] + 1))
     idx_emg = 0
     for i in range(biorbd_model[0].nbMuscleTotal()):
         if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref_stance[i, :] = emg_ref_stance[idx_emg, :]
+            excitation_ref_stance[i, :] = emg_ref_stance[idx_emg, :]
             idx_emg += 1
 
     # phase swing
     t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     q_ref_swing = load_data_q(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
-    activation_ref_swing = np.zeros((biorbd_model[1].nbMuscleTotal(), number_shooting_points[1] + 1))
+    excitation_ref_swing = np.zeros((biorbd_model[1].nbMuscleTotal(), number_shooting_points[1] + 1))
     idx_emg = 0
     for i in range(biorbd_model[0].nbMuscleTotal()):
         if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref_swing[i, :] = emg_ref_swing[idx_emg, :]
+            excitation_ref_swing[i, :] = emg_ref_swing[idx_emg, :]
             idx_emg += 1
 
     # Track these data
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         phase_time,
         number_shooting_points,
         markers_ref = [markers_ref_stance, markers_ref_swing],
-        activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
+        excitation_ref = [excitation_ref_stance[:, :-1], excitation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
         show_online_optim=True,
     )
