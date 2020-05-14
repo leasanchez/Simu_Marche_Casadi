@@ -129,11 +129,17 @@ if __name__ == "__main__":
     sol = ocp.solve()
 
     # --- Get Results --- #
-    states, controls = Data.get_data_from_V(ocp, sol["x"])
-    q = states["q"].to_matrix()
-    q_dot = states["q_dot"].to_matrix()
-    tau = controls["tau"].to_matrix()
-    mus = controls["muscles"].to_matrix()
+    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    q = states_sol["q"]
+    q_dot = states_sol["q_dot"]
+    activations = states_sol["muscles"]
+    tau = controls_sol["tau"]
+    excitations = controls_sol["muscles"]
+
+    n_q = ocp.nlp[0]["model"].nbQ()
+    n_qdot = ocp.nlp[0]["model"].nbQdot()
+    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    n_frames = q.shape[1]
 
     # --- Compute ground reaction forces --- #
     CS_func = Function(
