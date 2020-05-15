@@ -177,6 +177,7 @@ if __name__ == "__main__":
         activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
         q_ref=[q_ref_stance, q_ref_swing],
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
@@ -184,22 +185,17 @@ if __name__ == "__main__":
 
     # --- Get Results --- #
     states, controls = Data.get_data(ocp, sol["x"])
-    q = states["q"].to_matrix()
-    q_dot = states["q_dot"].to_matrix()
-    tau = controls["tau"].to_matrix()
-    mus = controls["muscles"].to_matrix()
+    q = states["q"]
+    q_dot = states["q_dot"]
+    tau = controls["tau"]
+    mus = controls["muscles"]
 
     # --- Compute ground reaction forces --- #
     contact_forces = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
     grf = np.zeros((2, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
 
-    q_contact = states["q"].to_matrix(phase_idx=0)
-    q_dot_contact = states["q_dot"].to_matrix(phase_idx=0)
-    tau_contact = controls["tau"].to_matrix(phase_idx=0)
-    mus_contact = controls["muscles"].to_matrix(phase_idx=0)
-
-    x = vertcat(q_contact, q_dot_contact)
-    u = vertcat(tau_contact, mus_contact)
+    x = vertcat(q[:, :number_shooting_points[0] + 1], q_dot[:, :number_shooting_points[0] + 1])
+    u = vertcat(tau[:, :number_shooting_points[0] + 1], mus[:, :number_shooting_points[0] + 1])
     contact_forces[:, : ocp.nlp[0]["ns"] + 1] = ocp.nlp[0]["contact_forces_func"](x, u)
     grf[:, : ocp.nlp[0]["ns"] + 1] = grf_ref[1:, :]
 
