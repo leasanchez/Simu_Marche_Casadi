@@ -44,17 +44,26 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
+    # objective_functions = ((
+    #     {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
+    #     {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[0].T},
+    #     {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
+    #     {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
+    # ),
+    # (
+    #     {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+    #     {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[1].T},
+    #     {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
+    # ))
     objective_functions = ((
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[0].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "data_to_track": q_ref_stance.T, "states_idx": range(biorbd_model[0].nbQ()),},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
+        {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "data_to_track": q_ref_swing.T, "states_idx": range(biorbd_model[1].nbQ()), }
     ))
 
     # Dynamics
@@ -125,7 +134,6 @@ def prepare_ocp(
 
 
 if __name__ == "__main__":
-    # Define the problem
     # Model path
     biorbd_model = (
         biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
@@ -173,8 +181,8 @@ if __name__ == "__main__":
         biorbd_model,
         phase_time,
         number_shooting_points,
-        markers_ref = [markers_ref_stance, markers_ref_swing],
-        activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
+        markers_ref=[markers_ref_stance, markers_ref_swing],
+        activation_ref=[activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
         q_ref=[q_ref_stance, q_ref_swing],
         show_online_optim=False,
