@@ -22,22 +22,10 @@ from biorbd_optim import (
     InterpolationType,
 )
 
-def get_last_contact_forces(ocp, nlp, t, x, u, data):
-    CS_func = Function(
-        "Contact_force",
-        [ocp.symbolic_states, ocp.symbolic_controls],
-        [
-            Dynamics.forces_from_forward_dynamics_torque_muscle_driven_with_contact(
-                ocp.symbolic_states, ocp.symbolic_controls, nlp
-            )
-        ],
-        ["x", "u"],
-        ["CS"],
-    ).expand()
-    force = CS_func(x[-1], u[-1])
-    val = force - data[t[-1], :]
+def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
+    force = nlp["contact_forces_func"](x[-1], u[-1])
+    val = force - data_to_track[t[-1], :]
     return dot(val, val)
-
 
 def prepare_ocp(
     biorbd_model,
