@@ -26,17 +26,18 @@ def prepare_ocp(
     final_time,
     nb_shooting,
     markers_ref,
-    activation_ref,
+    excitations_ref,
     show_online_optim,
 ):
     # Problem parameters
-    torque_min, torque_max, torque_init = -1000, 1000, 0
+    torque_min, torque_max, torque_init = -5000, 5000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
+
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": activation_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitations_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 30, "data_to_track": markers_ref},
     )
 
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
     final_time = 0.37
-    n_shooting_points = 50
+    n_shooting_points = 100
     Gaitphase = 'swing'
 
     # Generate data from file
@@ -124,7 +125,7 @@ if __name__ == "__main__":
         n_shooting_points,
         markers_ref,
         excitations_ref,
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Solve the program --- #
@@ -203,7 +204,6 @@ if __name__ == "__main__":
         else:
             axes[i].plot(t, q[i, :])
             axes[i].plot(t, q_ref[i, :], 'r')
-
 
     figure2, axes2 = plt.subplots(4, 5, sharex=True)
     axes2 = axes2.flatten()

@@ -44,8 +44,7 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx":[0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track":excitation_ref.T},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 1, "states_idx": [13, 14, 15, 17, 18, 23, 24, 26]},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitation_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
@@ -116,7 +115,7 @@ if __name__ == "__main__":
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
 
-    name_subject = "equincocont01"
+    name_subject = "equincocont07"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
     final_time = T_stance
 
