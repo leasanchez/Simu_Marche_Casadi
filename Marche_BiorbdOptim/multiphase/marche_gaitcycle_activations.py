@@ -19,6 +19,7 @@ from biorbd_optim import (
     OdeSolver,
     Data,
     Dynamics,
+    InterpolationType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data):
@@ -45,10 +46,12 @@ def prepare_ocp(
     markers_ref,
     activation_ref,
     grf_ref,
+    q_ref,
     show_online_optim,
 ):
     # Problem parameters
     nb_phases = len(biorbd_model)
+    nb_q = biorbd_model[0].nbQ()
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
@@ -79,7 +82,30 @@ def prepare_ocp(
     X_bounds = [QAndQDotBounds(biorbd_model[i])for i in range(nb_phases)]
 
     # Initial guess
-    X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()))for i in range(nb_phases)]
+    init_x_stance = init_x_swing = np.zeros((3, (nb_q + nb_q)))
+    init_x_start = init_x_end = init_x_inter = [0] * (nb_q + nb_q)
+
+    # stance
+    init_x_start[:nb_q] = q_ref_stance[:, 0]
+    for i in range(nb_q):
+        init_x_inter[i] = np.mean(q_ref_stance[i, :])
+    init_x_end[:nb_q] = q_ref_stance[:, -1]
+    init_x_stance[0, :] = init_x_start
+    init_x_stance[1, :] = init_x_inter
+    init_x_stance[2, :] = init_x_end
+
+    # swing
+    init_x_start[:nb_q] = q_ref_swing[:, 0]
+    for i in range(nb_q):
+        init_x_inter[i] = np.mean(q_ref_swing[i, :])
+    init_x_end[:nb_q] = q_ref_swing[:, -1]
+    init_x_swing[0, :] = init_x_start
+    init_x_swing[1, :] = init_x_inter
+    init_x_swing[2, :] = init_x_end
+
+
+    X_init = [InitialConditions(init_x_stance.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT),
+              InitialConditions(init_x_swing.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT)]
 
     # Define control path constraint
     U_bounds = [
@@ -162,7 +188,7 @@ if __name__ == "__main__":
         markers_ref = [markers_ref_stance, markers_ref_swing],
         activation_ref = [activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        q_ref=[q_ref_stance, q_ref_swing],
     )
 
     # --- Solve the program --- #

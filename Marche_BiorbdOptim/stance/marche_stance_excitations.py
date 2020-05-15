@@ -19,6 +19,7 @@ from biorbd_optim import (
     OdeSolver,
     Dynamics,
     Data,
+    InterpolationType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -33,6 +34,7 @@ def prepare_ocp(
     markers_ref,
     excitation_ref,
     grf_ref,
+    q_ref,
     show_online_optim,
 ):
     # Problem parameters
@@ -62,7 +64,22 @@ def prepare_ocp(
     )
 
     # Initial guess
-    X_init = InitialConditions([0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal())
+    init_x = np.zeros((3, (biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal())))
+
+    init_x_start = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
+    init_x_start[:biorbd_model.nbQ()] = q_ref[:, 0]
+    init_x[0, :] = init_x_start
+
+    init_x_end = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
+    init_x_end[:biorbd_model.nbQ()] = q_ref[:, -1]
+    init_x[2, :] = init_x_end
+
+    init_x_inter = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
+    for i in range(biorbd_model.nbQ()):
+        init_x_inter[i] = np.mean(q_ref[i, :])
+    init_x[1, :] = init_x_inter
+
+    X_init = InitialConditions(init_x.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT)
 
     # Define control path constraint
     U_bounds = Bounds(
@@ -122,6 +139,7 @@ if __name__ == "__main__":
         markers_ref,
         excitation_ref,
         grf_ref=grf_ref[1:, :],
+        q_ref=q_ref,
         show_online_optim=False,
     )
 
