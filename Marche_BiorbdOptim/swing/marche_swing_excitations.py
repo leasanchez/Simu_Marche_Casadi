@@ -213,7 +213,43 @@ if __name__ == "__main__":
         plot_control(axes2[i], t[:-1], excitations[i, :-1])
         axes2[i].plot(t[:-1], activations[i, :-1])
         axes2[i].set_title(name_mus)
+    # markers
+    label_markers = []
+    for mark in range(nb_marker):
+        label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
+    figure, axes = plt.subplots(2, 2)
+    axes = axes.flatten()
+    title_markers = ['x axis', 'z axis']
+    for i in range(2):
+        axes[i].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i].set_xticks(np.arange(nb_marker))
+        axes[i].set_xticklabels(label_markers, rotation=90)
+        axes[i].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i].plot([0, nb_marker], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_title('markers differences between sol and exp')
+
+        axes[i + 2].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 2].set_xticks(np.arange(nb_marker))
+        axes[i + 2].set_xticklabels(label_markers, rotation=90)
+        axes[i + 2].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i + 2].plot([0, nb_marker], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
+        axes[i + 2].set_title('markers differences between sol and ref')
+    plt.show()
+
+    figure, axes = plt.subplots(2, 2)
+    axes = axes.flatten()
+    title_markers = ['x axis', 'z axis']
+    for i in range(2):
+        axes[i].plot(t, diff_track[i, :, :].T)
+        axes[i].set_xlabel('time (s)')
+        axes[i].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i].set_title('markers differences between sol and exp')
+
+        axes[i + 2].plot(t, diff_sol[2*i, :, :].T)
+        axes[i + 2].set_xlabel('time (s)')
+        axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i + 2].set_title('markers differences between sol and ref')
     plt.show()
 
     # --- Show results --- #
