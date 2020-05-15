@@ -55,7 +55,7 @@ def GetGroundReactionForces(file):
 
 def load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
-    file = "../DonnesMvt/" + name_subject + "_out.c3d"
+    file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
     nbMarker = biorbd_model.nbMarkers()
 
     # LOAD C3D FILE
@@ -119,8 +119,8 @@ def load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points,
 def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
     # Create initial vector for joint position (nbNoeuds x nbQ)
     # Based on Kalman filter??
-    c3d_file = "../DonnesMvt/" + name_subject + "_out.c3d"
-    kalman_file = "../DonnesMvt/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
+    c3d_file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
+    kalman_file = "../../DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
 
     # LOAD MAT FILE FOR GENERALIZED COORDINATES
     kalman = sio.loadmat(kalman_file)
@@ -146,7 +146,7 @@ def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitP
 
 def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
-    file = "../DonnesMvt/" + name_subject + "_out.c3d"
+    file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
     nbMuscle = biorbd_model.nbMuscleTotal()
 
     # LOAD C3D FILE
@@ -194,7 +194,7 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
 
 def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # Load c3d file and get the muscular excitation from emg
-    file = "../DonnesMvt/" + name_subject + "_out.c3d"
+    file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
     nbNoeuds = n_shooting_points
 
     # LOAD C3D FILE
