@@ -140,8 +140,51 @@ if __name__ == "__main__":
 
     n_q = ocp.nlp[0]["model"].nbQ()
     n_qdot = ocp.nlp[0]["model"].nbQdot()
-    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    nb_marker = ocp.nlp[0]["model"].nbMarkers()
     n_frames = q.shape[1]
+    # --- Get markers position from q_sol and q_ref --- #
+    markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
+    markers_from_q_ref = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
+
+    markers_func = []
+    symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
+    symbolic_controls = MX.sym("u", ocp.nlp[0]["nu"], 1)
+    for i in range(nb_marker):
+        markers_func.append(
+            Function(
+                "ForwardKin",
+                [symbolic_states],
+                [biorbd_model.marker(symbolic_states[:n_q], i).to_mx()],
+                ["q"],
+                ["marker_" + str(i)],
+            ).expand()
+        )
+    for i in range(ocp.nlp[0]['ns']):
+        for j, mark_func in enumerate(markers_func):
+            markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i], activations[:, i]))).squeeze()
+            Q_ref = np.concatenate([q_ref[:, i], np.zeros(n_q), np.zeros(n_mus)])
+            markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
+
+    diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
+    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
+    hist_diff_track = np.zeros((3, nb_marker))
+    hist_diff_sol = np.zeros((3, nb_marker))
+
+    for n_mark in range(nb_marker):
+        hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :]) / nb_marker
+        hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :]) / nb_marker
+        hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :]) / nb_marker
+
+        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :]) / nb_marker
+        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :]) / nb_marker
+        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :]) / nb_marker
+
+    mean_diff_track = [sum(hist_diff_track[0, :]) / nb_marker,
+                       sum(hist_diff_track[1, :]) / nb_marker,
+                       sum(hist_diff_track[2, :]) / nb_marker]
+    mean_diff_sol = [sum(hist_diff_sol[0, :]) / nb_marker,
+                     sum(hist_diff_sol[1, :]) / nb_marker,
+                     sum(hist_diff_sol[2, :]) / nb_marker]
 
     # --- Plot --- #
     def plot_control(ax, t, x, color='b'):

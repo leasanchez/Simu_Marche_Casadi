@@ -201,15 +201,15 @@ if __name__ == "__main__":
     nb_markers = biorbd_model[0].nbMarkers()
     nb_q = biorbd_model[0].nbQ()
 
-    markers_sol = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    markers_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    markers_ref[:, : ocp.nlp[0]["ns"] + 1] = markers_ref_stance
-    markers_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = markers_ref_swing
+    markers_sol = np.ndarray((3, nb_markers, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+    markers_from_q_ref = np.ndarray((3, nb_markers, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+    markers_ref = np.ndarray((3, nb_markers, sum([nlp["ns"] for nlp in ocp.nlp]) + 1))
+    markers_ref[:, :, :ocp.nlp[0]["ns"] + 1] = markers_ref_stance
+    markers_ref[:, :, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = markers_ref_swing
 
     markers_func = []
-    symbolic_states = MX.sym("x", ocp.nlp["nx"], 1)
-    symbolic_controls = MX.sym("u", ocp.nlp["nu"], 1)
+    symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
+    symbolic_controls = MX.sym("u", ocp.nlp[0]["nu"], 1)
     for i in range(nb_markers):
         markers_func.append(
             Function(
