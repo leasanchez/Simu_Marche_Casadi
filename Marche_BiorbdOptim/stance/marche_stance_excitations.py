@@ -64,22 +64,12 @@ def prepare_ocp(
     )
 
     # Initial guess
-    init_x = np.zeros((3, (biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal())))
-
-    init_x_start = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    init_x_start[:biorbd_model.nbQ()] = q_ref[:, 0]
-    init_x[0, :] = init_x_start
-
-    init_x_end = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    init_x_end[:biorbd_model.nbQ()] = q_ref[:, -1]
-    init_x[2, :] = init_x_end
-
-    init_x_inter = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    for i in range(biorbd_model.nbQ()):
-        init_x_inter[i] = np.mean(q_ref[i, :])
-    init_x[1, :] = init_x_inter
-
-    X_init = InitialConditions(init_x.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT)
+    init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal(), nb_shooting + 1))
+    for i in range(nb_shooting + 1):
+        init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
+        init_x[biorbd_model.nbQ(): biorbd_model.nbQ() + biorbd_model.nbQdot(), i] = qdot_ref[:, i]
+        init_x[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i] #0.1
+    X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
     U_bounds = Bounds(
@@ -90,12 +80,8 @@ def prepare_ocp(
     init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
     for i in range(nb_shooting):
         init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
-        init_u[-biorbd_model.nbMuscleTotal():] = excitation_ref[:, i]  #0.1
-    U_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
-
-    # U_init = InitialConditions(
-    #     [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    # )
+        init_u[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]  #0.1
+    U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
@@ -123,18 +109,22 @@ if __name__ == "__main__":
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
 
-    name_subject = "equincocont07"
+    name_subject = "equincocont01"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
     final_time = T_stance
 
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
+    qdot_ref = np.zeros((biorbd_model.nbQdot(), n_shooting_points + 1))
+    dt = final_time/n_shooting_points
+    for i in range(biorbd_model.nbQ()):
+        qdot_ref[i, :] = np.gradient(q_ref[i, :])/dt
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    excitation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points))
+    excitation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points + 1)) + 0.001
     idx_emg = 0
     for i in range(biorbd_model.nbMuscleTotal()):
         if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            excitation_ref[i, :] = emg_ref[idx_emg, :-1]
+            excitation_ref[i, :] = emg_ref[idx_emg, :]
             idx_emg += 1
 
     # Track these data
@@ -147,6 +137,7 @@ if __name__ == "__main__":
         excitation_ref,
         grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
+        qdot_ref=qdot_ref,
         show_online_optim=True,
     )
 
