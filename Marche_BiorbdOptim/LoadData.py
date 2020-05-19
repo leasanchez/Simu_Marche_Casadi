@@ -144,6 +144,38 @@ def load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, GaitP
 
     return q_ref
 
+def load_data_qdot(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
+    # Create initial vector for joint position (nbNoeuds x nbQ)
+    # Based on Kalman filter??
+    c3d_file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
+    kalman_file = "../../DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
+
+    # LOAD MAT FILE FOR GENERALIZED COORDINATES
+    kalman = sio.loadmat(kalman_file)
+    Q_real = kalman['Q2']
+    Qdot = np.zeros((biorbd_model.nbQ(), Q_real.shape[1] - 1))
+    dt = final_time/n_shooting_points
+    for i in range(biorbd_model.nbQ()):
+        Qdot[i, :] = np.diff(Q_real[i, :])/dt
+
+    [start, stop_stance, stop] = Get_Event(c3d_file)
+
+    # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
+    if GaitPhase == 'stance':
+        t      = np.linspace(0, final_time, int(stop_stance - start) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
+        f      = interp1d(t, Qdot[:, int(start): int(stop_stance) + 1], kind='cubic')
+        qdot_ref  = f(node_t)
+    elif GaitPhase == 'swing':
+        t      = np.linspace(0, final_time, int(stop - stop_stance) + 1)
+        node_t = np.linspace(0, final_time, n_shooting_points + 1)
+        f      = interp1d(t, Qdot[:, int(stop_stance): int(stop) + 1], kind='cubic')
+        qdot_ref  = f(node_t)
+    else:
+        raise RuntimeError("Gaitphase doesn't exist")
+
+    return qdot_ref
+
 def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, GaitPhase):
     # Load c3d file and get the muscular excitation from emg
     file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
