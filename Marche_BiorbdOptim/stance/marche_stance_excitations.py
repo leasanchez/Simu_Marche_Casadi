@@ -35,18 +35,24 @@ def prepare_ocp(
     excitation_ref,
     grf_ref,
     q_ref,
+    qdot_ref,
     show_online_optim,
 ):
     # Problem parameters
+    nb_q = biorbd_model.nbQ()
+    nb_qdot = biorbd_model.nbQdot()
+    nb_mus = biorbd_model.nbMuscleTotal()
+    nb_x = nb_q + nb_qdot + nb_mus
+
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref.T},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "data_to_track": q_ref.T, "states_idx": range(biorbd_model.nbQ())},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -143,7 +149,7 @@ if __name__ == "__main__":
 
     # --- Solve the program --- #
     sol = ocp.solve(solver="ipopt", options_ipopt={
-        "ipopt.tol": 1e-3,
+        "ipopt.tol": 1e-2,
         "ipopt.max_iter": 5000,
         "ipopt.hessian_approximation": "limited-memory",
         "ipopt.limited_memory_max_history": 50,
@@ -238,7 +244,7 @@ if __name__ == "__main__":
     axes2 = axes2.flatten()
     for i in range(biorbd_model.nbMuscleTotal()):
         name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], excitation_ref[i, :], color='r')
+        plot_control(axes2[i], t[:-1], excitation_ref[i, :-1], color='r')
         plot_control(axes2[i], t[:-1], excitations[i, :-1])
         axes2[i].plot(t[:-1], activations[i, :-1])
         axes2[i].set_title(name_mus)

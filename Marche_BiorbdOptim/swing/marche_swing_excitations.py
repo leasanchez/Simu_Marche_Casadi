@@ -30,14 +30,20 @@ def prepare_ocp(
     show_online_optim,
 ):
     # Problem parameters
+    nb_q = biorbd_model.nbQ()
+    nb_qdot = biorbd_model.nbQdot()
+    nb_mus = biorbd_model.nbMuscleTotal()
+    nb_x = nb_q + nb_qdot + nb_mus
+
     torque_min, torque_max, torque_init = -5000, 5000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitations_ref.T},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitations_ref[:, :-1].T},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.001, "states_idx": range(nb_q), "data_to_track": q_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 30, "data_to_track": markers_ref},
     )
 
@@ -101,11 +107,11 @@ if __name__ == "__main__":
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    excitations_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points))
+    excitations_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points + 1))
     idx_emg = 0
     for i in range(biorbd_model.nbMuscleTotal()):
         if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            excitations_ref[i, :] = emg_ref[idx_emg, :-1]
+            excitations_ref[i, :] = emg_ref[idx_emg, :]
             idx_emg += 1
 
     # Track these data
@@ -122,7 +128,7 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     sol = ocp.solve(solver="ipopt",
                     options_ipopt={
-                        "ipopt.tol": 1e-3,
+                        "ipopt.tol": 1e-2,
                         "ipopt.max_iter": 5000,
                         "ipopt.hessian_approximation": "limited-memory",
                         "ipopt.limited_memory_max_history": 50,
