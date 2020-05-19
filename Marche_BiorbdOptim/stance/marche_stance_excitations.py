@@ -139,11 +139,17 @@ if __name__ == "__main__":
         excitation_ref,
         grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
-        show_online_optim=False,
+        show_online_optim=True,
     )
 
     # --- Solve the program --- #
-    sol = ocp.solve()
+    sol = ocp.solve(solver="ipopt", options_ipopt={
+        "ipopt.tol": 1e-3,
+        "ipopt.max_iter": 5000,
+        "ipopt.hessian_approximation": "limited-memory",
+        "ipopt.limited_memory_max_history": 50,
+        "ipopt.linear_solver": "ma57",
+    })
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])
