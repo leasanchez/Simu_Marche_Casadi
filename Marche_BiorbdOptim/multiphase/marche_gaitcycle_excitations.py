@@ -19,6 +19,7 @@ from biorbd_optim import (
     OdeSolver,
     Data,
     Dynamics,
+    InterpolationType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -34,6 +35,7 @@ def prepare_ocp(
     markers_ref,
     excitation_ref,
     grf_ref,
+    q_ref,
     show_online_optim,
 ):
     # Problem parameters
@@ -74,7 +76,14 @@ def prepare_ocp(
         X_bounds.append(XB)
 
     # Initial guess
-    X_init = [InitialConditions([0] * (biorbd_model[i].nbQ() + biorbd_model[i].nbQdot()) + [0.1] * biorbd_model[i].nbMuscleTotal())for i in range(nb_phases)]
+    X_init = []
+    for n_p in range(nb_phases):
+        init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
+        for i in range(nb_shooting[n_p] + 1):
+            init_x[:biorbd_model[n_p].nbQ(), i] = q_ref[n_p][:, i]
+            init_x[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i] #0.1
+        XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
+        X_init.append(XI)
 
     # Define control path constraint
     U_bounds = [
@@ -84,9 +93,16 @@ def prepare_ocp(
     )
         for i in range(nb_phases)]
 
-    U_init = [InitialConditions(
-        [torque_init] * biorbd_model[i].nbGeneralizedTorque() + [activation_init] * biorbd_model[i].nbMuscleTotal()
-    ) for i in range(nb_phases)]
+    # Initial guess
+    U_init = []
+    for n_p in range(nb_phases):
+        init_u = np.zeros((biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p]))
+        for i in range(nb_shooting[n_p]):
+            if n_p == 0:
+                init_u[1, i] = -500
+            init_u[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i] #0.1
+        UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
+        U_init.append(UI)
 
     # ------------- #
 
@@ -154,9 +170,10 @@ if __name__ == "__main__":
         biorbd_model,
         phase_time,
         number_shooting_points,
-        markers_ref = [markers_ref_stance, markers_ref_swing],
-        excitation_ref = [excitation_ref_stance[:, :-1], excitation_ref_swing[:, :-1]],
+        markers_ref=[markers_ref_stance, markers_ref_swing],
+        excitation_ref=[excitation_ref_stance, excitation_ref_swing],
         grf_ref=grf_ref[1:, :],
+        q_ref=[q_ref_stance, q_ref_swing],
         show_online_optim=False,
     )
 

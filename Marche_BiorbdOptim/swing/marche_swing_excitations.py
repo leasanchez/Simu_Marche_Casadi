@@ -54,31 +54,22 @@ def prepare_ocp(
     )
 
     # Initial guess
-    init_x = np.zeros((3, (biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal())))
-
-    init_x_start = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    init_x_start[:biorbd_model.nbQ()] = q_ref[:, 0]
-    init_x[0, :] = init_x_start
-
-    init_x_end = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    init_x_end[:biorbd_model.nbQ()] = q_ref[:, -1]
-    init_x[2, :] = init_x_end
-
-    init_x_inter = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()) + [0.1] * biorbd_model.nbMuscleTotal()
-    for i in range(biorbd_model.nbQ()):
-        init_x_inter[i] = np.mean(q_ref[i, :])
-    init_x[1, :] = init_x_inter
-
-    X_init = InitialConditions(init_x.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT)
+    init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal(), nb_shooting + 1))
+    for i in range(nb_shooting + 1):
+        init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
+        init_x[-biorbd_model.nbMuscleTotal():, i] = excitations_ref[:, i] #0.1
+    X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
     U_bounds = Bounds(
         [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
         [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
     )
-    U_init = InitialConditions(
-        [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    )
+    # Initial guess
+    init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
+    for i in range(nb_shooting):
+        init_u[-biorbd_model.nbMuscleTotal():, i] = excitations_ref[:, i]  #0.1
+    U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
