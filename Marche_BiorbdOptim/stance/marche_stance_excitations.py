@@ -86,9 +86,16 @@ def prepare_ocp(
         [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
         [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
     )
-    U_init = InitialConditions(
-        [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    )
+    # Initial guess
+    init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
+    for i in range(nb_shooting):
+        init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
+        init_u[-biorbd_model.nbMuscleTotal():] = excitation_ref[:, i]  #0.1
+    U_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
+
+    # U_init = InitialConditions(
+    #     [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
+    # )
 
     # ------------- #
 
