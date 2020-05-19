@@ -44,8 +44,9 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitation_ref.T},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "data_to_track": q_ref.T, "states_idx": range(biorbd_model.nbQ())},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
