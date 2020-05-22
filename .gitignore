@@ -6,5 +6,6 @@ DonneesMouvements/
 
 .idea/
 *.npy
+*.bo
 
 Marche_BiorbdOptim/stance/.ogv
