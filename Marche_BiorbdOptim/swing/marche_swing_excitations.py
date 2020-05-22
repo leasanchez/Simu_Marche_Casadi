@@ -1,5 +1,5 @@
 import numpy as np
-from casadi import MX, Function
+from casadi import MX, Function, vertcat
 from matplotlib import pyplot as plt
 import sys
 
@@ -7,16 +7,13 @@ sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
 import biorbd
 
 from biorbd_optim import (
-    Instant,
     OptimalControlProgram,
     ProblemType,
     Objective,
-    Constraint,
     Bounds,
     QAndQDotBounds,
     InitialConditions,
     ShowResult,
-    OdeSolver,
     Data,
     InterpolationType,
 )
@@ -27,7 +24,6 @@ def prepare_ocp(
     nb_shooting,
     markers_ref,
     excitations_ref,
-    show_online_optim,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -39,12 +35,13 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
+    # "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16],
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "muscles_idx": [0, 4, 7, 8, 9, 10, 13, 14, 15, 16], "data_to_track": excitations_ref[:, :-1].T},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitations_ref[:, :-1].T},
         {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
         {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.001, "states_idx": range(nb_q), "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 30, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 10, "data_to_track": markers_ref},
     )
 
     # Dynamics
@@ -84,13 +81,12 @@ def prepare_ocp(
         variable_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
     )
 
 
@@ -122,7 +118,6 @@ if __name__ == "__main__":
         n_shooting_points,
         markers_ref,
         excitations_ref,
-        show_online_optim=False,
     )
 
     # --- Solve the program --- #
@@ -132,8 +127,8 @@ if __name__ == "__main__":
                         "ipopt.max_iter": 5000,
                         "ipopt.hessian_approximation": "limited-memory",
                         "ipopt.limited_memory_max_history": 50,
-                        "ipopt.linear_solver": "ma57",
-                    })
+                        "ipopt.linear_solver": "ma57",},
+                    show_online_optim=True)
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])

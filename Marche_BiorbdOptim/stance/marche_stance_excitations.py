@@ -11,15 +11,13 @@ from biorbd_optim import (
     OptimalControlProgram,
     ProblemType,
     Objective,
-    Constraint,
     Bounds,
     QAndQDotBounds,
     InitialConditions,
     ShowResult,
-    OdeSolver,
-    Dynamics,
     Data,
     InterpolationType,
+    PlotType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -36,7 +34,6 @@ def prepare_ocp(
     grf_ref,
     q_ref,
     qdot_ref,
-    show_online_optim,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -51,8 +48,9 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 10, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.001, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -96,13 +94,12 @@ def prepare_ocp(
         variable_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
     )
 
 
@@ -144,17 +141,19 @@ if __name__ == "__main__":
         grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
         qdot_ref=qdot_ref,
-        show_online_optim=True,
     )
 
     # --- Solve the program --- #
-    sol = ocp.solve(solver="ipopt", options_ipopt={
-        "ipopt.tol": 1e-2,
-        "ipopt.max_iter": 5000,
-        "ipopt.hessian_approximation": "limited-memory",
-        "ipopt.limited_memory_max_history": 50,
-        "ipopt.linear_solver": "ma57",
-    })
+    sol = ocp.solve(
+        solver="ipopt",
+        options_ipopt={
+            "ipopt.tol": 1e-3,
+            "ipopt.max_iter": 5000,
+            "ipopt.hessian_approximation": "limited-memory",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57",},
+        show_online_optim=True,
+    )
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])
