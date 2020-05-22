@@ -36,25 +36,33 @@ def prepare_ocp(
     excitation_ref,
     grf_ref,
     q_ref,
-    show_online_optim,
 ):
     # Problem parameters
     nb_phases = len(biorbd_model)
+    nb_q = biorbd_model[0].nbQ()
+    nb_qdot = biorbd_model[0].nbQdot()
+    nb_mus = biorbd_model[0].nbMuscleTotal()
+    nb_x = nb_q + nb_qdot + nb_mus
+
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
     objective_functions = ((
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[0].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 0.1, "data_to_track": markers_ref[0]},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
         {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[1].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 0.1, "data_to_track": markers_ref[1]},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
     ))
 
     # Dynamics
@@ -111,13 +119,12 @@ def prepare_ocp(
         problem_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
     )
 
 
@@ -130,7 +137,7 @@ if __name__ == "__main__":
     )
 
     # Problem parameters
-    number_shooting_points = [25, 25]
+    number_shooting_points = [35, 35]
 
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
@@ -174,7 +181,6 @@ if __name__ == "__main__":
         excitation_ref=[excitation_ref_stance, excitation_ref_swing],
         grf_ref=grf_ref[1:, :],
         q_ref=[q_ref_stance, q_ref_swing],
-        show_online_optim=False,
     )
 
     # --- Solve the program --- #
@@ -184,8 +190,9 @@ if __name__ == "__main__":
                         "ipopt.max_iter": 5000,
                         "ipopt.hessian_approximation": "limited-memory",
                         "ipopt.limited_memory_max_history": 50,
-                        "ipopt.linear_solver": "ma57",
-                    })
+                        "ipopt.linear_solver": "ma57",},
+                    show_online_optim=False
+                    )
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])
