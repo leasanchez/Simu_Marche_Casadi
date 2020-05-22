@@ -219,41 +219,7 @@ if __name__ == "__main__":
                        sum(hist_diff_sol[1, :]) / nb_marker,
                        sum(hist_diff_sol[2, :]) / nb_marker]
 
-    # --- Plot --- #
-    def plot_control(ax, t, x, color='b'):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-
-    figure, axes = plt.subplots(2,3)
-    axes = axes.flatten()
-    for i in range(biorbd_model.nbQ()):
-        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
-        axes[i].set_title(name_dof)
-        axes[i].set_xlabel('time (s)')
-        if (i > 1) :
-            axes[i].plot(t, q[i, :]*180/np.pi)
-            axes[i].plot(t, q_ref[i, :]*180/np.pi, 'r')
-            axes[i].set_ylabel('position (m)')
-        else:
-            axes[i].plot(t, q[i, :])
-            axes[i].plot(t, q_ref[i, :], 'r')
-            axes[i].set_ylabel('angle (degrees)')
-
-    figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    axes2 = axes2.flatten()
-    for i in range(biorbd_model.nbMuscleTotal()):
-        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], excitation_ref[i, :-1], color='r')
-        plot_control(axes2[i], t[:-1], excitations[i, :-1])
-        axes2[i].plot(t[:-1], activations[i, :-1])
-        axes2[i].set_title(name_mus)
-
-    plt.figure('Contact forces')
-    plt.plot(t, contact_forces.T, 'b')
-    plt.plot(t, grf_ref[1:, :].T, 'r')
-
-    # markers
+    # --- Plot markers --- #
     label_markers = []
     for mark in range(nb_marker):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
@@ -291,6 +257,12 @@ if __name__ == "__main__":
         axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
         axes[i + 2].set_title('markers differences between sol and ref')
     plt.show()
+
+    # --- Save the optimal control program and the solution --- #
+    ocp.save(sol, "marche_stance_excitation")
+    # --- Load the optimal control program and the solution --- #
+    # ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
+    # result = ShowResult(ocp_load, sol_load)
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)

@@ -150,6 +150,7 @@ if __name__ == "__main__":
     # --- Get markers position from q_sol and q_ref --- #
     markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
     markers_from_q_ref = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
+    n_mus = biorbd_model.nbMuscleTotal()
 
     markers_func = []
     symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
@@ -191,33 +192,7 @@ if __name__ == "__main__":
                      sum(hist_diff_sol[1, :]) / nb_marker,
                      sum(hist_diff_sol[2, :]) / nb_marker]
 
-    # --- Plot --- #
-    def plot_control(ax, t, x, color='b'):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-
-    figure, axes = plt.subplots(2,3)
-    axes = axes.flatten()
-    for i in range(biorbd_model.nbQ()):
-        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
-        axes[i].set_title(name_dof)
-        if (i > 1) :
-            axes[i].plot(t, q[i, :]*180/np.pi)
-            axes[i].plot(t, q_ref[i, :]*180/np.pi, 'r')
-        else:
-            axes[i].plot(t, q[i, :])
-            axes[i].plot(t, q_ref[i, :], 'r')
-
-    figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    axes2 = axes2.flatten()
-    for i in range(biorbd_model.nbMuscleTotal()):
-        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], excitations_ref[i, :], color='r')
-        plot_control(axes2[i], t[:-1], excitations[i, :-1])
-        axes2[i].plot(t[:-1], activations[i, :-1])
-        axes2[i].set_title(name_mus)
-    # markers
+    # --- Plot markers differences --- #
     label_markers = []
     for mark in range(nb_marker):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
@@ -255,6 +230,11 @@ if __name__ == "__main__":
         axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
         axes[i + 2].set_title('markers differences between sol and ref')
     plt.show()
+
+    # --- Save the optimal control program and the solution --- #
+    ocp.save(sol, "marche_swing_excitation")
+    # --- Load the optimal control program and the solution --- #
+    ocp_load, sol_load = OptimalControlProgram.load("marche_swing_excitation.bo")
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
