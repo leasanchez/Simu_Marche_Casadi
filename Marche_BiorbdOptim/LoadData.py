@@ -259,3 +259,38 @@ def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     GRF_real = f_stance(node_t_stance)
 
     return GRF_real, T, T_stance, T_swing
+
+def load_muscularExcitation(emg_ref):
+    # Create initial vector for muscular excitation (nbNoeuds x nbMus)
+    # Based on EMG from the c3d file
+
+    # INPUT
+    # U_real          = muscular excitation from the c3d file
+
+    # OUTPUT
+    # U0             = initial guess for muscular excitation (3 x nbNoeuds)
+
+    nbNoeuds = len(emg_ref[0, :])
+    nbMus    = len(emg_ref[:, 0])
+
+    excitation_ref = np.zeros((nbMus + 7, nbNoeuds))
+
+    excitation_ref[0, :]  = emg_ref[0, :]             # glut_max1_r
+    excitation_ref[1, :]  = emg_ref[0, :]             # glut_max2_r
+    excitation_ref[2, :]  = emg_ref[0, :]             # glut_max3_r
+    excitation_ref[3, :]  = emg_ref[1, :]             # glut_med1_r
+    excitation_ref[4, :]  = emg_ref[1, :]             # glut_med2_r
+    excitation_ref[5, :]  = emg_ref[1, :]             # glut_med3_r
+    excitation_ref[6, :]  = emg_ref[2, :]             # semimem_r
+    excitation_ref[7, :]  = emg_ref[2, :]             # semiten_r
+    excitation_ref[8, :]  = emg_ref[3, :]             # bi_fem_r
+    excitation_ref[9, :]  = emg_ref[4, :]             # rectus_fem_r
+    excitation_ref[10, :] = emg_ref[5, :]             # vas_med_r
+    excitation_ref[11, :] = emg_ref[5, :]             # vas_int_r
+    excitation_ref[12, :] = emg_ref[5, :]             # vas_lat_r
+    excitation_ref[13, :] = emg_ref[6, :]             # gas_med_r
+    excitation_ref[14, :] = emg_ref[7, :]             # gas_lat_r
+    excitation_ref[15, :] = emg_ref[8, :]             # soleus_r
+    excitation_ref[16, :] = emg_ref[9, :]             # tib_ant_r
+
+    return excitation_ref
