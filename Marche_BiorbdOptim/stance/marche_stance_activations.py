@@ -12,14 +12,12 @@ from biorbd_optim import (
     OptimalControlProgram,
     ProblemType,
     Objective,
-    Constraint,
     Bounds,
     QAndQDotBounds,
     InitialConditions,
     ShowResult,
-    OdeSolver,
-    Dynamics,
     Data,
+    InterpolationType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -109,7 +107,7 @@ def prepare_ocp(
     markers_ref,
     activation_ref,
     grf_ref,
-    show_online_optim,
+    q_ref,
 ):
     # Problem parameters
     torque_min, torque_max, torque_init = -1000, 1000, 0
@@ -134,16 +132,22 @@ def prepare_ocp(
     X_bounds = QAndQDotBounds(biorbd_model)
 
     # Initial guess
-    X_init = InitialConditions([0] * (biorbd_model.nbQ() + biorbd_model.nbQdot()))
+    init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot(), nb_shooting + 1))
+    for i in range(nb_shooting + 1):
+        init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
+    X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
     U_bounds = Bounds(
         [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
         [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
     )
-    U_init = InitialConditions(
-        [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    )
+
+    init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
+    for i in range(nb_shooting):
+        init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
+        init_u[-biorbd_model.nbMuscleTotal():, i] = activation_ref[:, i]  #0.1
+    U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
