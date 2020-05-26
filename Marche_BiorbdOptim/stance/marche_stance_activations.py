@@ -108,6 +108,7 @@ def prepare_ocp(
     activation_ref,
     grf_ref,
     q_ref,
+    nb_threads,
 ):
     # Problem parameters
     torque_min, torque_max, torque_init = -1000, 1000, 0
@@ -116,7 +117,7 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":activation_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 5, "data_to_track":activation_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
@@ -156,20 +157,20 @@ def prepare_ocp(
         variable_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
+        nb_threads=nb_threads,
     )
 
 
 if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
-    n_shooting_points = 50
+    n_shooting_points = 25
     Gaitphase = 'stance'
 
     # Generate data from file
@@ -214,11 +215,21 @@ if __name__ == "__main__":
         markers_ref,
         activation_ref,
         grf_ref=grf_ref[1:, :],
-        show_online_optim=True,
+        q_ref=q_ref,
+        nb_threads=4
     )
 
     # --- Solve the program --- #
-    sol = ocp.solve()
+    sol = ocp.solve(
+        solver="ipopt",
+        options_ipopt={
+            "ipopt.tol": 1e-4,
+            "ipopt.max_iter": 5000,
+            "ipopt.hessian_approximation": "exact",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57", },
+        show_online_optim=True,
+    )
 
     # --- Get Results --- #
     states, controls = Data.get_data(ocp, sol["x"])
