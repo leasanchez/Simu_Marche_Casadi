@@ -39,8 +39,8 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitations_ref[:, :-1].T},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.001, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.01, "states_idx": np.linspace(nb_q, (nb_x - 1),  (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 10, "data_to_track": markers_ref},
     )
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
     final_time = 0.37
-    n_shooting_points = 100
+    n_shooting_points = 25
     Gaitphase = 'swing'
 
     # Generate data from file
@@ -166,12 +166,14 @@ if __name__ == "__main__":
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(n_q), np.zeros(n_mus)])
             markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
 
-    diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
-    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
+    # norme diff in mm
+    diff_track = np.sqrt((markers_sol - markers_ref) * (markers_sol - markers_ref)) * 1e3
+    diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
     hist_diff_track = np.zeros((3, nb_marker))
     hist_diff_sol = np.zeros((3, nb_marker))
 
     for n_mark in range(nb_marker):
+        # mean norme diff in mm for each marker
         hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :]) / nb_marker
         hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :]) / nb_marker
         hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :]) / nb_marker
@@ -180,6 +182,7 @@ if __name__ == "__main__":
         hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :]) / nb_marker
         hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :]) / nb_marker
 
+    # mean norme diff in mm
     mean_diff_track = [sum(hist_diff_track[0, :]) / nb_marker,
                        sum(hist_diff_track[1, :]) / nb_marker,
                        sum(hist_diff_track[2, :]) / nb_marker]

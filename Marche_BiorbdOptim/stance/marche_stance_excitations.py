@@ -48,9 +48,9 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 10, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.001, "states_idx": range(nb_q), "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.01, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -106,11 +106,11 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
-    n_shooting_points = 50
+    n_shooting_points = 25
     Gaitphase = 'stance'
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF, load_muscularExcitation
 
     name_subject = "equincocont01"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
@@ -123,12 +123,16 @@ if __name__ == "__main__":
     for i in range(biorbd_model.nbQ()):
         qdot_ref[i, :] = np.gradient(q_ref[i, :])/dt
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    excitation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points + 1)) + 0.001
-    idx_emg = 0
-    for i in range(biorbd_model.nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            excitation_ref[i, :] = emg_ref[idx_emg, :]
-            idx_emg += 1
+    # weight_excitation = np.zeros(biorbd_model.nbMuscleTotal())
+    # excitation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points + 1)) + 0.001
+    # idx_emg = 0
+    # for i in range(biorbd_model.nbMuscleTotal()):
+    #     weight_excitation[i] = 1
+    #     if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
+    #         weight_excitation[i] = 10
+    #         excitation_ref[i, :] = emg_ref[idx_emg, :]
+    #         idx_emg += 1
+    excitation_ref = load_muscularExcitation(emg_ref)
 
     # Track these data
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
@@ -137,7 +141,7 @@ if __name__ == "__main__":
         final_time,
         n_shooting_points,
         markers_ref,
-        excitation_ref,
+        excitation_ref=excitation_ref,
         grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
         qdot_ref=qdot_ref,
@@ -147,12 +151,12 @@ if __name__ == "__main__":
     sol = ocp.solve(
         solver="ipopt",
         options_ipopt={
-            "ipopt.tol": 1e-3,
+            "ipopt.tol": 1e-2,
             "ipopt.max_iter": 5000,
             "ipopt.hessian_approximation": "limited-memory",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",},
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Get Results --- #
@@ -197,8 +201,8 @@ if __name__ == "__main__":
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(n_q), np.zeros(n_mus)])
             markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
 
-    diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
-    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
+    diff_track = np.sqrt((markers_sol - markers_ref) * (markers_sol - markers_ref)) * 1e3
+    diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
     hist_diff_track = np.zeros((3, nb_marker))
     hist_diff_sol = np.zeros((3, nb_marker))
 
@@ -230,14 +234,14 @@ if __name__ == "__main__":
         axes[i].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_marker))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + 'mm')
         axes[i].plot([0, nb_marker], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
         axes[i].set_title('markers differences between sol and exp')
 
         axes[i + 2].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i + 2].set_xticks(np.arange(nb_marker))
         axes[i + 2].set_xticklabels(label_markers, rotation=90)
-        axes[i + 2].set_ylabel('Sum of squared differences in ' + title_markers[i])
+        axes[i + 2].set_ylabel('Mean differences in ' + title_markers[i]+ 'mm')
         axes[i + 2].plot([0, nb_marker], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
         axes[i + 2].set_title('markers differences between sol and ref')
     plt.show()
@@ -260,8 +264,28 @@ if __name__ == "__main__":
     # --- Save the optimal control program and the solution --- #
     ocp.save(sol, "marche_stance_excitation")
     # --- Load the optimal control program and the solution --- #
-    # ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
-    # result = ShowResult(ocp_load, sol_load)
+    ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
+    result = ShowResult(ocp_load, sol_load)
+
+    def plot_control(ax, t, x, color='b'):
+        nbPoints = len(np.array(x))
+        for n in range(nbPoints - 1):
+            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+
+    figure2, axes2 = plt.subplots(4, 5, sharex=True)
+    axes2 = axes2.flatten()
+    for i in range(biorbd_model.nbMuscleTotal()):
+        name_mus = biorbd_model.muscle(i).name().to_string()
+        plot_control(axes2[i], t, mus[i, :], color='r')
+        plot_control(axes2[i], t, mus_int[i, :], color='b')
+        axes2[i].plot(t, activations[i, :], 'g.-')
+        axes2[i].set_title(name_mus)
+        axes2[i].set_ylim([0, 1])
+        axes2[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
+        axes2[i].grid(color="k", linestyle="--", linewidth=0.5)
+    axes2[-1].remove()
+    axes2[-2].remove()
+    axes2[-3].remove()
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
