@@ -207,37 +207,16 @@ if __name__ == "__main__":
     tau = controls_sol["tau"]
     activations = controls_sol["muscles"]
 
-    n_q = ocp.nlp[0]["model"].nbQ()
-    n_qdot = ocp.nlp[0]["model"].nbQdot()
-    n_mark = ocp.nlp[0]["model"].nbMarkers()
+    nb_q = ocp.nlp[0]["model"].nbQ()
+    nb_qdot = ocp.nlp[0]["model"].nbQdot()
+    nb_markers = ocp.nlp[0]["model"].nbMarkers()
     n_frames = q.shape[1]
+    nb_mus = biorbd_model.nbMuscleTotal()
 
-    # --- Plot --- #
-    def plot_control(ax, t, x, color='b'):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-
-    figure, axes = plt.subplots(2,3)
-    axes = axes.flatten()
-    for i in range(biorbd_model.nbQ()):
-        name_dof = ocp.nlp[0]["model"].nameDof()[i].to_string()
-        axes[i].set_title(name_dof)
-        axes[i].plot(t, q[i, :])
-        axes[i].plot(t, q_ref[i, :], 'r')
-
-    figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    axes2 = axes2.flatten()
-    for i in range(biorbd_model.nbMuscleTotal()):
-        name_mus = ocp.nlp[0]["model"].muscleNames()[i].to_string()
-        plot_control(axes2[i], t[:-1], activation_ref[i, :], color='r')
-        plot_control(axes2[i], t[:-1], activations[i, :-1])
-        axes2[i].set_title(name_mus)
+    muscles_states = biorbd.VecBiorbdMuscleStateDynamics(nb_mus)
+    muscles_activations = activations
 
     # --- Get markers position from q_sol and q_ref --- #
-    nb_markers = biorbd_model.nbMarkers()
-    nb_q = biorbd_model.nbQ()
-
     markers_sol = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
     markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
 
@@ -246,65 +225,97 @@ if __name__ == "__main__":
         markers_func.append(
             Function(
                 "ForwardKin",
-                [ocp.symbolic_states],
-                [biorbd_model.marker(ocp.symbolic_states[:nb_q], i).to_mx()],
+                [symbolic_states],
+                [biorbd_model.marker(symbolic_states[:nb_q], i).to_mx()],
                 ["q"],
                 ["marker_" + str(i)],
             ).expand()
         )
-    for i in range(ocp.nlp[0]['ns']):
+
+    for i in range(ocp.nlp[0]['ns'] + 1):
         for j, mark_func in enumerate(markers_func):
             markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i]))).squeeze()
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q)])
             markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
 
-    diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
-    diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
+    diff_track = np.sqrt((markers_sol - markers_ref) * (markers_sol - markers_ref)) * 1e3
+    diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
     hist_diff_track = np.zeros((3, nb_markers))
     hist_diff_sol = np.zeros((3, nb_markers))
 
     for n_mark in range(nb_markers):
-        hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :])/nb_markers
-        hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :])/nb_markers
-        hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :])/nb_markers
+        hist_diff_track[0, n_mark] = np.sum(diff_track[0, n_mark, :])/n_shooting_points
+        hist_diff_track[1, n_mark] = np.sum(diff_track[1, n_mark, :])/n_shooting_points
+        hist_diff_track[2, n_mark] = np.sum(diff_track[2, n_mark, :])/n_shooting_points
 
-        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :])/nb_markers
-        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :])/nb_markers
-        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :])/nb_markers
+        hist_diff_sol[0, n_mark] = np.sum(diff_sol[0, n_mark, :])/n_shooting_points
+        hist_diff_sol[1, n_mark] = np.sum(diff_sol[1, n_mark, :])/n_shooting_points
+        hist_diff_sol[2, n_mark] = np.sum(diff_sol[2, n_mark, :])/n_shooting_points
 
-    mean_diff_track = [sum(hist_diff_track[0, :]) / nb_markers,
-                       sum(hist_diff_track[1, :]) / nb_markers,
-                       sum(hist_diff_track[2, :]) / nb_markers]
-    mean_diff_sol = [sum(hist_diff_sol[0, :]) / nb_markers,
-                       sum(hist_diff_sol[1, :]) / nb_markers,
-                       sum(hist_diff_sol[2, :]) / nb_markers]
+    mean_diff_track = [np.sum(hist_diff_track[0, :]) / nb_markers,
+                       np.sum(hist_diff_track[1, :]) / nb_markers,
+                       np.sum(hist_diff_track[2, :]) / nb_markers]
+    mean_diff_sol = [np.sum(hist_diff_sol[0, :]) / nb_markers,
+                     np.sum(hist_diff_sol[1, :]) / nb_markers,
+                     np.sum(hist_diff_sol[2, :]) / nb_markers]
     # markers
     label_markers = []
     title_markers = ['x', 'y', 'z']
     for mark in range(nb_markers):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
-    figure, axes = plt.subplots(2, 3)
+    figure, axes = plt.subplots(2, 2)
     axes = axes.flatten()
-    title_markers = ['x', 'y', 'z']
-    for i in range(3):
-        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+    title_markers = ['x', 'z']
+    for i in range(2):
+        axes[i].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_markers))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_title(title_markers[i])
-        axes[i].plot([0, nb_markers], [mean_diff_track[i], mean_diff_track[i]], '--r')
+        axes[i].plot([0, nb_markers], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
+        axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 3].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i + 3].set_xticks(np.arange(nb_markers))
-        axes[i + 3].set_xticklabels(label_markers, rotation=90)
-        axes[i + 3].set_title(title_markers[i])
-        axes[i + 3].plot([0, nb_markers], [mean_diff_sol[i], mean_diff_sol[i]], '--r')
+        axes[i + 2].bar(np.linspace(0,nb_markers, nb_markers), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 2].set_xticks(np.arange(nb_markers))
+        axes[i + 2].set_xticklabels(label_markers, rotation=90)
+        axes[i + 2].plot([0, nb_markers], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
+        axes[i + 2].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
+        axes[i + 2].set_title('markers differences between sol and ref')
 
-        if (i==1):
-            axes[i].set_title('markers differences between sol and exp')
-            axes[i + 3].set_title('markers differences between sol and ref')
+    figure, axes = plt.subplots(2, 2)
+    axes = axes.flatten()
+    title_markers = ['x axis', 'z axis']
+    for i in range(2):
+        axes[i].plot(t, diff_track[2 * i, :, :].T)
+        axes[i].set_xlabel('time (s)')
+        axes[i].set_ylabel('Differences in ' + title_markers[i] + ' (mm)')
+        axes[i].set_title('markers differences between sol and exp')
+
+        axes[i + 2].plot(t, diff_sol[2 * i, :, :].T)
+        axes[i + 2].set_xlabel('time (s)')
+        axes[i + 2].set_ylabel('Differences in ' + title_markers[i] + ' (mm)')
+        axes[i + 2].set_title('markers differences between sol and ref')
+    plt.show()
+
+    # --- Plot muscles activation --- #
+    diff_act = (activation_ref - activations)
+    hist_diff_act = np.zeros(nb_mus)
+    label_muscles = []
+    for n_mus in range(nb_mus):
+        label_muscles.append(biorbd_model.muscle(n_mus).name().to_string())
+        hist_diff_act[n_mus] = sum(diff_act[n_mus, :]) / n_shooting_points
+    mean_diff_act = np.sum(hist_diff_act) / nb_mus
+
+    plt.figure()
+    plt.bar(np.linspace(0, (nb_mus - 1) , nb_mus), hist_diff_act, width=1.0, facecolor='b',edgecolor='k', alpha=0.5)
+    plt.xticks(np.arange(nb_mus), label_muscles, rotation=90)
+    plt.ylabel('Mean differences in activation')
+    plt.title('activations differences between solution and reference')
+    plt.show()
+
+    # --- Save the optimal control program and the solution --- #
+    ocp.save(sol, "marche_swing_activation")
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
-    result.animate(show_meshes=False)
-    result.graphs()
+    result.animate()
