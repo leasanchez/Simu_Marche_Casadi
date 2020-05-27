@@ -161,6 +161,34 @@ if __name__ == "__main__":
         q_ref,
         show_online_optim=False,
     )
+    def get_markers_pos(x, idx_coord):
+        marker_pos = []
+        for i in range(x.shape[1]):
+            marker_pos.append(markers_func_all(x[:, i]))
+        marker_pos = vertcat(*marker_pos)
+        return marker_pos[idx_coord::3, :].T
+
+    # --- Add plots --- #
+    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, color="tab:red")
+
+
+    symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
+    symbolic_controls = MX.sym("u", ocp.nlp[0]["nu"], 1)
+    markers_func_all = Function(
+        "ForwardKin_all", [symbolic_states], [biorbd_model.markers(symbolic_states[:biorbd_model.nbQ()])], ["q"], ["markers"],
+    ).expand()
+
+    label_markers = []
+    title_markers = ['x', 'y', 'z']
+    for mark in range(biorbd_model.nbMarkers()):
+        label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
+
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: markers_ref[0, :, :], plot_type=PlotType.STEP, color="black", legend = label_markers)
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: get_markers_pos(x, 0), plot_type=PlotType.PLOT, color="tab:red")
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: markers_ref[1, :, :], plot_type=PlotType.STEP, color="black", legend = label_markers)
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: get_markers_pos(x, 1), plot_type=PlotType.PLOT, color="tab:green")
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: markers_ref[2, :, :], plot_type=PlotType.STEP, color="black", legend = label_markers)
+    ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: get_markers_pos(x, 2), plot_type=PlotType.PLOT, color="tab:blue")
 
     # --- Solve the program --- #
     sol = ocp.solve()
