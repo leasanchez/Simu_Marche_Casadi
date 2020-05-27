@@ -85,7 +85,6 @@ def prepare_ocp(
     activation_ref,
     grf_ref,
     q_ref,
-    show_online_optim,
 ):
     # Problem parameters
     nb_phases = len(biorbd_model)
@@ -94,26 +93,16 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-    # objective_functions = ((
-    #     {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-    #     {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[0].T},
-    #     {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-    #     {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-    # ),
-    # (
-    #     {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-    #     {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref[1].T},
-    #     {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]}
-    # ))
     objective_functions = ((
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "data_to_track": q_ref_stance.T, "states_idx": range(biorbd_model[0].nbQ()),},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 10, "data_to_track":activation_ref[0].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-        {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     ),
     (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "data_to_track": q_ref_swing.T, "states_idx": range(biorbd_model[1].nbQ()), }
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 10, "data_to_track":activation_ref[1].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref[1]}
     ))
 
     # Dynamics
@@ -129,30 +118,15 @@ def prepare_ocp(
     X_bounds = [QAndQDotBounds(biorbd_model[i])for i in range(nb_phases)]
 
     # Initial guess
-    init_x_stance = init_x_swing = np.zeros((3, (nb_q + nb_q)))
-    init_x_start = init_x_end = init_x_inter = [0] * (nb_q + nb_q)
+    init_x_stance = np.zeros((biorbd_model[0].nbQ() + biorbd_model[0].nbQdot(), nb_shooting[0] + 1))
+    for i in range(nb_shooting[0] + 1):
+        init_x_stance[:biorbd_model[0].nbQ(), i] = q_ref[0][:, i]
+    init_x_swing= np.zeros((biorbd_model[1].nbQ() + biorbd_model[1].nbQdot(), nb_shooting[1] + 1))
+    for i in range(nb_shooting[1] + 1):
+        init_x_swing[:biorbd_model[1].nbQ(), i] = q_ref[1][:, i]
 
-    # stance
-    init_x_start[:nb_q] = q_ref_stance[:, 0]
-    for i in range(nb_q):
-        init_x_inter[i] = np.mean(q_ref_stance[i, :])
-    init_x_end[:nb_q] = q_ref_stance[:, -1]
-    init_x_stance[0, :] = init_x_start
-    init_x_stance[1, :] = init_x_inter
-    init_x_stance[2, :] = init_x_end
-
-    # swing
-    init_x_start[:nb_q] = q_ref_swing[:, 0]
-    for i in range(nb_q):
-        init_x_inter[i] = np.mean(q_ref_swing[i, :])
-    init_x_end[:nb_q] = q_ref_swing[:, -1]
-    init_x_swing[0, :] = init_x_start
-    init_x_swing[1, :] = init_x_inter
-    init_x_swing[2, :] = init_x_end
-
-
-    X_init = [InitialConditions(init_x_stance.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT),
-              InitialConditions(init_x_swing.T, interpolation_type=InterpolationType.CONSTANT_WITH_FIRST_AND_LAST_DIFFERENT)]
+    X_init = [InitialConditions(init_x_stance, interpolation_type=InterpolationType.EACH_FRAME),
+              InitialConditions(init_x_swing, interpolation_type=InterpolationType.EACH_FRAME)]
 
     # Define control path constraint
     U_bounds = [
@@ -162,9 +136,17 @@ def prepare_ocp(
     )
         for i in range(nb_phases)]
 
-    U_init = [InitialConditions(
-        [torque_init] * biorbd_model[i].nbGeneralizedTorque() + [activation_init] * biorbd_model[i].nbMuscleTotal()
-    ) for i in range(nb_phases)]
+    init_u_stance = np.zeros((biorbd_model[0].nbGeneralizedTorque() + biorbd_model[0].nbMuscleTotal(), nb_shooting[0]))
+    for i in range(nb_shooting[0]):
+        init_u_stance[:biorbd_model[0].nbQ(), i] = [0, -500, 0, 0, 0, 0]
+        init_u_stance[-biorbd_model[0].nbMuscleTotal():, i] = activation_ref[0][:, i]
+
+    init_u_swing = np.zeros((biorbd_model[1].nbGeneralizedTorque() + biorbd_model[1].nbMuscleTotal(), nb_shooting[1]))
+    for i in range(nb_shooting[1]):
+        init_u_swing[-biorbd_model[1].nbMuscleTotal():, i] = activation_ref[1][:, i]
+
+    U_init = [InitialConditions(init_u_stance, interpolation_type=InterpolationType.EACH_FRAME),
+              InitialConditions(init_u_swing, interpolation_type=InterpolationType.EACH_FRAME)]
 
     # ------------- #
 
@@ -173,13 +155,12 @@ def prepare_ocp(
         problem_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
     )
 
 
@@ -228,11 +209,25 @@ if __name__ == "__main__":
         activation_ref=[activation_ref_stance[:, :-1], activation_ref_swing[:, :-1]],
         grf_ref=grf_ref[1:, :],
         q_ref=[q_ref_stance, q_ref_swing],
-        show_online_optim=False,
     )
 
+    # # --- Add plots --- #
+    # q_ref_plot = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + number_shooting_points[1] + 1))
+    # q_ref_plot[:, :number_shooting_points[0] + 1] = q_ref_stance
+    # q_ref_plot[:, number_shooting_points[0]:] = q_ref_swing
+    # ocp.add_plot("q", lambda x, u: q_ref_plot, PlotType.STEP, color="tab:red")
+
     # --- Solve the program --- #
-    sol = ocp.solve()
+    sol = ocp.solve(
+        solver="ipopt",
+        options_ipopt={
+            "ipopt.tol": 1e-4,
+            "ipopt.max_iter": 5000,
+            "ipopt.hessian_approximation": "exact",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57", },
+        show_online_optim=True,
+    )
 
     # --- Get Results --- #
     states, controls = Data.get_data(ocp, sol["x"])

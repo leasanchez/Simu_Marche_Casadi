@@ -79,18 +79,16 @@ def prepare_ocp(
     markers_ref,
     activation_ref,
     q_ref,
-    show_online_optim,
 ):
     # Problem parameters
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-    # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track":activation_ref.T},
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref}
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 10, "data_to_track": activation_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 50, "data_to_track": markers_ref}
     )
 
     # Dynamics
@@ -103,18 +101,21 @@ def prepare_ocp(
     X_bounds = QAndQDotBounds(biorbd_model)
 
     # Initial guess
-    init_x = [0] * (biorbd_model.nbQ() + biorbd_model.nbQdot())
-    init_x[:biorbd_model.nbQ()] = q_ref[:, 0]
-    X_init = InitialConditions(init_x)
+    init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot(), nb_shooting + 1))
+    for i in range(nb_shooting + 1):
+        init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
+    X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
     U_bounds = Bounds(
         [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
         [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
     )
-    U_init = InitialConditions(
-        [torque_init] * biorbd_model.nbGeneralizedTorque() + [activation_init] * biorbd_model.nbMuscleTotal()
-    )
+
+    init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
+    for i in range(nb_shooting):
+        init_u[-biorbd_model.nbMuscleTotal():, i] = activation_ref[:, i]
+    U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
@@ -123,14 +124,12 @@ def prepare_ocp(
         variable_type,
         nb_shooting,
         final_time,
-        objective_functions,
         X_init,
         U_init,
         X_bounds,
         U_bounds,
         objective_functions,
         constraints,
-        show_online_optim=show_online_optim,
     )
 
 
@@ -159,7 +158,6 @@ if __name__ == "__main__":
         markers_ref,
         activation_ref,
         q_ref,
-        show_online_optim=False,
     )
     def get_markers_pos(x, idx_coord):
         marker_pos = []
@@ -191,7 +189,16 @@ if __name__ == "__main__":
     ocp.add_plot("Markers plot coordinates", update_function=lambda x, u: get_markers_pos(x, 2), plot_type=PlotType.PLOT, color="tab:blue")
 
     # --- Solve the program --- #
-    sol = ocp.solve()
+    sol = ocp.solve(
+        solver="ipopt",
+        options_ipopt={
+            "ipopt.tol": 1e-4,
+            "ipopt.max_iter": 5000,
+            "ipopt.hessian_approximation": "exact",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57", },
+        show_online_optim=True,
+    )
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])
