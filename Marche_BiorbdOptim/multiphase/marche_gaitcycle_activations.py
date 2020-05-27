@@ -1,5 +1,6 @@
 import numpy as np
-from casadi import dot, Function, vertcat, MX
+from scipy.integrate import solve_ivp
+from casadi import dot, Function, vertcat, MX, tanh
 from matplotlib import pyplot as plt
 import sys
 
@@ -11,21 +12,70 @@ from biorbd_optim import (
     OptimalControlProgram,
     ProblemType,
     Objective,
-    Constraint,
     Bounds,
     QAndQDotBounds,
     InitialConditions,
     ShowResult,
-    OdeSolver,
     Data,
-    Dynamics,
     InterpolationType,
+    PlotType,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1])
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
+
+def generate_activation(biorbd_model, final_time, nb_shooting, emg_ref):
+    # Aliases
+    nb_mus = biorbd_model.nbMuscleTotal()
+    nb_musclegrp = biorbd_model.nbMuscleGroups()
+    dt = final_time / nb_shooting
+
+    # init
+    ta = td = []
+    activation_ref = np.ndarray((nb_mus, nb_shooting + 1))
+
+    for n_grp in range(nb_musclegrp):
+        for n_muscle in range(biorbd_model.muscleGroup(n_grp).nbMuscles()):
+            ta.append(biorbd_model.muscleGroup(n_grp).muscle(n_muscle).characteristics().torqueActivation().to_mx())
+            td.append(biorbd_model.muscleGroup(n_grp).muscle(n_muscle).characteristics().torqueDeactivation().to_mx())
+
+    def compute_activationDot(a, e, ta, td):
+        activationDot = []
+        for i in range(nb_mus):
+            f = 0.5 * tanh(0.1*(e[i] - a[i]))
+            da = (f + 0.5) / (ta[i] * (0.5 + 1.5 * a[i]))
+            dd = (-f + 0.5) * (0.5 + 1.5 * a[i]) / td[i]
+            activationDot.append((da + dd) * (e[i] - a[i]))
+        return vertcat(*activationDot)
+
+    # casadi
+    symbolic_states = MX.sym("a", nb_mus, 1)
+    symbolic_controls = MX.sym("e", nb_mus, 1)
+    dynamics_func = Function(
+        "ActivationDyn",
+        [symbolic_states, symbolic_controls],
+        [compute_activationDot(symbolic_states, symbolic_controls, ta, td)],
+        ["a", "e"],
+        ["adot"],
+    ).expand()
+
+    def dyn_interface(t, a, e):
+        return np.array(dynamics_func(a, e)).squeeze()
+
+    # Integrate and collect the position of the markers accordingly
+    activation_init = emg_ref[:, 0]
+    activation_ref[:, 0] = activation_init
+    sol_act = []
+    for i in range(nb_shooting):
+        e = emg_ref[:, i]
+        sol = solve_ivp(dyn_interface, (0, dt), activation_init, method="RK45", args=(e,))
+        sol_act.append(sol["y"])
+        activation_init = sol["y"][:, -1]
+        activation_ref[:, i + 1]=activation_init
+
+    return activation_ref
 
 def prepare_ocp(
     biorbd_model,
@@ -144,7 +194,7 @@ if __name__ == "__main__":
     number_shooting_points = [25, 25]
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF, load_muscularExcitation
 
     name_subject = "equincocont01"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, number_shooting_points[0])
@@ -154,23 +204,16 @@ if __name__ == "__main__":
     t_stance, markers_ref_stance = load_data_markers(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
-    activation_ref_stance = np.zeros((biorbd_model[0].nbMuscleTotal(), number_shooting_points[0] + 1))
-    idx_emg = 0
-    for i in range(biorbd_model[0].nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref_stance[i, :] = emg_ref_stance[idx_emg, :]
-            idx_emg += 1
+    excitation_ref_stance = load_muscularExcitation(emg_ref_stance)
+    activation_ref_stance = generate_activation(biorbd_model=biorbd_model[0], final_time=phase_time[0], nb_shooting=number_shooting_points[0], emg_ref=excitation_ref_stance)
 
     # phase swing
     t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     q_ref_swing = load_data_q(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
-    activation_ref_swing = np.zeros((biorbd_model[1].nbMuscleTotal(), number_shooting_points[1] + 1))
-    idx_emg = 0
-    for i in range(biorbd_model[0].nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref_swing[i, :] = emg_ref_swing[idx_emg, :]
-            idx_emg += 1
+    excitation_ref_swing = load_muscularExcitation(emg_ref_swing)
+    activation_ref_swing = generate_activation(biorbd_model=biorbd_model[1], final_time=phase_time[1], nb_shooting=number_shooting_points[1], emg_ref=excitation_ref_swing)
+
 
     # Track these data
     biorbd_model = (

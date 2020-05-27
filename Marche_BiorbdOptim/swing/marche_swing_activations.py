@@ -1,25 +1,76 @@
+from scipy.integrate import solve_ivp
 import numpy as np
-from casadi import MX, Function
+from casadi import MX, Function, tanh, vertcat
 from matplotlib import pyplot as plt
-import sys
-
-sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
 import biorbd
-from casadi import Function, vertcat
+import sys
+sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
+
 
 from biorbd_optim import (
-    Instant,
     OptimalControlProgram,
     ProblemType,
     Objective,
-    Constraint,
     Bounds,
     QAndQDotBounds,
     InitialConditions,
     ShowResult,
-    OdeSolver,
     Data,
+    InterpolationType,
+    PlotType,
 )
+
+def generate_activation(biorbd_model, final_time, nb_shooting, emg_ref):
+    # Aliases
+    nb_mus = biorbd_model.nbMuscleTotal()
+    nb_musclegrp = biorbd_model.nbMuscleGroups()
+    dt = final_time / nb_shooting
+
+    # init
+    ta = td = []
+    activation_ref = np.ndarray((nb_mus, nb_shooting + 1))
+
+    for n_grp in range(nb_musclegrp):
+        for n_muscle in range(biorbd_model.muscleGroup(n_grp).nbMuscles()):
+            ta.append(biorbd_model.muscleGroup(n_grp).muscle(n_muscle).characteristics().torqueActivation().to_mx())
+            td.append(biorbd_model.muscleGroup(n_grp).muscle(n_muscle).characteristics().torqueDeactivation().to_mx())
+
+    def compute_activationDot(a, e, ta, td):
+        activationDot = []
+        for i in range(nb_mus):
+            f = 0.5 * tanh(0.1*(e[i] - a[i]))
+            da = (f + 0.5) / (ta[i] * (0.5 + 1.5 * a[i]))
+            dd = (-f + 0.5) * (0.5 + 1.5 * a[i]) / td[i]
+            activationDot.append((da + dd) * (e[i] - a[i]))
+        return vertcat(*activationDot)
+
+    # casadi
+    symbolic_states = MX.sym("a", nb_mus, 1)
+    symbolic_controls = MX.sym("e", nb_mus, 1)
+    dynamics_func = Function(
+        "ActivationDyn",
+        [symbolic_states, symbolic_controls],
+        [compute_activationDot(symbolic_states, symbolic_controls, ta, td)],
+        ["a", "e"],
+        ["adot"],
+    ).expand()
+
+    def dyn_interface(t, a, e):
+        return np.array(dynamics_func(a, e)).squeeze()
+
+    # Integrate and collect the position of the markers accordingly
+    activation_init = emg_ref[:, 0]
+    activation_ref[:, 0] = activation_init
+    sol_act = []
+    for i in range(nb_shooting):
+        e = emg_ref[:, i]
+        sol = solve_ivp(dyn_interface, (0, dt), activation_init, method="RK45", args=(e,))
+        sol_act.append(sol["y"])
+        activation_init = sol["y"][:, -1]
+        activation_ref[:, i + 1]=activation_init
+
+    return activation_ref
+
 
 def prepare_ocp(
     biorbd_model,
@@ -77,6 +128,7 @@ def prepare_ocp(
         U_init,
         X_bounds,
         U_bounds,
+        objective_functions,
         constraints,
         show_online_optim=show_online_optim,
     )
@@ -90,20 +142,16 @@ if __name__ == "__main__":
     Gaitphase = 'swing'
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_muscularExcitation
     name_subject = "equincocont01"
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    activation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points))
-    idx_emg = 0
-    for i in range(biorbd_model.nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            activation_ref[i, :] = emg_ref[idx_emg, :-1]
-            idx_emg += 1
+    excitation_ref = load_muscularExcitation(emg_ref)
+    activation_ref = generate_activation(biorbd_model=biorbd_model, final_time=final_time, nb_shooting=n_shooting_points, emg_ref=excitation_ref)
 
     # Track these data
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")  # To allow for non free variable, the model must be reloaded
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
