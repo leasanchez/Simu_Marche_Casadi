@@ -18,6 +18,7 @@ from biorbd_optim import (
     ShowResult,
     Data,
     InterpolationType,
+    Axe,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -116,15 +117,16 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 5, "data_to_track":activation_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
-        {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(3, 6)},
+        {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": activation_ref[:, :-1].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(biorbd_model.nbQ()), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
+        {"type": Objective.Mayer.CUSTOM, "weight": 0.00005, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
 
     # Dynamics
-    variable_type = ProblemType.muscles_and_torque_driven_with_contact
+    variable_type = ProblemType.muscles_activations_and_torque_driven_with_contact
 
     # Constraints
     constraints = ()
@@ -147,7 +149,7 @@ def prepare_ocp(
     init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
     for i in range(nb_shooting):
         init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
-        init_u[-biorbd_model.nbMuscleTotal():, i] = activation_ref[:, i]  #0.1
+        init_u[-biorbd_model.nbMuscleTotal():, i] = activation_ref[:, i]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
@@ -184,27 +186,9 @@ if __name__ == "__main__":
     q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     excitation_ref = load_muscularExcitation(emg_ref)
-    activation_ref = generate_activation(biorbd_model=biorbd_model, final_time=final_time, nb_shooting=n_shooting_points, emg_ref=excitation_ref)
-    
     # activation_ref = excitation_ref
-    # def plot_control(ax, t, x, color='b'):
-    #     nbPoints = len(np.array(x))
-    #     for n in range(nbPoints - 1):
-    #         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-    #
-    # figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    # axes2 = axes2.flatten()
-    # for i in range(biorbd_model.nbMuscleTotal()):
-    #     name_mus = biorbd_model.muscle(i).name().to_string()
-    #     plot_control(axes2[i], t, activation_ref[i, :], color='b')
-    #     plot_control(axes2[i], t, excitation_ref[i, :], color='r')
-    #     axes2[i].set_title(name_mus)
-    #     axes2[i].set_ylim([0, 1])
-    #     axes2[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
-    #     axes2[i].grid(color="k", linestyle="--", linewidth=0.5)
-    # axes2[-1].remove()
-    # axes2[-2].remove()
-    # axes2[-3].remove()
+    # activation_ref = np.concatenate((excitation_ref[:, 0:1], excitation_ref[:, :-1]), axis=1)
+    activation_ref = generate_activation(biorbd_model=biorbd_model, final_time=final_time, nb_shooting=n_shooting_points, emg_ref=excitation_ref)
 
     # Track these data
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
@@ -243,11 +227,6 @@ if __name__ == "__main__":
     nb_marker = ocp.nlp[0]["model"].nbMarkers()
     nb_mus = ocp.nlp[0]["model"].nbMuscleTotal()
     n_frames = q.shape[1]
-
-    # --- Compute ground reaction forces --- #
-    x = vertcat(q, q_dot)
-    u = vertcat(tau, mus)
-    contact_forces = ocp.nlp[0]["contact_forces_func"](x, u)
 
     # --- Get markers position from q_sol and q_ref --- #
     markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
@@ -350,25 +329,8 @@ if __name__ == "__main__":
     plt.plot([0, nb_mus], [mean_diff_act, mean_diff_act], '--r')
     plt.title('activations differences between solution and reference')
 
-    # def plot_control(ax, t, x, color='b'):
-    #     nbPoints = len(np.array(x))
-    #     for n in range(nbPoints - 1):
-    #         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-    #
-    # figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    # axes2 = axes2.flatten()
-    # for i in range(biorbd_model.nbMuscleTotal()):
-    #     name_mus = biorbd_model.muscle(i).name().to_string()
-    #     plot_control(axes2[i], t, mus[i, :], color='r')
-    #     plot_control(axes2[i], t, mus_int[i, :], color='b')
-    #     axes2[i].set_title(name_mus)
-    #     axes2[i].set_ylim([0, 1])
-    #     axes2[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
-    #     axes2[i].grid(color="k", linestyle="--", linewidth=0.5)
-    # axes2[-1].remove()
-    # axes2[-2].remove()
-    # axes2[-3].remove()
-
+    # --- Save the optimal control program and the solution --- #
+    ocp.save(sol, "marche_stance_activation")
     # --- Show results --- #
     result = ShowResult(ocp, sol)
     result.graphs()
