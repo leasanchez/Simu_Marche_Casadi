@@ -13,6 +13,11 @@ gravity 0 0 -9.8
 // the model has been scaled using Opensim 3.3 based on demographic parameters of a 35-old man, 166cm, 66kg
 // root is defined with X along walkway, Z vertical, Y perpendicular to Z and X
 
+// for each segment :
+// flexion/extension -> z axis 
+// abduction/adduction -> x axis 
+// rotation interne/externe -> y axis 
+
 // --------------------------------------------------------------------------------------------------------
 // Variables
 // --------------------------------------------------------------------------------------------------------
@@ -47,10 +52,20 @@ segment pelvis
 		0	0	-1	0
 		0	1	0	0
 		0	0	0	1
-	translations	xy
-	rotations	z
-    rangesQ -10 10 -0.5 1.5 -pi/4 pi/4
-    rangesQdot -2 2 -2 2 -5.2360 5.2360
+	translations	xyz
+	rotations	yxz
+        rangesQ -10   10 
+                -0.5  1.5 
+                -5    5 
+                -pi/2 pi/2 
+                -pi/4 pi/4 
+                -pi/4 pi/4
+        rangesQdot -2      2 
+ 	           -2      2 
+                   -2      2 
+                   -5.2360 5.2360 
+                   -5.2360 5.2360 
+                   -5.2360 5.2360
 	mass	7.8384
 	inertia
 		0.058836	0	0
@@ -92,9 +107,13 @@ segment femur_r
 		0	1	0	-0.09161
 		0	0	1	0.082232
 		0	0	0	1
-	rotations	z
-    rangesQ -pi/9 pi/4
-    rangesQdot -4 4.5
+	rotations	xyz
+        rangesQ    -pi/9  pi/9 
+                   -pi/18 pi/9 
+                   -pi/9  pi/4
+        rangesQdot -4    4.5 
+                   -4    4.5  
+                   -4    4.5
 	mass	9.8454
 	inertia
 		0.14317	0	0
@@ -238,8 +257,8 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/6 pi/9
-    rangesQdot -5.2360 5.2360
+    rangesQ -pi/6 pi/9 
+    rangesQdot -5.2360 5.2360 
 	mass	0.042104
 	inertia
 		2.7894e-06	0	0
@@ -331,7 +350,7 @@ endmarker
 contact    c_meta_r
 	parent    foot_marker_r
 	position    0.200778 -0.02 0.0127656  //R_FM2_proj
-	axis    xz
+	axis    xyz
 endcontact
 
 // --------------------------------------------------------------------------------------------------------
@@ -508,7 +527,7 @@ endviapoint
 // ---- Muscle
 muscle glut_max2_r
 	Type				hillthelen
-	statetype    			degroote
+	statetype    		degroote
 	musclegroup			group1
 	OriginPosition		-0.15106 0.0014453 0.053739
 	InsertionPosition	-0.014224 -0.092635 0.049573
