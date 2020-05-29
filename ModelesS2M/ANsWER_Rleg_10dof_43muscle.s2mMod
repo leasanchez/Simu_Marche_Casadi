@@ -3,13 +3,12 @@
 // ANsWER | F. Moissenet | Right lower limb model | Full version (43 muscles, 10 DoFs)
 // --------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------
-Version 1
+Version 4
 
 // --------------------------------------------------------------------------------------------------------
 // General informations
 // --------------------------------------------------------------------------------------------------------
-root_actuated 0
-external_forces 0
+
 // segment masses adjusted based on the regression table proposed by Dumas et al. 2018
 // the model has been scaled using Opensim 3.3 based on demographic parameters of a 35-old man, 166cm, 66kg
 
@@ -433,7 +432,7 @@ endmusclegroup
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max1_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.13126 0.047251 0.063481
 	InsertionPosition	-0.025256 -0.051606 0.055607
@@ -462,7 +461,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max2_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.15106 0.0014453 0.053739
 	InsertionPosition	-0.014224 -0.092635 0.049573
@@ -491,7 +490,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max3_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.17201 -0.088053 0.0077519
 	InsertionPosition	-0.0054706 -0.12938 0.048627
@@ -520,7 +519,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med1_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.052482 0.015676 0.12141
 	InsertionPosition	-0.019876 -0.010668 0.065664
@@ -538,7 +537,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med2_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.10098 0.015231 0.082966
 	InsertionPosition	-0.023523 -0.0052882 0.062351
@@ -556,7 +555,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med3_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.13786 -0.0064483 0.062643
 	InsertionPosition	-0.028174 -0.0042853 0.061287
@@ -574,7 +573,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_min1_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.058663 -0.027016 0.10538
 	InsertionPosition	-0.0065647 -0.0094823 0.066256
@@ -592,7 +591,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_min2_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.076052 -0.025349 0.098574
 	InsertionPosition	-0.0087529 -0.0094823 0.066256
@@ -610,7 +609,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_min3_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.097108 -0.025126 0.084432
 	InsertionPosition	-0.012309 -0.0075676 0.065073
@@ -628,7 +627,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle add_long_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.045464 -0.11763 0.010266
 	InsertionPosition	0.0045588 -0.19247 0.027685
@@ -646,7 +645,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle add_brev_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.071757 -0.12496 0.01718
 	InsertionPosition	0.00082059 -0.10905 0.034784
@@ -664,7 +663,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle add_mag1_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.086423 -0.14865 0.021475
 	InsertionPosition	-0.0041029 -0.11042 0.040108
@@ -682,7 +681,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle add_mag2_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.096793 -0.15065 0.027027
 	InsertionPosition	0.0049235 -0.20834 0.026857
@@ -700,7 +699,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle add_mag3_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.090508 -0.14942 0.023675
 	InsertionPosition	0.0063823 -0.34984 -0.031471
@@ -718,7 +717,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle pectineus_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.054892 -0.10351 0.042007
 	InsertionPosition	-0.011124 -0.074947 0.029933
@@ -736,7 +735,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle iliacus_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.082128 0.021569 0.086737
 	InsertionPosition	-0.017597 -0.05662 0.015263
@@ -765,7 +764,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle quad_fem_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.12948 -0.14609 0.049235
 	InsertionPosition	-0.034738 -0.032732 0.043303
@@ -783,7 +782,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gemellus_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.12843 -0.10929 0.069557
 	InsertionPosition	-0.012947 -0.0030088 0.052413
@@ -801,7 +800,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle piri_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group1
 	OriginPosition		-0.17588 -0.050919 0.030484
 	InsertionPosition	-0.013494 -0.0032823 0.051703
@@ -824,7 +823,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle TFL_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.042321 0.0056701 0.12476
 	InsertionPosition	0.0059707 -0.048462 0.029555
@@ -853,7 +852,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gracilis_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.068719 -0.13352 0.0030379
 	InsertionPosition	0.0059707 -0.083191 -0.022689
@@ -876,7 +875,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle semimem_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.13461 -0.13097 0.067567
 	InsertionPosition	-0.024181 -0.053338 -0.019305
@@ -894,7 +893,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle semiten_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.13932 -0.13408 0.057929
 	InsertionPosition	0.0026868 -0.095132 -0.019206
@@ -923,7 +922,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle bi_fem_lh_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.14006 -0.12941 0.064529
 	InsertionPosition	-0.0080604 -0.072543 0.042093
@@ -941,7 +940,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle bi_fem_sh_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group8
 	OriginPosition		0.0045588 -0.19247 0.027685
 	InsertionPosition	-0.010051 -0.072145 0.040401
@@ -959,7 +958,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle sartorius_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group2
 	OriginPosition		-0.031007 -0.020012 0.1255
 	InsertionPosition	0.024181 -0.083589 -0.025077
@@ -994,7 +993,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle rectus_fem_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group3
 	OriginPosition		-0.040645 -0.052698 0.096165
 	InsertionPosition	0.011032 0.039844 -0.00091176
@@ -1012,7 +1011,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_med_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group9
 	OriginPosition		0.012765 -0.19138 0.022243
 	InsertionPosition	0.0057441 0.040573 -0.0155
@@ -1035,7 +1034,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_int_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group9
 	OriginPosition		0.026441 -0.17542 0.036677
 	InsertionPosition	0.0052882 0.043765 -0.00054706
@@ -1058,7 +1057,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_lat_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group9
 	OriginPosition		0.0043765 -0.16904 0.041292
 	InsertionPosition	0.0093912 0.038568 0.012856
@@ -1081,7 +1080,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle pat_lig_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group14
 	OriginPosition		0.038809 -0.081798 0
 	InsertionPosition	0.0019147 0.0013676 9.1176e-05
@@ -1099,7 +1098,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gas_med_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group11
 	OriginPosition		-0.011579 -0.35823 -0.027804
 	InsertionPosition	0.0033495 0.03194 -0.0063202
@@ -1122,7 +1121,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gas_lat_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group11
 	OriginPosition		-0.014132 -0.35978 0.032181
 	InsertionPosition	0.0033495 0.03194 -0.0063202
@@ -1145,7 +1144,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle soleus_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		-0.0023883 -0.15255 0.0070653
 	InsertionPosition	0.0033495 0.03194 -0.0063202
@@ -1163,7 +1162,7 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle tib_post_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		-0.009354 -0.13414 0.0018907
 	InsertionPosition	0.076958 0.01585 -0.028012
@@ -1192,7 +1191,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle tib_ant_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		0.017812 -0.16161 0.011444
 	InsertionPosition	0.11624 0.017744 -0.030405
@@ -1215,7 +1214,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle ext_dig_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group18
 	OriginPosition		0.0031843 -0.13742 0.027465
 	InsertionPosition	0.044161 -0.00039875 0.024922
@@ -1256,7 +1255,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle ext_hal_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group18
 	OriginPosition		0.0011941 -0.17584 0.022689
 	InsertionPosition	0.056104 -0.0013059 -0.018462
@@ -1303,7 +1302,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle flex_dig_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group18
 	OriginPosition		-0.0082594 -0.2036 -0.0017912
 	InsertionPosition	0.043962 -0.0059812 0.024124
@@ -1356,7 +1355,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle flex_hal_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group18
 	OriginPosition		-0.0078613 -0.23226 0.024281
 	InsertionPosition	0.055895 -0.0083637 -0.018113
@@ -1403,7 +1402,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle per_brev_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		-0.0069658 -0.26331 0.032341
 	InsertionPosition	0.075453 0.01928 0.029328
@@ -1438,7 +1437,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle per_long_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		0.00049755 -0.15603 0.036023
 	InsertionPosition	0.11992 0.0084734 -0.018342
@@ -1485,7 +1484,7 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle per_tert_r
-	Type				Schutte
+	Type				hillthelen
 	musclegroup			group16
 	OriginPosition		0.00099511 -0.27903 0.022987
 	InsertionPosition	0.085432 0.022729 0.029806
