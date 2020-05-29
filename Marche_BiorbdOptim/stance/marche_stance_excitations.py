@@ -18,12 +18,20 @@ from biorbd_optim import (
     Data,
     InterpolationType,
     PlotType,
+    Axe,
+    Constraint,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1])
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
+
+def get_muscles_first_node(ocp, nlp, t, x, u):
+    activation = x[0][2*nlp["nbQ"]:]
+    excitation = u[0][nlp["nbQ"]:]
+    val = activation - excitation
+    return val
 
 def prepare_ocp(
     biorbd_model,
@@ -34,6 +42,7 @@ def prepare_ocp(
     grf_ref,
     q_ref,
     qdot_ref,
+    nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -46,20 +55,21 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx": [3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(3, 6)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
         {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.01, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref.T},
-        {"type": Objective.Mayer.CUSTOM, "weight": 0.05, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
+        {"type": Objective.Mayer.CUSTOM, "weight": 0.00005, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
 
     # Dynamics
     variable_type = ProblemType.muscle_excitations_and_torque_driven_with_contact
 
     # Constraints
-    constraints = ()
+    constraints = (
+        {"type": Constraint.CUSTOM, "function": get_muscles_first_node, "instant": Instant.START}
+    )
 
     # Path constraint
     X_bounds = QAndQDotBounds(biorbd_model)
@@ -72,7 +82,7 @@ def prepare_ocp(
     for i in range(nb_shooting + 1):
         init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
         init_x[biorbd_model.nbQ(): biorbd_model.nbQ() + biorbd_model.nbQdot(), i] = qdot_ref[:, i]
-        init_x[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i] #0.1
+        init_x[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
@@ -84,7 +94,7 @@ def prepare_ocp(
     init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
     for i in range(nb_shooting):
         init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
-        init_u[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]  #0.1
+        init_u[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
@@ -100,12 +110,13 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
+        nb_threads=nb_threads,
     )
 
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
     n_shooting_points = 25
     Gaitphase = 'stance'
 
@@ -123,19 +134,10 @@ if __name__ == "__main__":
     for i in range(biorbd_model.nbQ()):
         qdot_ref[i, :] = np.gradient(q_ref[i, :])/dt
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    # weight_excitation = np.zeros(biorbd_model.nbMuscleTotal())
-    # excitation_ref = np.zeros((biorbd_model.nbMuscleTotal(), n_shooting_points + 1)) + 0.001
-    # idx_emg = 0
-    # for i in range(biorbd_model.nbMuscleTotal()):
-    #     weight_excitation[i] = 1
-    #     if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-    #         weight_excitation[i] = 10
-    #         excitation_ref[i, :] = emg_ref[idx_emg, :]
-    #         idx_emg += 1
     excitation_ref = load_muscularExcitation(emg_ref)
 
     # Track these data
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
@@ -145,18 +147,19 @@ if __name__ == "__main__":
         grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
         qdot_ref=qdot_ref,
+        nb_threads=4,
     )
 
     # --- Solve the program --- #
     sol = ocp.solve(
         solver="ipopt",
         options_ipopt={
-            "ipopt.tol": 1e-2,
+            "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,
-            "ipopt.hessian_approximation": "limited-memory",
+            "ipopt.hessian_approximation": "exact",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",},
-        show_online_optim=False,
+        show_online_optim=True,
     )
 
     # --- Get Results --- #
@@ -172,11 +175,6 @@ if __name__ == "__main__":
     nb_marker = biorbd_model.nbMarkers()
     n_mus = ocp.nlp[0]["model"].nbMuscleTotal()
     n_frames = q.shape[1]
-
-    # --- Compute ground reaction forces --- #
-    x = vertcat(q, q_dot, activations)
-    u = vertcat(tau, excitations)
-    contact_forces = ocp.nlp[0]["contact_forces_func"](x, u)
 
     # --- Get markers position from q_sol and q_ref --- #
     markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
@@ -195,7 +193,7 @@ if __name__ == "__main__":
                 ["marker_" + str(i)],
             ).expand()
         )
-    for i in range(ocp.nlp[0]['ns']):
+    for i in range(ocp.nlp[0]['ns'] + 1):
         for j, mark_func in enumerate(markers_func):
             markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i], activations[:, i]))).squeeze()
             Q_ref = np.concatenate([q_ref[:, i], np.zeros(n_q), np.zeros(n_mus)])
@@ -263,29 +261,10 @@ if __name__ == "__main__":
 
     # --- Save the optimal control program and the solution --- #
     ocp.save(sol, "marche_stance_excitation")
+
     # --- Load the optimal control program and the solution --- #
-    ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
-    result = ShowResult(ocp_load, sol_load)
-
-    def plot_control(ax, t, x, color='b'):
-        nbPoints = len(np.array(x))
-        for n in range(nbPoints - 1):
-            ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-
-    figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    axes2 = axes2.flatten()
-    for i in range(biorbd_model.nbMuscleTotal()):
-        name_mus = biorbd_model.muscle(i).name().to_string()
-        plot_control(axes2[i], t, mus[i, :], color='r')
-        plot_control(axes2[i], t, mus_int[i, :], color='b')
-        axes2[i].plot(t, activations[i, :], 'g.-')
-        axes2[i].set_title(name_mus)
-        axes2[i].set_ylim([0, 1])
-        axes2[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
-        axes2[i].grid(color="k", linestyle="--", linewidth=0.5)
-    axes2[-1].remove()
-    axes2[-2].remove()
-    axes2[-3].remove()
+    # ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
+    # result = ShowResult(ocp_load, sol_load)
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
