@@ -39,26 +39,24 @@ def prepare_ocp(
     nb_shooting,
     markers_ref,
     excitation_ref,
-    grf_ref,
     q_ref,
-    qdot_ref,
+    grf_ref,
     nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
     nb_mus = biorbd_model.nbMuscleTotal()
-    nb_x = nb_q + nb_qdot + nb_mus
 
     torque_min, torque_max, torque_init = -1000, 1000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(3, 6)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.00005, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -80,8 +78,7 @@ def prepare_ocp(
     # Initial guess
     init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal(), nb_shooting + 1))
     for i in range(nb_shooting + 1):
-        init_x[:biorbd_model.nbQ(), i] = q_ref[:, i]
-        init_x[biorbd_model.nbQ(): biorbd_model.nbQ() + biorbd_model.nbQdot(), i] = qdot_ref[:, i]
+        init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[:, i]
         init_x[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
@@ -93,7 +90,7 @@ def prepare_ocp(
     # Initial guess
     init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
     for i in range(nb_shooting):
-        init_u[:biorbd_model.nbQ(), i] = [0, -500, 0, 0, 0, 0]
+        init_u[1, i] = -500
         init_u[-biorbd_model.nbMuscleTotal():, i] = excitation_ref[:, i]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
@@ -116,7 +113,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
     n_shooting_points = 25
     Gaitphase = 'stance'
 
@@ -128,27 +125,24 @@ if __name__ == "__main__":
     final_time = T_stance
 
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    qdot_ref = np.zeros((biorbd_model.nbQdot(), n_shooting_points + 1))
-    dt = final_time/n_shooting_points
-    for i in range(biorbd_model.nbQ()):
-        qdot_ref[i, :] = np.gradient(q_ref[i, :])/dt
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     excitation_ref = load_muscularExcitation(emg_ref)
+    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
+    q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
 
     # Track these data
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
         n_shooting_points,
         markers_ref,
         excitation_ref=excitation_ref,
-        grf_ref=grf_ref[1:, :],
         q_ref=q_ref,
-        qdot_ref=qdot_ref,
+        grf_ref=grf_ref,
         nb_threads=4,
     )
+    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
 
     # --- Solve the program --- #
     sol = ocp.solve(

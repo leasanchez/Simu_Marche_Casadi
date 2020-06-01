@@ -1,9 +1,6 @@
 import numpy as np
 from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
-import sys
-
-sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
 import biorbd
 
 from biorbd_optim import (
@@ -49,19 +46,17 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ((
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 100, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[0].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 0.1, "data_to_track": markers_ref[0]},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.05, "data_to_track": grf_ref[:, :-1].T},
-        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.05, "instant": Instant.ALL}
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
+        {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
     ),
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 0.1, "data_to_track": markers_ref[1]},
-        {"type": Objective.Lagrange.MINIMIZE_STATE, "weight": 0.001, "states_idx": np.linspace(nb_q, (nb_x - 1), (nb_qdot + nb_mus), dtype=int)},
+        {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
         {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
     ))
 
@@ -140,7 +135,7 @@ if __name__ == "__main__":
     number_shooting_points = [25, 25]
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
+    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF,load_muscularExcitation
 
     name_subject = "equincocont01"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, number_shooting_points[0])
@@ -150,28 +145,19 @@ if __name__ == "__main__":
     t_stance, markers_ref_stance = load_data_markers(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
     emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
-    excitation_ref_stance = np.zeros((biorbd_model[0].nbMuscleTotal(), number_shooting_points[0] + 1))
-    idx_emg = 0
-    for i in range(biorbd_model[0].nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            excitation_ref_stance[i, :] = emg_ref_stance[idx_emg, :]
-            idx_emg += 1
+    excitation_ref_stance = load_muscularExcitation(emg_ref_stance)
 
     # phase swing
     t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     q_ref_swing = load_data_q(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
     excitation_ref_swing = np.zeros((biorbd_model[1].nbMuscleTotal(), number_shooting_points[1] + 1))
-    idx_emg = 0
-    for i in range(biorbd_model[0].nbMuscleTotal()):
-        if (i!=1) and (i!=2) and (i!=3) and (i!=5) and (i!=6) and (i!=11) and (i!=12):
-            excitation_ref_swing[i, :] = emg_ref_swing[idx_emg, :]
-            idx_emg += 1
+    excitation_ref_swing = load_muscularExcitation(emg_ref_swing)
 
     # Track these data
     biorbd_model = (
-        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
-        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod"),
     )
     ocp = prepare_ocp(
         biorbd_model,
