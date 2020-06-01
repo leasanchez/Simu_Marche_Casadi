@@ -28,27 +28,6 @@ def get_muscles_first_node(ocp, nlp, t, x, u):
     val = activation - excitation
     return val
 
-
-def impact(ocp, phase_before_idx):
-    """
-    TODO
-    """
-    # Aliases
-    nlp_pre = ocp.nlp[phase_before_idx]
-    nlp_post = ocp.nlp[(phase_before_idx + 1) % ocp.nb_phases]
-    nbQ = nlp_pre["nbQ"]
-    q = nlp_post["X"][0][:nbQ]
-    qdot_pre = nlp_pre["X"][-1][nbQ:]
-    # qdot_post = nlp_post["model"].ComputeConstraintImpulsesDirect(q, qdot_pre)
-
-    # As a temporary replacement for ComputeConstraintImpulsesDirect:
-    qdot_post = nlp_post["X"][-1][nbQ:]
-
-    val = nlp_pre["X"][-1][:nbQ] - q
-    val = vertcat(val, nlp_post["X"][0][nbQ:] - qdot_post)
-    return val
-
-
 def get_qdot_post_impact(ocp, nlp, t, x, u):
     # Aliases
     nb_q = nlp["nbQ"]
@@ -86,14 +65,12 @@ def prepare_ocp(
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
     ),
-
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[1][:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
         # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
     ),
-
     (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[2][:, :-1].T},
@@ -122,7 +99,6 @@ def prepare_ocp(
         (),
         ({"type": Constraint.CUSTOM, "function":get_qdot_post_impact, "instant": Instant.END},)
     )
-    # constraints = ()
 
     # Path constraint
     X_bounds = []
@@ -138,6 +114,7 @@ def prepare_ocp(
     for n_p in range(nb_phases):
         init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
         for i in range(nb_shooting[n_p] + 1):
+            init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[n_p][:, i]
             init_x[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
