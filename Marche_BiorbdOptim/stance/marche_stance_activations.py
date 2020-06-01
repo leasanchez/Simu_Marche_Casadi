@@ -74,31 +74,6 @@ def generate_activation(biorbd_model, final_time, nb_shooting, emg_ref):
         sol_act.append(sol["y"])
         activation_init = sol["y"][:, -1]
         activation_ref[:, i + 1]=activation_init
-
-    # t = np.linspace(0, final_time, nb_shooting + 1)
-    #
-    # def plot_control(ax, t, x, color='b'):
-    #     nbPoints = len(np.array(x))
-    #     for n in range(nbPoints - 1):
-    #         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
-    #
-    # figure2, axes2 = plt.subplots(4, 5, sharex=True)
-    # axes2 = axes2.flatten()
-    # for i in range(biorbd_model.nbMuscleTotal()):
-    #     name_mus = biorbd_model.muscle(i).name().to_string()
-    #     plot_control(axes2[i], t, emg_ref[i, :], color='r')
-    #     axes2[i].set_title(name_mus)
-    #     axes2[i].set_ylim([0, 1])
-    #     axes2[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
-    #     axes2[i].grid(color="k", linestyle="--", linewidth=0.5)
-    #     for j in range(nb_shooting):
-    #         t2 = np.linspace(t[j], t[j+1], sol_act[j].shape[1])
-    #         axes2[i].plot(t2, sol_act[j][i, :], 'b-')
-    #         axes2[i].plot(t2[-1], sol_act[j][i, -1], 'b.')
-    # axes2[-1].remove()
-    # axes2[-2].remove()
-    # axes2[-3].remove()
-
     return activation_ref
 
 def prepare_ocp(
@@ -212,7 +187,7 @@ if __name__ == "__main__":
             "ipopt.hessian_approximation": "exact",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57", },
-        show_online_optim=True,
+        show_online_optim=False,
     )
 
     # --- Get Results --- #

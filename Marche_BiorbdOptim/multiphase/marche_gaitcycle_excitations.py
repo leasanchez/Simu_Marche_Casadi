@@ -132,12 +132,12 @@ if __name__ == "__main__":
     # Define the problem
     # Model path
     biorbd_model = (
-        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod"),
-        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_0contact.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod"),
+        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod"),
     )
 
     # Problem parameters
-    number_shooting_points = [35, 35]
+    number_shooting_points = [25, 25]
 
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF
