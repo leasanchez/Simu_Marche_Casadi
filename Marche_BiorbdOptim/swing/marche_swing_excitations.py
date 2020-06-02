@@ -16,7 +16,14 @@ from biorbd_optim import (
     Axe,
     Constraint,
     PlotType,
+    Instant,
 )
+
+def get_muscles_first_node(ocp, nlp, t, x, u):
+    activation = x[0][2*nlp["nbQ"]:]
+    excitation = u[0][nlp["nbQ"]:]
+    val = activation - excitation
+    return val
 
 def prepare_ocp(
     biorbd_model,
@@ -39,15 +46,17 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(3, 6)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitations_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": range(nb_q), "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 5, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        # {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
     )
 
     # Dynamics
     variable_type = ProblemType.muscle_excitations_and_torque_driven
 
     # Constraints
-    constraints = ()
+    constraints = (
+        {"type": Constraint.CUSTOM, "function": get_muscles_first_node, "instant": Instant.START}
+    )
 
     # Path constraint
     X_bounds = QAndQDotBounds(biorbd_model)
