@@ -56,7 +56,7 @@ def prepare_ocp(
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
         {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
         {"type": Objective.Mayer.CUSTOM, "weight": 0.00005, "function": get_last_contact_forces, "data_to_track": grf_ref.T, "instant": Instant.ALL}
     )
@@ -114,6 +114,7 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
+    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
     n_shooting_points = 25
     Gaitphase = 'stance'
 
@@ -127,8 +128,7 @@ if __name__ == "__main__":
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     excitation_ref = load_muscularExcitation(emg_ref)
-    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
-    q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
+    q_ref = load_data_q(name_subject, model_q, final_time, n_shooting_points, Gaitphase)
 
     # Track these data
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         markers_ref,
         excitation_ref=excitation_ref,
         q_ref=q_ref,
-        grf_ref=grf_ref,
+        grf_ref=grf_ref[[1,0,2], :],
         nb_threads=4,
     )
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
@@ -174,11 +174,11 @@ if __name__ == "__main__":
     markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
     markers_from_q_ref = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))
 
-    markers_func = []
+    markers_func_3d = []
     symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
     symbolic_controls = MX.sym("u", ocp.nlp[0]["nu"], 1)
     for i in range(nb_marker):
-        markers_func.append(
+        markers_func_3d.append(
             Function(
                 "ForwardKin",
                 [symbolic_states],
@@ -187,11 +187,26 @@ if __name__ == "__main__":
                 ["marker_" + str(i)],
             ).expand()
         )
+
+    markers_func_2d = []
+    symbolic_states = MX.sym("x", model_q.nbQ() + model_q.nbQdot() + model_q.nbMuscleTotal(), 1)
+    symbolic_controls = MX.sym("u", model_q.nbGeneralizedTorque() + model_q.nbMuscleTotal(), 1)
+    for i in range(nb_marker):
+        markers_func_2d.append(
+            Function(
+                "ForwardKin",
+                [symbolic_states],
+                [model_q.marker(symbolic_states[:model_q.nbQ()], i).to_mx()],
+                ["q"],
+                ["marker_" + str(i)],
+            ).expand()
+        )
+
     for i in range(ocp.nlp[0]['ns'] + 1):
-        for j, mark_func in enumerate(markers_func):
+        for j, mark_func in enumerate(markers_func_3d):
             markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i], activations[:, i]))).squeeze()
-            Q_ref = np.concatenate([q_ref[:, i], np.zeros(n_q), np.zeros(n_mus)])
-            markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
+            Q_ref = np.concatenate([q_ref[:, i], np.zeros(model_q.nbQ())])
+            markers_from_q_ref[:, j, i] = np.array(markers_func_2d[j](Q_ref)).squeeze()
 
     diff_track = np.sqrt((markers_sol - markers_ref) * (markers_sol - markers_ref)) * 1e3
     diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
@@ -199,13 +214,13 @@ if __name__ == "__main__":
     hist_diff_sol = np.zeros((3, nb_marker))
 
     for n_mark in range(nb_marker):
-        hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :])/nb_marker
-        hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :])/nb_marker
-        hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :])/nb_marker
+        hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :])/n_shooting_points
+        hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :])/n_shooting_points
+        hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :])/n_shooting_points
 
-        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :])/nb_marker
-        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :])/nb_marker
-        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :])/nb_marker
+        hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :])/n_shooting_points
+        hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :])/n_shooting_points
+        hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :])/n_shooting_points
 
     mean_diff_track = [sum(hist_diff_track[0, :]) / nb_marker,
                        sum(hist_diff_track[1, :]) / nb_marker,
@@ -219,38 +234,37 @@ if __name__ == "__main__":
     for mark in range(nb_marker):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
-    figure, axes = plt.subplots(2, 2)
+    figure, axes = plt.subplots(2, 3)
     axes = axes.flatten()
-    title_markers = ['x axis', 'z axis']
-    for i in range(2):
-        axes[i].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+    title_markers = ['x axis', 'y axis', 'z axis']
+    for i in range(3):
+        axes[i].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_track[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_marker))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + 'mm')
-        axes[i].plot([0, nb_marker], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
+        axes[i].plot([0, nb_marker], [mean_diff_track[i], mean_diff_track[i]], '--r')
         axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 2].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i + 2].set_xticks(np.arange(nb_marker))
-        axes[i + 2].set_xticklabels(label_markers, rotation=90)
-        axes[i + 2].set_ylabel('Mean differences in ' + title_markers[i]+ 'mm')
-        axes[i + 2].plot([0, nb_marker], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
-        axes[i + 2].set_title('markers differences between sol and ref')
+        axes[i + 3].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_sol[i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+        axes[i + 3].set_xticks(np.arange(nb_marker))
+        axes[i + 3].set_xticklabels(label_markers, rotation=90)
+        axes[i + 3].set_ylabel('Mean differences in ' + title_markers[i]+ ' (mm)')
+        axes[i + 3].plot([0, nb_marker], [mean_diff_sol[i], mean_diff_sol[i]], '--r')
+        axes[i + 3].set_title('markers differences between sol and ref')
     plt.show()
 
-    figure, axes = plt.subplots(2, 2)
+    figure, axes = plt.subplots(2, 3)
     axes = axes.flatten()
-    title_markers = ['x axis', 'z axis']
-    for i in range(2):
+    for i in range(3):
         axes[i].plot(t, diff_track[i, :, :].T)
         axes[i].set_xlabel('time (s)')
-        axes[i].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
         axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 2].plot(t, diff_sol[2*i, :, :].T)
-        axes[i + 2].set_xlabel('time (s)')
-        axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
-        axes[i + 2].set_title('markers differences between sol and ref')
+        axes[i + 3].plot(t, diff_sol[i, :, :].T)
+        axes[i + 3].set_xlabel('time (s)')
+        axes[i + 3].set_ylabel('Meaen differences in ' + title_markers[i] + ' (mm)')
+        axes[i + 3].set_title('markers differences between sol and ref')
     plt.show()
 
     # --- Save the optimal control program and the solution --- #

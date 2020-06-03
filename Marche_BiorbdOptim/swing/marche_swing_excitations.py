@@ -30,6 +30,7 @@ def prepare_ocp(
     final_time,
     nb_shooting,
     markers_ref,
+    q_ref,
     excitations_ref,
     nb_threads,
 ):
@@ -37,17 +38,16 @@ def prepare_ocp(
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
     nb_mus = biorbd_model.nbMuscleTotal()
-    nb_x = nb_q + nb_qdot + nb_mus
 
     torque_min, torque_max, torque_init = -5000, 5000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
     objective_functions = (
-        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(3, 6)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitations_ref[:, :-1].T},
-        {"type": Objective.Lagrange.TRACK_STATE, "weight": 5, "states_idx": range(nb_q), "data_to_track": q_ref.T},
-        # {"type": Objective.Lagrange.TRACK_MARKERS, "axis_to_track": [Axe.X, Axe.Z], "weight": 100, "data_to_track": markers_ref},
+        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 5, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
     )
 
     # Dynamics
@@ -101,7 +101,8 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
+    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
     final_time = 0.37
     n_shooting_points = 25
     Gaitphase = 'swing'
@@ -110,22 +111,24 @@ if __name__ == "__main__":
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_muscularExcitation
     name_subject = "equincocont01"
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    q_ref = load_data_q(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     excitations_ref = load_muscularExcitation(emg_ref)
+    Q_ref = np.zeros((biorbd_model.nbQ(), n_shooting_points + 1))
+    q_ref = load_data_q(name_subject, model_q, final_time, n_shooting_points, Gaitphase)
+    Q_ref[[0, 1, 5, 8, 9, 10], :] = q_ref
 
     # Track these data
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")  # To allow for non free variable, the model must be reloaded
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
         n_shooting_points,
         markers_ref,
+        Q_ref,
         excitations_ref,
         nb_threads=4,
     )
     # --- Add plot kalman --- #
-    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP)
+    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
 
     # --- Solve the program --- #
     sol = ocp.solve(solver="ipopt",
@@ -157,7 +160,6 @@ if __name__ == "__main__":
 
     markers_func = []
     symbolic_states = MX.sym("x", ocp.nlp[0]["nx"], 1)
-    symbolic_controls = MX.sym("u", ocp.nlp[0]["nu"], 1)
     for i in range(nb_marker):
         markers_func.append(
             Function(
@@ -168,11 +170,25 @@ if __name__ == "__main__":
                 ["marker_" + str(i)],
             ).expand()
         )
+
+    markers_func_2d = []
+    symbolic_states = MX.sym("x", model_q.nbQ() + model_q.nbQdot(), 1)
+    for i in range(nb_marker):
+        markers_func_2d.append(
+            Function(
+                "ForwardKin",
+                [symbolic_states],
+                [model_q.marker(symbolic_states[:model_q.nbQ()], i).to_mx()],
+                ["q"],
+                ["marker_" + str(i)],
+            ).expand()
+        )
+
     for i in range(ocp.nlp[0]['ns'] + 1):
         for j, mark_func in enumerate(markers_func):
             markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i], activations[:, i]))).squeeze()
-            Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q), np.zeros(nb_mus)])
-            markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
+            Q_ref = np.concatenate([q_ref[:, i], np.zeros(model_q.nbQ())])
+            markers_from_q_ref[:, j, i] = np.array(markers_func_2d[j](Q_ref)).squeeze()
 
     diff_track = np.sqrt((markers_sol - markers_ref) * (markers_sol - markers_ref)) * 1e3
     diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
@@ -200,40 +216,39 @@ if __name__ == "__main__":
     for mark in range(nb_marker):
         label_markers.append(ocp.nlp[0]["model"].markerNames()[mark].to_string())
 
-    figure, axes = plt.subplots(2, 2)
+    figure, axes = plt.subplots(2, 3)
     axes = axes.flatten()
-    title_markers = ['x axis', 'z axis']
-    for i in range(2):
-        axes[i].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_track[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
+    title_markers = ['x axis', 'y axis', 'z axis']
+    for i in range(3):
+        axes[i].bar(np.linspace(0, nb_marker, nb_marker), hist_diff_track[i, :], width=1.0, facecolor='b',
+                    edgecolor='k', alpha=0.5)
         axes[i].set_xticks(np.arange(nb_marker))
         axes[i].set_xticklabels(label_markers, rotation=90)
-        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + 'mm')
-        axes[i].plot([0, nb_marker], [mean_diff_track[2*i], mean_diff_track[2*i]], '--r')
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
+        axes[i].plot([0, nb_marker], [mean_diff_track[i], mean_diff_track[i]], '--r')
         axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 2].bar(np.linspace(0,nb_marker, nb_marker), hist_diff_sol[2*i, :], width=1.0, facecolor='b', edgecolor='k', alpha=0.5)
-        axes[i + 2].set_xticks(np.arange(nb_marker))
-        axes[i + 2].set_xticklabels(label_markers, rotation=90)
-        axes[i + 2].set_ylabel('Mean differences in ' + title_markers[i]+ 'mm')
-        axes[i + 2].plot([0, nb_marker], [mean_diff_sol[2*i], mean_diff_sol[2*i]], '--r')
-        axes[i + 2].set_title('markers differences between sol and ref')
-    plt.show()
+        axes[i + 3].bar(np.linspace(0, nb_marker, nb_marker), hist_diff_sol[i, :], width=1.0, facecolor='b',
+                        edgecolor='k', alpha=0.5)
+        axes[i + 3].set_xticks(np.arange(nb_marker))
+        axes[i + 3].set_xticklabels(label_markers, rotation=90)
+        axes[i + 3].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
+        axes[i + 3].plot([0, nb_marker], [mean_diff_sol[i], mean_diff_sol[i]], '--r')
+        axes[i + 3].set_title('markers differences between sol and ref')
 
-    figure, axes = plt.subplots(2, 2)
+    figure, axes = plt.subplots(2, 3)
     axes = axes.flatten()
-    title_markers = ['x axis', 'z axis']
-    for i in range(2):
-        axes[i].plot(t, diff_track[2*i, :, :].T)
+    for i in range(3):
+        axes[i].plot(t, diff_track[i, :, :].T)
         axes[i].set_xlabel('time (s)')
-        axes[i].set_ylabel('Squared differences in ' + title_markers[i])
+        axes[i].set_ylabel('Mean differences in ' + title_markers[i] + ' (mm)')
         axes[i].set_title('markers differences between sol and exp')
 
-        axes[i + 2].plot(t, diff_sol[2*i, :, :].T)
-        axes[i + 2].set_xlabel('time (s)')
-        axes[i + 2].set_ylabel('Squared differences in ' + title_markers[i])
-        axes[i + 2].set_title('markers differences between sol and ref')
+        axes[i + 3].plot(t, diff_sol[i, :, :].T)
+        axes[i + 3].set_xlabel('time (s)')
+        axes[i + 3].set_ylabel('Meaen differences in ' + title_markers[i] + ' (mm)')
+        axes[i + 3].set_title('markers differences between sol and ref')
     plt.show()
-
 
     # --- Save the optimal control program and the solution --- #
     ocp.save(sol, "marche_swing_excitation")
