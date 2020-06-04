@@ -267,13 +267,8 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
 def find_platform(file):
     GRW = GetGroundReactionForces(file)
     [start, stop_stance, stop] = Get_Event(file)
-    P1 = sum(GRW[int(start): int(stop_stance) + 1, 2, 0])
-    P2 = sum(GRW[int(start): int(stop_stance) + 1, 2, 1])
-
-    if P1 > P2 :
-        idx_platform = 0
-    else:
-        idx_platform = 1
+    P = np.array([sum(GRW[int(start): int(stop_stance) + 1, 2, 0]), sum(GRW[int(start): int(stop_stance) + 1, 2, 1])])
+    idx_platform = np.where(P == P.max())[0][0]
     return idx_platform
 
 def GetTime(file):
@@ -282,9 +277,38 @@ def GetTime(file):
     [start, stop_stance, stop] = Get_Event(file)
 
     T        = 1/freq * (int(stop) - int(start) + 1)
-    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)  
+    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)
     T_swing  = 1/freq * (int(stop) - int(stop_stance) + 1)
     return T, T_stance, T_swing
+
+def GetTime_stance(file):
+    measurements = c3d(file)
+    freq = measurements['parameters']['ANALOG']['RATE']['value'][0]
+    [start, stop_stance, stop] = Get_Event(file)
+    T_stance_tot = 1 / freq * (int(stop_stance) - int(start) + 1)
+
+    CoP = ComputeCoP(file)
+    ixd_platform = find_platform(file)
+
+    idx_2_contact = np.where(CoP[int(start): int(stop_stance), 1, (ixd_platform - 1) ** 2] == 0)[0][0] # toe of of the left leg (no signal on the PF)
+    a = -CoP[int(start): (int(stop_stance) - 20), 1, ixd_platform]
+    idx_1_contact = np.where(a == a.max())[0][0] # max before the left leg move forward
+
+    T_Heel = 1/freq * (int(idx_2_contact))
+    T_2_contact = 1 / freq * (int(idx_1_contact) - int(idx_2_contact))
+    T_Forefoot = 1 / freq * ((int(stop_stance) - int(start)) - int(idx_1_contact) + 1)
+    T_stance = [T_Heel, T_2_contact, T_Forefoot]
+
+# plot
+#     plt.plot(-CoP[int(start): int(stop_stance), 1, ixd_platform], '+')
+#     plt.plot(-CoP[int(start): int(stop_stance), 1, (ixd_platform - 1) ** 2], '+')
+#     plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[int(start): int(stop_stance), 1, (ixd_platform - 1) ** 2]),
+#                                               np.max(-CoP[int(start): int(stop_stance), 1, ixd_platform])], 'k--')
+#     plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[int(start): int(stop_stance), 1, (ixd_platform - 1) ** 2]),
+#                                               np.max(-CoP[int(start): int(stop_stance), 1, ixd_platform])], 'k--')
+    
+    return T_stance
+
 
 def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # Load c3d file and get the muscular excitation from emg
@@ -298,11 +322,11 @@ def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # GET GROUND REACTION WRENCHES
     GRW = GetGroundReactionForces(file)
 
-    [start, stop_stance, stop] = Get_Event(file)
-
     # time
+    [start, stop_stance, stop] = Get_Event(file)
     T, T_stance, T_swing = GetTime(file)
 
+    t_stance = GetTime_stance(file)
     # FIND FORCE PLATFORM FOR RIGHT FOOT -- GET FORCES FOR MODEL
     idx_platform = find_platform(file)
     GRF = GRW[:, :, idx_platform].T
