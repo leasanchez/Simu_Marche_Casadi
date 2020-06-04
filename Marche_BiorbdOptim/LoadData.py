@@ -276,6 +276,16 @@ def find_platform(file):
         idx_platform = 1
     return idx_platform
 
+def GetTime(file):
+    measurements = c3d(file)
+    freq = measurements['parameters']['ANALOG']['RATE']['value'][0]
+    [start, stop_stance, stop] = Get_Event(file)
+
+    T        = 1/freq * (int(stop) - int(start) + 1)
+    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)  
+    T_swing  = 1/freq * (int(stop) - int(stop_stance) + 1)
+    return T, T_stance, T_swing
+
 def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # Load c3d file and get the muscular excitation from emg
     file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
@@ -291,18 +301,11 @@ def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     [start, stop_stance, stop] = Get_Event(file)
 
     # time
-    T        = 1/freq * (int(stop) - int(start) + 1)
-    T_stance = 1/freq * (int(stop_stance) - int(start) + 1)  # point stop stance inclus
-    T_swing  = 1/freq * (int(stop) - int(stop_stance) + 1)
+    T, T_stance, T_swing = GetTime(file)
 
     # FIND FORCE PLATFORM FOR RIGHT FOOT -- GET FORCES FOR MODEL
-    P1 = sum(GRW[int(start): int(stop_stance) + 1, 2, 0])
-    P2 = sum(GRW[int(start): int(stop_stance) + 1, 2, 1])
-
-    if P1 > P2 :
-        GRF = GRW[:, :, 0].T
-    else:
-        GRF = GRW[:, :, 1].T
+    idx_platform = find_platform(file)
+    GRF = GRW[:, :, idx_platform].T
 
     # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
     t_stance = np.linspace(0, T_stance, int(stop_stance - start) + 1)
