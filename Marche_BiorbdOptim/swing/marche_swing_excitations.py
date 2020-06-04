@@ -2,6 +2,7 @@ import numpy as np
 from casadi import MX, Function, vertcat
 from matplotlib import pyplot as plt
 import biorbd
+from time import time
 
 from biorbd_optim import (
     OptimalControlProgram,
@@ -109,7 +110,7 @@ if __name__ == "__main__":
 
     # Generate data from file
     from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_muscularExcitation
-    name_subject = "equincocont01"
+    name_subject = "equincocont03"
     t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
     excitations_ref = load_muscularExcitation(emg_ref)
@@ -131,6 +132,7 @@ if __name__ == "__main__":
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
 
     # --- Solve the program --- #
+    tic = time()
     sol = ocp.solve(solver="ipopt",
                     options_ipopt={
                         "ipopt.tol": 1e-3,
@@ -139,6 +141,8 @@ if __name__ == "__main__":
                         "ipopt.limited_memory_max_history": 50,
                         "ipopt.linear_solver": "ma57",},
                     show_online_optim=True)
+    toc = time() - tic
+    print(f"Time to solve : {toc}sec")
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])

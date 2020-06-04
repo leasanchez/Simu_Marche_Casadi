@@ -1,10 +1,8 @@
 import numpy as np
 from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
-import sys
-
-sys.path.append('/home/leasanchez/programmation/BiorbdOptim')
 import biorbd
+from time import time
 
 from biorbd_optim import (
     Instant,
@@ -145,6 +143,7 @@ if __name__ == "__main__":
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
 
     # --- Solve the program --- #
+    tic = time()
     sol = ocp.solve(
         solver="ipopt",
         options_ipopt={
@@ -155,6 +154,8 @@ if __name__ == "__main__":
             "ipopt.linear_solver": "ma57",},
         show_online_optim=True,
     )
+    toc = time() - tic
+    print(f"Time to solve : {toc}sec")
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])

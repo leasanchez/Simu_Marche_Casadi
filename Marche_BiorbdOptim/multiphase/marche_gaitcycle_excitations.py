@@ -2,6 +2,7 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
+from time import time
 
 from biorbd_optim import (
     Instant,
@@ -170,6 +171,7 @@ if __name__ == "__main__":
     )
 
     # --- Solve the program --- #
+    tic = time()
     sol = ocp.solve(solver="ipopt",
                     options_ipopt={
                         "ipopt.tol": 1e-3,
@@ -177,8 +179,10 @@ if __name__ == "__main__":
                         "ipopt.hessian_approximation": "limited-memory",
                         "ipopt.limited_memory_max_history": 50,
                         "ipopt.linear_solver": "ma57",},
-                    show_online_optim=False
+                    show_online_optim=True
                     )
+    toc = time() - tic
+    print(f"Time to solve : {toc}sec")
 
     # --- Get Results --- #
     states_sol, controls_sol = Data.get_data(ocp, sol["x"])
