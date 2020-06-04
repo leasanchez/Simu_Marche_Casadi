@@ -1,6 +1,5 @@
 import numpy as np
 from casadi import dot, Function, vertcat, MX
-from matplotlib import pyplot as plt
 import biorbd
 
 from biorbd_optim import (
@@ -15,6 +14,7 @@ from biorbd_optim import (
     ShowResult,
     Data,
     InterpolationType,
+    # PhaseTransition,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -93,12 +93,15 @@ def prepare_ocp(
     )
 
     # Constraints
-    constraints = (
-        ({"type": Constraint.CUSTOM, "function":get_qdot_post_impact, "instant": Instant.END},),
-        (),
-        (),
-        ({"type": Constraint.CUSTOM, "function":get_qdot_post_impact, "instant": Instant.END},)
-    )
+    constraints = ()
+
+    # # Phase transitions
+    # phase_transitions = (
+    #     {"type": PhaseTransition.IMPACT, "phase_pre_idx": 0, },     # Heel Strike to Flat foot
+    #     {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 1, }, # Flat foot to ForeFoot
+    #     {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 2, }, # ForeFoot to Swing
+    #     {"type": PhaseTransition.IMPACT, "phase_pre_idx": 3, },     # Swing to Heel Strike
+    # )
 
     # Path constraint
     X_bounds = []
@@ -151,6 +154,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
+        phase_transitions=phase_transitions
     )
 
 
@@ -172,7 +176,7 @@ if __name__ == "__main__":
 
     name_subject = "normal01"
     grf_ref_stance, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model,(number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2]))
-    phase_time = [T*0.1, T*0.3, (T_stance - T*0.1 - T*0.3), T_swing]
+    phase_time = [T*0.1, T*0.2, (T_stance - T*0.1 - T*0.2), T_swing]
     q_ref = []
     markers_ref = []
     excitation_ref = []
