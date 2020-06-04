@@ -264,6 +264,18 @@ def load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gai
 
     return emg_ref
 
+def find_platform(file):
+    GRW = GetGroundReactionForces(file)
+    [start, stop_stance, stop] = Get_Event(file)
+    P1 = sum(GRW[int(start): int(stop_stance) + 1, 2, 0])
+    P2 = sum(GRW[int(start): int(stop_stance) + 1, 2, 1])
+
+    if P1 > P2 :
+        idx_platform = 0
+    else:
+        idx_platform = 1
+    return idx_platform
+
 def load_data_GRF(name_subject, biorbd_model, n_shooting_points):
     # Load c3d file and get the muscular excitation from emg
     file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
