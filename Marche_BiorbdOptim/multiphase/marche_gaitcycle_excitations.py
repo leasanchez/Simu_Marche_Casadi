@@ -18,26 +18,33 @@ from biorbd_optim import (
     InterpolationType,
 )
 
+
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1])
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
 
+
 def get_muscles_first_node(ocp, nlp, t, x, u):
-    activation = x[0][2*nlp["nbQ"]:]
-    excitation = u[0][nlp["nbQ"]:]
+    activation = x[0][2 * nlp["nbQ"] :]
+    excitation = u[0][nlp["nbQ"] :]
     val = activation - excitation
     return val
 
-def get_initial_value():
-    q_ig=[]
-    qdot_ig=[]
-    activations_ig=[]
-    tau_ig=[]
-    excitations_ig=[]
 
-    ocp_load_swing, sol_load_swing = OptimalControlProgram.load("../swing/RES/excitations/3D/marche_swing_excitation.bo")
-    ocp_load_stance, sol_load_stance = OptimalControlProgram.load("../stance/RES/equincocont01/excitations/3D/marche_stance_excitation.bo")
+def get_initial_value():
+    q_ig = []
+    qdot_ig = []
+    activations_ig = []
+    tau_ig = []
+    excitations_ig = []
+
+    ocp_load_swing, sol_load_swing = OptimalControlProgram.load(
+        "../swing/RES/excitations/3D/marche_swing_excitation.bo"
+    )
+    ocp_load_stance, sol_load_stance = OptimalControlProgram.load(
+        "../stance/RES/equincocont01/excitations/3D/marche_stance_excitation.bo"
+    )
     ocp_load = [ocp_load_stance, ocp_load_swing]
     sol_load = [sol_load_stance, sol_load_swing]
 
@@ -50,14 +57,9 @@ def get_initial_value():
         excitations_ig.append(controls_sol["muscles"])
     return q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig
 
+
 def prepare_ocp(
-    biorbd_model,
-    final_time,
-    nb_shooting,
-    markers_ref,
-    excitation_ref,
-    grf_ref,
-    q_ref,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,
 ):
     # Problem parameters
     nb_phases = len(biorbd_model)
@@ -70,20 +72,22 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-    objective_functions = ((
-        # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[0].T},
-        # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
-        # {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
-    ),
-    (
-        # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-        # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
-        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[1].T},
-    ))
+    objective_functions = (
+        (
+            # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+            # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[0].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
+            # {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
+        ),
+        (
+            # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
+            # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[1].T},
+        ),
+    )
 
     # Dynamics
     problem_type = (
@@ -107,10 +111,15 @@ def prepare_ocp(
     q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig = get_initial_value()
     X_init = []
     for n_p in range(nb_phases):
-        init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
+        init_x = np.zeros(
+            (
+                biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(),
+                nb_shooting[n_p] + 1,
+            )
+        )
         for i in range(nb_shooting[n_p] + 1):
             init_x[:nb_q, i] = q_ig[n_p][:, i]
-            init_x[nb_q:nb_q + nb_qdot, i] = qdot_ig[n_p][:, i]
+            init_x[nb_q : nb_q + nb_qdot, i] = qdot_ig[n_p][:, i]
             init_x[-nb_mus:, i] = activations_ig[n_p][:, i]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
@@ -127,15 +136,20 @@ def prepare_ocp(
     # Define control path constraint
     U_bounds = [
         Bounds(
-        min_bound = [torque_min] * biorbd_model[i].nbGeneralizedTorque() + [activation_min] * biorbd_model[i].nbMuscleTotal(),
-        max_bound = [torque_max] * biorbd_model[i].nbGeneralizedTorque() + [activation_max] * biorbd_model[i].nbMuscleTotal(),
-    )
-        for i in range(nb_phases)]
+            min_bound=[torque_min] * biorbd_model[i].nbGeneralizedTorque()
+            + [activation_min] * biorbd_model[i].nbMuscleTotal(),
+            max_bound=[torque_max] * biorbd_model[i].nbGeneralizedTorque()
+            + [activation_max] * biorbd_model[i].nbMuscleTotal(),
+        )
+        for i in range(nb_phases)
+    ]
 
     # Initial guess
     U_init = []
     for n_p in range(nb_phases):
-        init_u = np.zeros((biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p]))
+        init_u = np.zeros(
+            (biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p])
+        )
         for i in range(nb_shooting[n_p]):
             init_u[:nb_tau, i] = tau_ig[n_p][:, i]
             init_u[-nb_mus:, i] = excitations_ig[n_p][:, i]
@@ -179,7 +193,13 @@ if __name__ == "__main__":
     number_shooting_points = [25, 25]
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_data_GRF,load_muscularExcitation
+    from Marche_BiorbdOptim.LoadData import (
+        load_data_markers,
+        load_data_q,
+        load_data_emg,
+        load_data_GRF,
+        load_muscularExcitation,
+    )
 
     name_subject = "equincocont01"
     grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, number_shooting_points[0])
@@ -187,22 +207,26 @@ if __name__ == "__main__":
 
     model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
     # phase stance
-    t_stance, markers_ref_stance = load_data_markers(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
-    emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
+    t_stance, markers_ref_stance = load_data_markers(
+        name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance"
+    )
+    emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance")
     excitation_ref_stance = load_muscularExcitation(emg_ref_stance)
 
     Q_ref_stance = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
-    q_ref_stance = load_data_q(name_subject, model_q, phase_time[0], number_shooting_points[0], 'stance')
+    q_ref_stance = load_data_q(name_subject, model_q, phase_time[0], number_shooting_points[0], "stance")
     Q_ref_stance[[0, 1, 5, 8, 9, 10], :] = q_ref_stance
-    q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], 'stance')
+    q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance")
 
     # phase swing
-    t_swing, markers_ref_swing = load_data_markers(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
-    emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], 'swing')
+    t_swing, markers_ref_swing = load_data_markers(
+        name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], "swing"
+    )
+    emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], "swing")
     excitation_ref_swing = load_muscularExcitation(emg_ref_swing)
 
     Q_ref_swing = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[1] + 1))
-    q_ref_swing = load_data_q(name_subject, model_q, phase_time[1], number_shooting_points[1], 'swing')
+    q_ref_swing = load_data_q(name_subject, model_q, phase_time[1], number_shooting_points[1], "swing")
     Q_ref_swing[[0, 1, 5, 8, 9, 10], :] = q_ref_swing
 
     # Track these data
@@ -216,7 +240,7 @@ if __name__ == "__main__":
         number_shooting_points,
         markers_ref=[markers_ref_stance, markers_ref_swing],
         excitation_ref=[excitation_ref_stance, excitation_ref_swing],
-        grf_ref=grf_ref[[1,0,2], :],
+        grf_ref=grf_ref[[1, 0, 2], :],
         q_ref=[Q_ref_stance, Q_ref_swing],
     )
 
@@ -228,15 +252,17 @@ if __name__ == "__main__":
 
     # --- Solve the program --- #
     tic = time()
-    sol = ocp.solve(solver="ipopt",
-                    options_ipopt={
-                        "ipopt.tol": 1e-2,
-                        "ipopt.max_iter": 5000,
-                        "ipopt.hessian_approximation": "limited-memory",
-                        "ipopt.limited_memory_max_history": 50,
-                        "ipopt.linear_solver": "ma57",},
-                    show_online_optim=False
-                    )
+    sol = ocp.solve(
+        solver="ipopt",
+        options_ipopt={
+            "ipopt.tol": 1e-2,
+            "ipopt.max_iter": 5000,
+            "ipopt.hessian_approximation": "limited-memory",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57",
+        },
+        show_online_optim=False,
+    )
     toc = time() - tic
     print(f"Time to solve : {toc}sec")
 
