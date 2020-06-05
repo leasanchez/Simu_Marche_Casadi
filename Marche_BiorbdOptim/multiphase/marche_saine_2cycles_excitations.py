@@ -14,7 +14,7 @@ from biorbd_optim import (
     ShowResult,
     Data,
     InterpolationType,
-    # PhaseTransition,
+    PhaseTransition,
 )
 
 def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
@@ -95,13 +95,13 @@ def prepare_ocp(
     # Constraints
     constraints = ()
 
-    # # Phase transitions
-    # phase_transitions = (
-    #     {"type": PhaseTransition.IMPACT, "phase_pre_idx": 0, },     # Heel Strike to Flat foot
-    #     {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 1, }, # Flat foot to ForeFoot
-    #     {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 2, }, # ForeFoot to Swing
-    #     {"type": PhaseTransition.IMPACT, "phase_pre_idx": 3, },     # Swing to Heel Strike
-    # )
+    # Phase transitions
+    phase_transitions = (
+        {"type": PhaseTransition.IMPACT, "phase_pre_idx": 0, },     # Heel Strike to Flat foot
+        {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 1, }, # Flat foot to ForeFoot
+        {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 2, }, # ForeFoot to Swing
+        {"type": PhaseTransition.IMPACT, "phase_pre_idx": 3, },     # Swing to Heel Strike
+    )
 
     # Path constraint
     X_bounds = []
@@ -154,7 +154,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
-        phase_transitions=phase_transitions
+        phase_transitions=phase_transitions,
     )
 
 
