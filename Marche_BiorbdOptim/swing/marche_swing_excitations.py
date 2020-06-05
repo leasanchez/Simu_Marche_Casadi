@@ -36,6 +36,7 @@ def prepare_ocp(
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
     nb_mus = biorbd_model.nbMuscleTotal()
+    nb_tau = biorbd_model.nbGeneralizedTorque()
 
     torque_min, torque_max, torque_init = -5000, 5000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
@@ -57,25 +58,25 @@ def prepare_ocp(
     # Path constraint
     X_bounds = QAndQDotBounds(biorbd_model)
     X_bounds.concatenate(
-        Bounds([activation_min] * biorbd_model.nbMuscles(), [activation_max] * biorbd_model.nbMuscles())
+        Bounds([activation_min] * nb_mus, [activation_max] * nb_mus)
     )
 
     # Initial guess
-    init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal(), nb_shooting + 1))
+    init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
     for i in range(nb_shooting + 1):
-        init_x[: biorbd_model.nbQ(), i] = q_ref[:, i]
-        init_x[-biorbd_model.nbMuscleTotal() :, i] = excitations_ref[:, i]
+        init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[:, i]
+        init_x[-nb_mus:, i] = excitations_ref[:, i]
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
     U_bounds = Bounds(
-        [torque_min] * biorbd_model.nbGeneralizedTorque() + [activation_min] * biorbd_model.nbMuscleTotal(),
-        [torque_max] * biorbd_model.nbGeneralizedTorque() + [activation_max] * biorbd_model.nbMuscleTotal(),
+        [torque_min] * nb_tau + [activation_min] * nb_mus,
+        [torque_max] * nb_tau + [activation_max] * nb_mus,
     )
     # Initial guess
-    init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
+    init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
     for i in range(nb_shooting):
-        init_u[-biorbd_model.nbMuscleTotal() :, i] = excitations_ref[:, i]
+        init_u[-nb_mus :, i] = excitations_ref[:, i]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # ------------- #
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     Gaitphase = "swing"
 
     # Generate data from file
-    Data_to_track = Data_to_track(name_subject="equincocont01")
+    Data_to_track = Data_to_track(name_subject="equincocont03")
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     final_time = T_swing
 

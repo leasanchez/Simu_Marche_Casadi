@@ -17,7 +17,6 @@ from biorbd_optim import (
     Data,
     InterpolationType,
     PlotType,
-    Axe,
     Constraint,
 )
 
@@ -131,7 +130,6 @@ if __name__ == "__main__":
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
     # Track these data
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
     ocp = prepare_ocp(
         biorbd_model,
         final_time,
@@ -139,7 +137,7 @@ if __name__ == "__main__":
         markers_ref,
         excitation_ref=excitation_ref,
         q_ref=q_ref,
-        grf_ref=grf_ref[[1, 0, 2], :],
+        grf_ref=grf_ref,
         nb_threads=4,
     )
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])

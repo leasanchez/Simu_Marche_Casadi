@@ -89,13 +89,13 @@ class Data_to_track:
         T_Forefoot = 1 / freq * ((self.idx_stop_stance - self.idx_start) - int(idx_1_contact) + 1)
         T_stance = [T_Heel, T_2_contact, T_Forefoot]
 
-        # plot
-        #     plt.plot(-CoP[int(start): int(stop_stance), 1, idx_platform], '+')
-        #     plt.plot(-CoP[int(start): int(stop_stance), 1, (idx_platform - 1) ** 2], '+')
-        #     plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[int(start): int(stop_stance), 1, (idx_platform - 1) ** 2]),
-        #                                               np.max(-CoP[int(start): int(stop_stance), 1, idx_platform])], 'k--')
-        #     plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[int(start): int(stop_stance), 1, (idx_platform - 1) ** 2]),
-        #                                               np.max(-CoP[int(start): int(stop_stance), 1, idx_platform])], 'k--')
+       # # plot
+       #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform], '+')
+       #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2], '+')
+       #  plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
+       #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
+       #  plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
+       #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
 
         return T_stance
 

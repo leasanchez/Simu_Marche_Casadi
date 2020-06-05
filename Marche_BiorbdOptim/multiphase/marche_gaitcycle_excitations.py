@@ -189,30 +189,44 @@ if __name__ == "__main__":
         biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
         biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
     )
+    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
 
     # Problem parameters
     number_shooting_points = [25, 25]
 
     # Generate data from file
-    Data_to_track = Data_to_track("equicocont01", multiple_contact=True)
+    Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
-    phase_time = [T_stance[0], T_stance[1], T_stance[2], T_swing]  # get time for each phase
+    phase_time = [T_stance, T_swing]  # get time for each phase
 
     grf_ref = Data_to_track.load_data_GRF(
-        biorbd_model[0], T_stance, number_shooting_points[:-1]
+        biorbd_model[0], T_stance, number_shooting_points[0]
     )  # get ground reaction forces
-
-    markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    markers_ref = []
+    markers_ref.append(Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
     markers_ref.append(
         Data_to_track.load_data_markers(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
     )  # get markers position
 
-    q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    q_ref = []
+    q_ref.append(Data_to_track.load_data_q(model_q, T_stance, number_shooting_points[0], "stance"))
     q_ref.append(
-        Data_to_track.load_data_q(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
+        Data_to_track.load_data_q(model_q, phase_time[-1], number_shooting_points[-1], "swing")
     )  # get q from kalman
 
-    emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    # symbolic_states = MX.sym("x", model_q.nbQ(), 1)
+    # Compute_CoM = Function("ComputeCoM",
+    #             [symbolic_states],
+    #             [model_q.CoM(symbolic_states).to_mx()],
+    #             ["q"],
+    #             ["CoM"],
+    #         ).expand()
+    # CoM = np.zeros((3, number_shooting_points[0]))
+    # for i in range(number_shooting_points[0]):
+    #     CoM[:, i] = np.array(Compute_CoM(q_ref[0][:, i])).squeeze()
+
+    emg_ref = []
+    emg_ref.append(Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
     emg_ref.append(
         Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
     )  # get emg
@@ -230,10 +244,10 @@ if __name__ == "__main__":
         biorbd_model,
         phase_time,
         number_shooting_points,
-        markers_ref=[markers_ref_stance, markers_ref_swing],
-        excitation_ref=[excitation_ref_stance, excitation_ref_swing],
-        grf_ref=grf_ref[[1, 0, 2], :],
-        q_ref=[Q_ref_stance, Q_ref_swing],
+        markers_ref=markers_ref,
+        excitation_ref=excitation_ref,
+        grf_ref=grf_ref,
+        q_ref=q_ref,
     )
 
     # --- Add plot kalman --- #
@@ -248,7 +262,7 @@ if __name__ == "__main__":
         solver="ipopt",
         options_ipopt={
             "ipopt.tol": 1e-2,
-            "ipopt.max_iter": 5000,
+            "ipopt.max_iter": 10000,
             "ipopt.hessian_approximation": "limited-memory",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",
