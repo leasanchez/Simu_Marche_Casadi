@@ -346,10 +346,11 @@ marker	R_FMP5
 	position	0.096359	0.00353103	0.0532144
 	technical	1
 endmarker
+
 // ---- Contact
 contact    c_heel_r
 	parent    foot_marker_r
-	position    0.0054278	0.00177226	0.00220395  //R_FCC
+	position    0.0054278	0	0  //R_FCC
 	axis    xyz
 endcontact
 

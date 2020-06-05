@@ -359,14 +359,12 @@ endmarker
 // ---- Contact
 contact    c_meta_r
 	parent    foot_marker_r
-	//position    0.200778  0.02 0.0127656  //R_FM2
 	position    0.200778  0   0 
 	axis    xyz
 endcontact
 
 contact    c_heel_r
 	parent    foot_marker_r
-	//position    0.0054278	0.00177226	0.00220395  //R_FCC
 	position    0.0054278	0	0
 	axis    xyz
 endcontact

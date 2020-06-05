@@ -349,7 +349,7 @@ endmarker
 // ---- Contact
 contact    c_meta_r
 	parent    foot_marker_r
-	position    0.200778 -0.02 0.0127656  //R_FM2_proj
+	position    0.200778  0  0
 	axis    xyz
 endcontact
 
