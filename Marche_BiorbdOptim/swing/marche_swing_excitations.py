@@ -104,13 +104,15 @@ if __name__ == "__main__":
     Gaitphase = "swing"
 
     # Generate data from file
-    Data_to_track = Data_to_track(name_subject = "equincocont01")
+    Data_to_track = Data_to_track(name_subject="equincocont01")
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     final_time = T_swing
 
-    markers_ref = Data_to_track.load_data_markers(biorbd_model,T_stance,n_shooting_points, "swing") # get markers position
-    q_ref = Data_to_track.load_data_q(biorbd_model,T_stance,n_shooting_points,"swing")# get q from kalman
-    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance,n_shooting_points,"swing")# get emg
+    markers_ref = Data_to_track.load_data_markers(
+        biorbd_model, T_stance, n_shooting_points, "swing"
+    )  # get markers position
+    q_ref = Data_to_track.load_data_q(biorbd_model, T_stance, n_shooting_points, "swing")  # get q from kalman
+    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "swing")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
     # Track these data

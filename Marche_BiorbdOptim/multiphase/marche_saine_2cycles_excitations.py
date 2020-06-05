@@ -204,18 +204,26 @@ if __name__ == "__main__":
     # Generate data from file
     Data_to_track = Data_to_track("normal01", multiple_contact=True)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
-    phase_time = [T_stance[0], T_stance[1], T_stance[2], T_swing] # get time for each phase
+    phase_time = [T_stance[0], T_stance[1], T_stance[2], T_swing]  # get time for each phase
 
-    grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[:-1]) # get ground reaction forces
+    grf_ref = Data_to_track.load_data_GRF(
+        biorbd_model[0], T_stance, number_shooting_points[:-1]
+    )  # get ground reaction forces
 
-    markers_ref = Data_to_track.load_data_markers(biorbd_model[0],T_stance,number_shooting_points[:-1], "stance")
-    markers_ref.append(Data_to_track.load_data_markers(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get markers position
+    markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    markers_ref.append(
+        Data_to_track.load_data_markers(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
+    )  # get markers position
 
-    q_ref = Data_to_track.load_data_q(biorbd_model[0],T_stance,number_shooting_points[:-1],"stance")
-    q_ref.append(Data_to_track.load_data_q(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get q from kalman
+    q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    q_ref.append(
+        Data_to_track.load_data_q(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
+    )  # get q from kalman
 
-    emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance,number_shooting_points[:-1],"stance")
-    emg_ref.append(Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get emg
+    emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points[:-1], "stance")
+    emg_ref.append(
+        Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
+    )  # get emg
 
     excitation_ref = []
     for i in range(len(phase_time)):

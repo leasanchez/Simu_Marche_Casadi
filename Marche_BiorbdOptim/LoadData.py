@@ -3,10 +3,9 @@ import numpy as np
 from scipy.interpolate import interp1d
 import scipy.io as sio
 
+
 class Data_to_track:
-    def __init__(
-        self, name_subject, multiple_contact = False
-    ):
+    def __init__(self, name_subject, multiple_contact=False):
         self.name_subject = name_subject
         self.file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
         self.kalman_file = "../../DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
@@ -40,7 +39,12 @@ class Data_to_track:
 
     def Find_platform(self):
         GRW = self.GetGroundReactionForces()
-        P = np.array([sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 0]), sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 1])])
+        P = np.array(
+            [
+                sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 0]),
+                sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 1]),
+            ]
+        )
         idx_platform = np.where(P == P.max())[0][0]
         return idx_platform
 
@@ -70,13 +74,13 @@ class Data_to_track:
         CoP = self.ComputeCoP()
 
         # toe off of the left leg (no signal on the PF)
-        idx_2_contact = np.where(CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2] == 0)[0][
-            0
-        ]
+        idx_2_contact = np.where(CoP[self.idx_start : self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2] == 0)[0][0]
         self.idx_2_contacts = self.idx_start + int(idx_2_contact)
 
         # max before the left leg move forward -> heel rise
-        a = -CoP[self.idx_start: (self.idx_stop_stance - 20), 1, self.idx_platform] # Ps: -20 to exclude the propulsion with the toes
+        a = -CoP[
+            self.idx_start : (self.idx_stop_stance - 20), 1, self.idx_platform
+        ]  # Ps: -20 to exclude the propulsion with the toes
         idx_1_contact = np.where(a == a.max())[0][0]
         self.idx_heel_rise = self.idx_start + int(idx_1_contact)
 
@@ -109,7 +113,6 @@ class Data_to_track:
 
         return F
 
-
     def GetMoment(self):
         measurements = c3d(self.file)
         analog = measurements["data"]["analogs"]
@@ -124,13 +127,13 @@ class Data_to_track:
 
         return M
 
-
     def ComputeCoP(self):
         measurements = c3d(self.file)
         analog = measurements["data"]["analogs"]
         nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
         corners = np.reshape(
-            np.reshape(measurements["parameters"]["FORCE_PLATFORM"]["CORNERS"]["value"] * 1e-3, (3 * 4 * 2, 1)), (2, 4, 3)
+            np.reshape(measurements["parameters"]["FORCE_PLATFORM"]["CORNERS"]["value"] * 1e-3, (3 * 4 * 2, 1)),
+            (2, 4, 3),
         )  # platform x corners x coord
 
         CoP1 = np.zeros(((len(analog[0, 0, :]), 3, nbPF)))
@@ -152,7 +155,6 @@ class Data_to_track:
                 CoP[:, 0, p] = corners[p, 2, 0] + (corners[p, 1, 0] - corners[p, 2, 0]) / 2 + CoP1[:, 0, p]
                 CoP[:, 1, p] = (corners[p, 0, 1] - corners[p, 1, 1]) / 2 + CoP1[:, 1, p]
         return CoP
-
 
     def GetGroundReactionForces(self):
         measurements = c3d(self.file)
@@ -218,7 +220,7 @@ class Data_to_track:
                 for i in range(len(final_time)):
                     t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
                     node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, markers[:, :, idx[i]: (idx[i + 1] + 1)], kind="cubic")
+                    f_stance = interp1d(t_stance, markers[:, :, idx[i] : (idx[i + 1] + 1)], kind="cubic")
                     markers_ref.append(f_stance(node_t_stance))
             else:
                 t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
@@ -252,7 +254,7 @@ class Data_to_track:
                 for i in range(len(final_time)):
                     t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
                     node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, Q_real[:, idx[i]: (idx[i + 1] + 1)], kind="cubic")
+                    f_stance = interp1d(t_stance, Q_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
                     q_ref.append(f_stance(node_t_stance))
             else:
                 t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
@@ -312,7 +314,9 @@ class Data_to_track:
 
         EMG[9, :] = points[0, labels_points.index("R_Tibialis_Anterior"), :].squeeze()  # R_Tibialis_Anterior
         EMG[8, :] = points[0, labels_points.index("R_Soleus"), :].squeeze()  # R_Soleus
-        EMG[7, :] = points[0, labels_points.index("R_Gastrocnemius_Lateralis"), :].squeeze()  # R_Gastrocnemius_Lateralis
+        EMG[7, :] = points[
+            0, labels_points.index("R_Gastrocnemius_Lateralis"), :
+        ].squeeze()  # R_Gastrocnemius_Lateralis
         EMG[6, :] = points[0, labels_points.index("R_Gastrocnemius_Medialis"), :].squeeze()  # R_Gastrocnemius_Medialis
         EMG[5, :] = points[0, labels_points.index("R_Vastus_Medialis"), :].squeeze()  # R_Vastus_Medialis
         EMG[4, :] = points[0, labels_points.index("R_Rectus_Femoris"), :].squeeze()  # R_Rectus_Femoris
@@ -329,7 +333,7 @@ class Data_to_track:
                 for i in range(len(final_time)):
                     t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
                     node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, EMG[:, idx[i]: (idx[i + 1] + 1)], kind="cubic")
+                    f_stance = interp1d(t_stance, EMG[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
                     emg_ref.append(f_stance(node_t_stance))
 
                     # RECTIFY EMG VALUES BETWEEN 0 & 1
@@ -339,7 +343,7 @@ class Data_to_track:
             else:
                 t = np.linspace(0, final_time, int(stop_stance - start) + 1)
                 node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, EMG[:, int(start): int(stop_stance) + 1], kind="cubic")
+                f = interp1d(t, EMG[:, int(start) : int(stop_stance) + 1], kind="cubic")
                 emg_ref = f(node_t)
 
                 # RECTIFY EMG VALUES BETWEEN 0 & 1
@@ -374,9 +378,9 @@ class Data_to_track:
             GRF_real = []
             idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
             for i in range(len(final_time)):
-                t_stance = np.linspace(0, final_time[i], (idx[i+1] - idx[i]) + 1)
+                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
                 node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                f_stance = interp1d(t_stance, GRF[:, idx[i]: (idx[i + 1] + 1)], kind="cubic")
+                f_stance = interp1d(t_stance, GRF[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
                 G = f_stance(node_t_stance)
                 GRF_real.append(G[[1, 0, 2], :])
         else:
@@ -387,7 +391,6 @@ class Data_to_track:
             GRF_real = G[[1, 0, 2], :]
 
         return GRF_real
-
 
     def load_muscularExcitation(self, emg_ref):
         # Create initial vector for muscular excitation (nbNoeuds x nbMus)
