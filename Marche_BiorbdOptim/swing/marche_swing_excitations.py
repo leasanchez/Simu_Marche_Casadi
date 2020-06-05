@@ -3,6 +3,7 @@ from casadi import MX, Function, vertcat
 from matplotlib import pyplot as plt
 import biorbd
 from time import time
+from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
     OptimalControlProgram,
@@ -103,18 +104,17 @@ if __name__ == "__main__":
     Gaitphase = "swing"
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import load_data_markers, load_data_q, load_data_emg, load_muscularExcitation
+    Data_to_track = Data_to_track(name_subject = "equincocont01")
+    [T, T_stance, T_swing] = Data_to_track.GetTime()
+    final_time = T_swing
 
-    name_subject = "equincocont03"
-    t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    excitations_ref = load_muscularExcitation(emg_ref)
-    Q_ref = np.zeros((biorbd_model.nbQ(), n_shooting_points + 1))
-    q_ref = load_data_q(name_subject, model_q, final_time, n_shooting_points, Gaitphase)
-    Q_ref[[0, 1, 5, 8, 9, 10], :] = q_ref
+    markers_ref = Data_to_track.load_data_markers(biorbd_model,T_stance,n_shooting_points, "swing") # get markers position
+    q_ref = Data_to_track.load_data_q(biorbd_model,T_stance,n_shooting_points,"swing")# get q from kalman
+    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance,n_shooting_points,"swing")# get emg
+    excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
     # Track these data
-    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, Q_ref, excitations_ref, nb_threads=4,)
+    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, q_ref, excitation_ref, nb_threads=4,)
     # --- Add plot kalman --- #
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
 

@@ -1,6 +1,8 @@
 import numpy as np
 from casadi import dot, Function, vertcat, MX
 import biorbd
+from matplotlib import pyplot as plt
+from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
     Instant,
@@ -43,7 +45,7 @@ def get_qdot_post_impact(ocp, nlp, t, x, u):
 
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref, ode_solver=OdeSolver.RK
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,
 ):
 
     # Problem parameters
@@ -183,7 +185,6 @@ def prepare_ocp(
         objective_functions,
         constraints,
         phase_transitions=phase_transitions,
-        ode_solver=ode_solver,
     )
 
 
@@ -201,82 +202,24 @@ if __name__ == "__main__":
     number_shooting_points = [5, 10, 15, 20]
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import (
-        load_data_markers,
-        load_data_q,
-        load_data_emg,
-        load_data_GRF,
-        load_muscularExcitation,
-    )
+    Data_to_track = Data_to_track("normal01", multiple_contact=True)
+    [T, T_stance, T_swing] = Data_to_track.GetTime()
+    phase_time = [T_stance[0], T_stance[1], T_stance[2], T_swing] # get time for each phase
 
-    name_subject = "normal01"
-    grf_ref_stance, T, T_stance, T_swing = load_data_GRF(
-        name_subject, biorbd_model, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2])
-    )
-    phase_time = [T * 0.1, T * 0.2, (T_stance - T * 0.1 - T * 0.2), T_swing]
-    q_ref = []
-    markers_ref = []
+    grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[:-1]) # get ground reaction forces
+
+    markers_ref = Data_to_track.load_data_markers(biorbd_model[0],T_stance,number_shooting_points[:-1], "stance")
+    markers_ref.append(Data_to_track.load_data_markers(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get markers position
+
+    q_ref = Data_to_track.load_data_q(biorbd_model[0],T_stance,number_shooting_points[:-1],"stance")
+    q_ref.append(Data_to_track.load_data_q(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get q from kalman
+
+    emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance,number_shooting_points[:-1],"stance")
+    emg_ref.append(Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get emg
+
     excitation_ref = []
-    grf_ref = []
-
-    # phase stance
-    t_stance, markers_ref_stance = load_data_markers(
-        name_subject,
-        biorbd_model[0],
-        T_stance,
-        (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2]),
-        "stance",
-    )
-    q_ref_stance = load_data_q(
-        name_subject,
-        biorbd_model[0],
-        T_stance,
-        (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2]),
-        "stance",
-    )
-    emg_ref_stance = load_data_emg(
-        name_subject,
-        biorbd_model[0],
-        T_stance,
-        (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2]),
-        "stance",
-    )
-    excitation_ref_stance = load_muscularExcitation(emg_ref_stance)
-
-    markers_ref.append(markers_ref_stance[:, :, : number_shooting_points[0] + 1])
-    excitation_ref.append(excitation_ref_stance[:, : number_shooting_points[0] + 1])
-    q_ref.append(q_ref_stance[:, : number_shooting_points[0] + 1])
-    grf_ref.append(grf_ref_stance[:, : number_shooting_points[0] + 1])
-    for i in range(1, 3):
-        markers_ref.append(
-            markers_ref_stance[
-                :, :, number_shooting_points[i - 1] : number_shooting_points[i - 1] + number_shooting_points[i] + 1
-            ]
-        )
-        excitation_ref.append(
-            excitation_ref_stance[
-                :, number_shooting_points[i - 1] : number_shooting_points[i - 1] + number_shooting_points[i] + 1
-            ]
-        )
-        q_ref.append(
-            q_ref_stance[
-                :, number_shooting_points[i - 1] : number_shooting_points[i - 1] + number_shooting_points[i] + 1
-            ]
-        )
-        grf_ref.append(
-            grf_ref_stance[
-                :, number_shooting_points[i - 1] : number_shooting_points[i - 1] + number_shooting_points[i] + 1
-            ]
-        )
-
-    # phase swing
-    t_swing, markers_ref_swing = load_data_markers(
-        name_subject, biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing"
-    )
-    markers_ref.append(markers_ref_swing)
-    q_ref.append(load_data_q(name_subject, biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing"))
-    emg_ref = load_data_emg(name_subject, biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
-    excitation_ref.append(load_muscularExcitation(emg_ref))
+    for i in range(len(phase_time)):
+        excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
     # Track these data
     biorbd_model = (
@@ -287,9 +230,9 @@ if __name__ == "__main__":
     )
 
     ocp = prepare_ocp(
-        biorbd_model,
-        phase_time,
-        number_shooting_points,
+        biorbd_model=biorbd_model,
+        final_time=phase_time,
+        nb_shooting=number_shooting_points,
         markers_ref=markers_ref,
         excitation_ref=excitation_ref,
         grf_ref=grf_ref,

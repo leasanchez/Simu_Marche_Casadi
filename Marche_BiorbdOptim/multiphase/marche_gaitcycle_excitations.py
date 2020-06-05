@@ -3,6 +3,7 @@ from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
 from time import time
+from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
     Instant,
@@ -193,41 +194,24 @@ if __name__ == "__main__":
     number_shooting_points = [25, 25]
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import (
-        load_data_markers,
-        load_data_q,
-        load_data_emg,
-        load_data_GRF,
-        load_muscularExcitation,
-    )
+    Data_to_track = Data_to_track("equicocont01", multiple_contact=True)
+    [T, T_stance, T_swing] = Data_to_track.GetTime()
+    phase_time = [T_stance[0], T_stance[1], T_stance[2], T_swing] # get time for each phase
 
-    name_subject = "equincocont01"
-    grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, number_shooting_points[0])
-    phase_time = [T_stance, T_swing]
+    grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[:-1]) # get ground reaction forces
 
-    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
-    # phase stance
-    t_stance, markers_ref_stance = load_data_markers(
-        name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance"
-    )
-    emg_ref_stance = load_data_emg(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance")
-    excitation_ref_stance = load_muscularExcitation(emg_ref_stance)
+    markers_ref = Data_to_track.load_data_markers(biorbd_model[0],T_stance,number_shooting_points[:-1], "stance")
+    markers_ref.append(Data_to_track.load_data_markers(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get markers position
 
-    Q_ref_stance = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
-    q_ref_stance = load_data_q(name_subject, model_q, phase_time[0], number_shooting_points[0], "stance")
-    Q_ref_stance[[0, 1, 5, 8, 9, 10], :] = q_ref_stance
-    q_ref_stance = load_data_q(name_subject, biorbd_model[0], phase_time[0], number_shooting_points[0], "stance")
+    q_ref = Data_to_track.load_data_q(biorbd_model[0],T_stance,number_shooting_points[:-1],"stance")
+    q_ref.append(Data_to_track.load_data_q(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get q from kalman
 
-    # phase swing
-    t_swing, markers_ref_swing = load_data_markers(
-        name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], "swing"
-    )
-    emg_ref_swing = load_data_emg(name_subject, biorbd_model[1], phase_time[1], number_shooting_points[1], "swing")
-    excitation_ref_swing = load_muscularExcitation(emg_ref_swing)
+    emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance,number_shooting_points[:-1],"stance")
+    emg_ref.append(Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")) # get emg
 
-    Q_ref_swing = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[1] + 1))
-    q_ref_swing = load_data_q(name_subject, model_q, phase_time[1], number_shooting_points[1], "swing")
-    Q_ref_swing[[0, 1, 5, 8, 9, 10], :] = q_ref_swing
+    excitation_ref = []
+    for i in range(len(phase_time)):
+        excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
     # Track these data
     biorbd_model = (

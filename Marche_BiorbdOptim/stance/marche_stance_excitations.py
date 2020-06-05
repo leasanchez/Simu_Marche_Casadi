@@ -3,6 +3,7 @@ from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
 from time import time
+from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
     Instant,
@@ -117,22 +118,15 @@ if __name__ == "__main__":
     Gaitphase = "stance"
 
     # Generate data from file
-    from Marche_BiorbdOptim.LoadData import (
-        load_data_markers,
-        load_data_q,
-        load_data_emg,
-        load_data_GRF,
-        load_muscularExcitation,
-    )
-
-    name_subject = "equincocont01"
-    grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
+    Data_to_track = Data_to_track(name_subject = "equincocont01")
+    [T, T_stance, T_swing] = Data_to_track.GetTime()
     final_time = T_stance
 
-    t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-    excitation_ref = load_muscularExcitation(emg_ref)
-    q_ref = load_data_q(name_subject, model_q, final_time, n_shooting_points, Gaitphase)
+    grf_ref = Data_to_track.load_data_GRF(biorbd_model, T_stance, n_shooting_points) # get ground reaction forces
+    markers_ref = Data_to_track.load_data_markers(biorbd_model,T_stance,n_shooting_points, "stance") # get markers position
+    q_ref = Data_to_track.load_data_q(biorbd_model,T_stance,n_shooting_points,"stance")# get q from kalman
+    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance,n_shooting_points,"stance")# get emg
+    excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
     # Track these data
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
