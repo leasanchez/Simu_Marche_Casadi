@@ -70,9 +70,8 @@ def prepare_ocp(
 
     # Initial guess
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
-    for i in range(nb_shooting + 1):
-        init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[:, i]
-        init_x[-nb_mus:, i] = excitations_ref[:, i]
+    init_x[[0, 1, 5, 8, 9, 10], :] = q_ref
+    init_x[-nb_mus:, :] = excitations_ref
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
@@ -82,8 +81,7 @@ def prepare_ocp(
     )
     # Initial guess
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
-    for i in range(nb_shooting):
-        init_u[-nb_mus :, i] = excitations_ref[:, i]
+    init_u[-nb_mus :, :] = excitations_ref
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
@@ -118,7 +116,6 @@ if __name__ == "__main__":
     # Define the problem
     biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
     model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
-    final_time = 0.37
     n_shooting_points = 25
     Gaitphase = "swing"
 
@@ -137,7 +134,7 @@ if __name__ == "__main__":
     # Track these data
     ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, q_ref, excitation_ref, nb_threads=4,)
     # --- Add plot kalman --- #
-    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
+    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 
     # --- Solve the program --- #
     tic = time()

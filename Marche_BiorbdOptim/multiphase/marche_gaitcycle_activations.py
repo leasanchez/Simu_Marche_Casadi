@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 from casadi import dot, Function, vertcat, MX, tanh
-from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
 import biorbd
 
@@ -92,7 +91,7 @@ def prepare_ocp(
     nb_phases = len(biorbd_model)
     nb_q = biorbd_model[0].nbQ()
     nb_mus = biorbd_model[0].nbMuscleTotal()
-    torque_min, torque_max, torque_init = -1000, 1000, 0
+    torque_min, torque_max, torque_init = -5000, 5000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
@@ -125,16 +124,15 @@ def prepare_ocp(
     X_bounds = [QAndQDotBounds(biorbd_model[i]) for i in range(nb_phases)]
 
     # Initial guess
-    init_x_stance = np.zeros((biorbd_model[0].nbQ() + biorbd_model[0].nbQdot(), nb_shooting[0] + 1))
-    for i in range(nb_shooting[0] + 1):
-        init_x_stance[[0, 1, 5, 8, 9, 11], i] = q_ref[0][:, i]
-    init_x_swing = np.zeros((biorbd_model[1].nbQ() + biorbd_model[1].nbQdot(), nb_shooting[1] + 1))
-    for i in range(nb_shooting[1] + 1):
-        init_x_swing[[0, 1, 5, 8, 9, 11], i] = q_ref[1][:, i]
+    init_x = []
+    for i in range(nb_phases):
+        init_x_s = np.zeros((biorbd_model[0].nbQ() + biorbd_model[0].nbQdot(), nb_shooting[0] + 1))
+        init_x_s[[0, 1, 5, 8, 9, 11], :] = q_ref[i]
+        init_x.append(init_x_s)
 
     X_init = [
-        InitialConditions(init_x_stance, interpolation_type=InterpolationType.EACH_FRAME),
-        InitialConditions(init_x_swing, interpolation_type=InterpolationType.EACH_FRAME),
+        InitialConditions(init_x[0], interpolation_type=InterpolationType.EACH_FRAME),
+        InitialConditions(init_x[1], interpolation_type=InterpolationType.EACH_FRAME),
     ]
 
     # Define control path constraint
@@ -148,18 +146,17 @@ def prepare_ocp(
         for i in range(nb_phases)
     ]
 
-    init_u_stance = np.zeros((biorbd_model[0].nbGeneralizedTorque() + biorbd_model[0].nbMuscleTotal(), nb_shooting[0]))
-    for i in range(nb_shooting[0]):
-        init_u_stance[1, i] = -500
-        init_u_stance[-biorbd_model[0].nbMuscleTotal() :, i] = activation_ref[0][:, i]
-
-    init_u_swing = np.zeros((biorbd_model[1].nbGeneralizedTorque() + biorbd_model[1].nbMuscleTotal(), nb_shooting[1]))
-    for i in range(nb_shooting[1]):
-        init_u_swing[-biorbd_model[1].nbMuscleTotal() :, i] = activation_ref[1][:, i]
+    init_u = []
+    for i in range(nb_phases):
+        init_u_s = np.zeros((nb_q + nb_mus, nb_shooting[i]))
+        if (i == 0) :
+            init_u_s[1, i] = -500
+        init_u_s[-nb_mus:, :] = activation_ref[i][:, :-1]
+        init_u.append(init_u_s)
 
     U_init = [
-        InitialConditions(init_u_stance, interpolation_type=InterpolationType.EACH_FRAME),
-        InitialConditions(init_u_swing, interpolation_type=InterpolationType.EACH_FRAME),
+        InitialConditions(init_u[0], interpolation_type=InterpolationType.EACH_FRAME),
+        InitialConditions(init_u[1], interpolation_type=InterpolationType.EACH_FRAME),
     ]
 
     # Define the parameter to optimize
@@ -205,6 +202,7 @@ if __name__ == "__main__":
     grf_ref = Data_to_track.load_data_GRF(
         biorbd_model[0], T_stance, number_shooting_points[0]
     )  # get ground reaction forces
+
     markers_ref = []
     markers_ref.append(Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
     markers_ref.append(

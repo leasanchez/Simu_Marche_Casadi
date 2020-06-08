@@ -2,7 +2,7 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
-from time import time
+from pathlib import Path
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
@@ -40,7 +40,11 @@ def modify_isometric_force(biorbd_model, value):
             n_muscle += 1
 
 # --- Load the optimal control program and the solution --- #
-ocp, sol = OptimalControlProgram.load("stance/marche_stance_excitation.bo")
+PROJET = Path(__file__).parent
+file = "swing/marche_swing_excitation.bo"
+gaitphase = 'swing'
+# ocp, sol = OptimalControlProgram.load("stance/marche_stance_excitation.bo")
+ocp, sol = OptimalControlProgram.load(str(PROJET) + "/" + file)
 
 biorbd_model = ocp.nlp[0]["model"]
 n_shooting_points = ocp.nlp[0]["ns"]
@@ -64,9 +68,9 @@ print(params_sol[ocp.nlp[0]['p'].name()])
 Data_to_track = Data_to_track(name_subject="equincocont01")
 
 grf_ref = Data_to_track.load_data_GRF(biorbd_model, final_time, n_shooting_points)  # get ground reaction forces
-markers_ref = Data_to_track.load_data_markers(biorbd_model, final_time, n_shooting_points, "stance")  # get markers position
-q_ref = Data_to_track.load_data_q(biorbd_model, final_time, n_shooting_points, "stance")  # get q from kalman
-emg_ref = Data_to_track.load_data_emg(biorbd_model, final_time, n_shooting_points, "stance")  # get emg
+markers_ref = Data_to_track.load_data_markers(biorbd_model, final_time, n_shooting_points, gaitphase)  # get markers position
+q_ref = Data_to_track.load_data_q(biorbd_model, final_time, n_shooting_points, gaitphase)  # get q from kalman
+emg_ref = Data_to_track.load_data_emg(biorbd_model, final_time, n_shooting_points, gaitphase)  # get emg
 excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
 # --- Get markers position from q_sol and q_ref --- #

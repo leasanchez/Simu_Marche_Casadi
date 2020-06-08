@@ -241,8 +241,15 @@ class Data_to_track:
     def load_data_q(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         # Create initial vector for joint position (nbNoeuds x nbQ)
         # Based on Kalman filter??
-
-        # LOAD MAT FILE FOR GENERALIZED COORDINATES
+        # markers = self.load_data_markers(biorbd_model, final_time, n_shooting_points, GaitPhase)
+        # import biorbd
+        # k = biorbd.KalmanReconsMarkers(biorbd_model)
+        # q_reconstruct = biorbd.GeneralizedCoordinates()
+        # qdot_reconstruct = biorbd.GeneralizedVelocity()
+        # for i in range(n_shooting_points + 1):
+        #     k.reconstructFrame(biorbd_model, markers[0, :, i], q_reconstruct, qdot_reconstruct)
+        # #
+        # # LOAD MAT FILE FOR GENERALIZED COORDINATES
         kalman = sio.loadmat(self.kalman_file)
         Q_real = kalman["Q2"]
 

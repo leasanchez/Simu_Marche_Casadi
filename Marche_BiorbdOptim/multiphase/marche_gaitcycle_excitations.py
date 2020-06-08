@@ -48,10 +48,10 @@ def get_initial_value():
     excitations_ig = []
 
     ocp_load_swing, sol_load_swing = OptimalControlProgram.load(
-        "../swing/RES/excitations/3D/marche_swing_excitation.bo"
+        "../swing/marche_swing_excitation.bo"
     )
     ocp_load_stance, sol_load_stance = OptimalControlProgram.load(
-        "../stance/RES/equincocont01/excitations/3D/marche_stance_excitation.bo"
+        "../stance/marche_stance_excitation.bo"
     )
     ocp_load = [ocp_load_stance, ocp_load_swing]
     sol_load = [sol_load_stance, sol_load_swing]
@@ -76,7 +76,7 @@ def prepare_ocp(
     nb_mus = biorbd_model[0].nbMuscleTotal()
     nb_tau = biorbd_model[0].nbGeneralizedTorque()
 
-    torque_min, torque_max, torque_init = -1000, 1000, 0
+    torque_min, torque_max, torque_init = -10000, 10000, 0
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
@@ -84,7 +84,7 @@ def prepare_ocp(
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[0].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
             {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
@@ -92,7 +92,7 @@ def prepare_ocp(
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[1].T},
         ),
     )
@@ -134,10 +134,9 @@ def prepare_ocp(
 
     X_init = []
     for n_p in range(nb_phases):
-        init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
-        for i in range(nb_shooting[n_p] + 1):
-            init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[n_p][:, i]
-            init_x[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+        init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[n_p] + 1))
+        init_x[[0, 1, 5, 8, 9, 11], :] = q_ref[n_p]
+        init_x[-nb_mus:, :] = excitation_ref[n_p]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
 
@@ -165,11 +164,10 @@ def prepare_ocp(
     #     U_init.append(UI)
     U_init = []
     for n_p in range(nb_phases):
-        init_u = np.zeros((biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p]))
-        for i in range(nb_shooting[n_p]):
-            if n_p == 0:
-                init_u[1, i] = -500
-            init_u[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+        init_u = np.zeros((nb_tau + nb_mus, nb_shooting[n_p]))
+        if n_p == 0:
+            init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
+        init_u[-nb_mus:, ] = excitation_ref[n_p][:, :-1]
         UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
         U_init.append(UI)
 
@@ -181,7 +179,7 @@ def prepare_ocp(
         "bounds": bound_length,  # The bounds
         "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
         "size": nb_mus,  # The number of elements this particular parameter vector has
-    })
+    },)
 
     # ------------- #
 
