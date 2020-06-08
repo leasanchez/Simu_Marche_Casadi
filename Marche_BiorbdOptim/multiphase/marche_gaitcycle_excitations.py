@@ -20,18 +20,25 @@ from biorbd_optim import (
 )
 
 
-def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
-    force = nlp["contact_forces_func"](x[-1], u[-1])
+def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
+    force = nlp["contact_forces_func"](x[-1], u[-1], p)
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
 
 
-def get_muscles_first_node(ocp, nlp, t, x, u):
+def get_muscles_first_node(ocp, nlp, t, x, u, p):
     activation = x[0][2 * nlp["nbQ"] :]
     excitation = u[0][nlp["nbQ"] :]
     val = activation - excitation
     return val
 
+def modify_isometric_force(biorbd_model, value):
+    n_muscle = 0
+    for nGrp in range(biorbd_model.nbMuscleGroups()):
+        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
+            fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
+            n_muscle += 1
 
 def get_initial_value():
     q_ig = []
@@ -75,17 +82,17 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         (
-            # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-            # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
+            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[0].T},
-            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
-            # {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
+            {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.00005, "instant": Instant.ALL}
         ),
         (
-            # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":[3, 4, 5]},
-            # {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
+            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 1, "data_to_track":excitation_ref[1].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.1, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref[1].T},
         ),
     )
@@ -109,30 +116,30 @@ def prepare_ocp(
         X_bounds.append(XB)
 
     # Initial guess
-    q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig = get_initial_value()
-    X_init = []
-    for n_p in range(nb_phases):
-        init_x = np.zeros(
-            (
-                biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(),
-                nb_shooting[n_p] + 1,
-            )
-        )
-        for i in range(nb_shooting[n_p] + 1):
-            init_x[:nb_q, i] = q_ig[n_p][:, i]
-            init_x[nb_q : nb_q + nb_qdot, i] = qdot_ig[n_p][:, i]
-            init_x[-nb_mus:, i] = activations_ig[n_p][:, i]
-        XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
-        X_init.append(XI)
-
+    # q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig = get_initial_value()
     # X_init = []
     # for n_p in range(nb_phases):
-    #     init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
+    #     init_x = np.zeros(
+    #         (
+    #             biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(),
+    #             nb_shooting[n_p] + 1,
+    #         )
+    #     )
     #     for i in range(nb_shooting[n_p] + 1):
-    #         init_x[:biorbd_model[n_p].nbQ(), i] = q_ref[n_p][:, i]
-    #         init_x[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+    #         init_x[:nb_q, i] = q_ig[n_p][:, i]
+    #         init_x[nb_q : nb_q + nb_qdot, i] = qdot_ig[n_p][:, i]
+    #         init_x[-nb_mus:, i] = activations_ig[n_p][:, i]
     #     XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
     #     X_init.append(XI)
+
+    X_init = []
+    for n_p in range(nb_phases):
+        init_x = np.zeros((biorbd_model[n_p].nbQ() + biorbd_model[n_p].nbQdot() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p] + 1))
+        for i in range(nb_shooting[n_p] + 1):
+            init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[n_p][:, i]
+            init_x[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+        XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
+        X_init.append(XI)
 
     # Define control path constraint
     U_bounds = [
@@ -146,25 +153,35 @@ def prepare_ocp(
     ]
 
     # Initial guess
-    U_init = []
-    for n_p in range(nb_phases):
-        init_u = np.zeros(
-            (biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p])
-        )
-        for i in range(nb_shooting[n_p]):
-            init_u[:nb_tau, i] = tau_ig[n_p][:, i]
-            init_u[-nb_mus:, i] = excitations_ig[n_p][:, i]
-        UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
-        U_init.append(UI)
     # U_init = []
     # for n_p in range(nb_phases):
-    #     init_u = np.zeros((biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p]))
+    #     init_u = np.zeros(
+    #         (biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p])
+    #     )
     #     for i in range(nb_shooting[n_p]):
-    #         if n_p == 0:
-    #             init_u[1, i] = -500
-    #         init_u[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+    #         init_u[:nb_tau, i] = tau_ig[n_p][:, i]
+    #         init_u[-nb_mus:, i] = excitations_ig[n_p][:, i]
     #     UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
     #     U_init.append(UI)
+    U_init = []
+    for n_p in range(nb_phases):
+        init_u = np.zeros((biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p]))
+        for i in range(nb_shooting[n_p]):
+            if n_p == 0:
+                init_u[1, i] = -500
+            init_u[-biorbd_model[n_p].nbMuscleTotal():, i] = excitation_ref[n_p][:, i]
+        UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
+        U_init.append(UI)
+
+    # Define the parameter to optimize
+    bound_length = Bounds(min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT)
+    parameters = ({
+        "name": "force_isometric",  # The name of the parameter
+        "function": modify_isometric_force,  # The function that modifies the biorbd model
+        "bounds": bound_length,  # The bounds
+        "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
+        "size": nb_mus,  # The number of elements this particular parameter vector has
+    })
 
     # ------------- #
 
@@ -179,6 +196,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
+        parameters=(parameters, parameters),
     )
 
 
@@ -187,7 +205,7 @@ if __name__ == "__main__":
     # Model path
     biorbd_model = (
         biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
-        biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_0contact_deGroote_3d.bioMod"),
     )
     model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote.bioMod")
 
@@ -272,70 +290,8 @@ if __name__ == "__main__":
     toc = time() - tic
     print(f"Time to solve : {toc}sec")
 
-    # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    activations = states_sol["muscles"]
-    tau = controls_sol["tau"]
-    excitations = controls_sol["muscles"]
-
-    # # --- Get markers position from q_sol and q_ref --- #
-    # nb_markers = biorbd_model[0].nbMarkers()
-    # nb_q = biorbd_model[0].nbQ()
-    #
-    # markers_sol = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    # markers_from_q_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    # markers_ref = np.ndarray((3, nb_markers, ocp.nlp[0]["ns"] + 1))
-    # markers_ref[:, : ocp.nlp[0]["ns"] + 1] = markers_ref_stance
-    # markers_ref[:, ocp.nlp[0]["ns"]: ocp.nlp[0]["ns"] + ocp.nlp[1]["ns"] + 1] = markers_ref_swing
-    #
-    # markers_func = []
-    # symbolic_states = MX.sym("x", ocp.nlp["nx"], 1)
-    # symbolic_controls = MX.sym("u", ocp.nlp["nu"], 1)
-    # for i in range(nb_markers):
-    #     markers_func.append(
-    #         Function(
-    #             "ForwardKin",
-    #             [symbolic_states],
-    #             [biorbd_model[0].marker(symbolic_states[:nb_q], i).to_mx()],
-    #             ["q"],
-    #             ["marker_" + str(i)],
-    #         ).expand()
-    #     )
-    # for i in range(ocp.nlp[0]['ns']):
-    #     for j, mark_func in enumerate(markers_func):
-    #         markers_sol[:, j, i] = np.array(mark_func(vertcat(q[:, i], q_dot[:, i]))).squeeze()
-    #         Q_ref = np.concatenate([q_ref[:, i], np.zeros(nb_q)])
-    #         markers_from_q_ref[:, j, i] = np.array(mark_func(Q_ref)).squeeze()
-    #
-    # diff_track = (markers_sol - markers_ref) * (markers_sol - markers_ref)
-    # diff_sol = (markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)
-    # hist_diff_track = np.zeros((3, nb_markers))
-    # hist_diff_sol = np.zeros((3, nb_markers))
-    #
-    # for n_mark in range(nb_markers):
-    #     hist_diff_track[0, n_mark] = sum(diff_track[0, n_mark, :]) / nb_markers
-    #     hist_diff_track[1, n_mark] = sum(diff_track[1, n_mark, :]) / nb_markers
-    #     hist_diff_track[2, n_mark] = sum(diff_track[2, n_mark, :]) / nb_markers
-    #
-    #     hist_diff_sol[0, n_mark] = sum(diff_sol[0, n_mark, :]) / nb_markers
-    #     hist_diff_sol[1, n_mark] = sum(diff_sol[1, n_mark, :]) / nb_markers
-    #     hist_diff_sol[2, n_mark] = sum(diff_sol[2, n_mark, :]) / nb_markers
-    #
-    # mean_diff_track = [sum(hist_diff_track[0, :]) / nb_markers,
-    #                    sum(hist_diff_track[1, :]) / nb_markers,
-    #                    sum(hist_diff_track[2, :]) / nb_markers]
-    # mean_diff_sol = [sum(hist_diff_sol[0, :]) / nb_markers,
-    #                  sum(hist_diff_sol[1, :]) / nb_markers,
-    #                  sum(hist_diff_sol[2, :]) / nb_markers]
-    #
-    # # --- Plot --- #
-    # t = np.hstack([t_stance[:-1], T_stance + t_swing])
-    #
-    # plt.show()
-
     ocp.save(sol, "marche_gait_equin_excitation")
+
     # --- Show results --- #
     result = ShowResult(ocp, sol)
     result.animate()
