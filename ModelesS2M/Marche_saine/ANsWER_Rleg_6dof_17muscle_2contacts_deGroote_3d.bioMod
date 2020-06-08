@@ -262,10 +262,11 @@ segment talus_r
 		0	1	0	-0.42392
 		0	0	1	0
 		0	0	0	1
-	rotations	z
-    rangesQ -pi/6 pi/9 
-    rangesQdot -5.2360 5.2360 
-	mass	0.042104
+	rotations	yz
+    	rangesQ -pi/6 pi/9 
+		-pi/6 pi/9
+    	rangesQdot -5.2360 5.2360
+		   -5.2360 5.2360  
 	inertia
 		2.7894e-06	0	0
 		0	9.298e-07	0
