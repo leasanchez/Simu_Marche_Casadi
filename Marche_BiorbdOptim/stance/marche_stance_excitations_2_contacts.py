@@ -19,7 +19,7 @@ from biorbd_optim import (
     PlotType,
     Axe,
     Constraint,
-    PhaseTransition,
+    StateTransition,
 )
 
 
@@ -52,21 +52,21 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = (
         (
-        # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[0][:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
         # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
         # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
     ),
     (
-        # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[1][:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
         # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
         # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
     ),
     (
-        # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
+        {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[2][:, :-1].T},
         {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[2]},
         # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
@@ -109,8 +109,7 @@ def prepare_ocp(
     X_init = []
     for n_p in range(nb_phases):
         init_x = np.zeros(((nb_q + nb_qdot), nb_shooting[n_p] + 1)) # + nb_mus
-        for i in range(nb_shooting[n_p] + 1):
-            init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[n_p][:, i]
+        init_x[[0, 1, 5, 8, 9, 11], :] = q_ref[n_p]
             # init_x[-nb_mus:, i] = excitation_ref[n_p][:, i]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
@@ -118,15 +117,14 @@ def prepare_ocp(
     U_init = []
     for n_p in range(nb_phases):
         init_u = np.zeros(((nb_tau), nb_shooting[n_p])) #  + nb_mus
-        for i in range(nb_shooting[n_p]):
-            init_u[1, i] = -500
+        init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
             # init_u[-nb_mus:, i] = excitation_ref[n_p][:, i]
         UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
         U_init.append(UI)
 
 
-    phase_transitions = (
-        {"type": PhaseTransition.IMPACT, "phase_pre_idx": 0,},  # Heel Strike to Flat foot
+    state_transitions = (
+        {"type": StateTransition.IMPACT, "phase_pre_idx": 0,},  # Heel Strike to Flat foot
     )
 
     # ------------- #
@@ -142,7 +140,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
-        phase_transitions = phase_transitions,
+        state_transitions = state_transitions,
     )
 
 
@@ -201,10 +199,6 @@ if __name__ == "__main__":
 
     # --- Save the optimal control program and the solution --- #
     ocp.save(sol, "marche_stance_excitation_2_contacts")
-
-    # --- Load the optimal control program and the solution --- #
-    # ocp_load, sol_load = OptimalControlProgram.load("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/stance/RES/equincocont01/excitations/model_init/marche_stance_excitation.bo")
-    # result = ShowResult(ocp_load, sol_load)
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)

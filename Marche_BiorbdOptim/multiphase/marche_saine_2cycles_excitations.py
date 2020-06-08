@@ -16,7 +16,7 @@ from biorbd_optim import (
     ShowResult,
     Data,
     InterpolationType,
-    PhaseTransition,
+    StateTransition,
     OdeSolver,
 )
 
@@ -116,11 +116,11 @@ def prepare_ocp(
     constraints = ()
 
     # Phase transitions
-    phase_transitions = (
-        {"type": PhaseTransition.IMPACT, "phase_pre_idx": 0,},  # Heel Strike to Flat foot
-        {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 1,},  # Flat foot to ForeFoot
-        {"type": PhaseTransition.CONTINUOUS, "phase_pre_idx": 2,},  # ForeFoot to Swing
-        {"type": PhaseTransition.IMPACT, "phase_pre_idx": 3,},  # Swing to Heel Strike
+    state_transitions = (
+        {"type": StateTransition.IMPACT, "phase_pre_idx": 0,},  # Heel Strike to Flat foot
+        {"type": StateTransition.CONTINUOUS, "phase_pre_idx": 1,},  # Flat foot to ForeFoot
+        {"type": StateTransition.CONTINUOUS, "phase_pre_idx": 2,},  # ForeFoot to Swing
+        {"type": StateTransition.IMPACT, "phase_pre_idx": 3,},  # Swing to Heel Strike
     )
 
     # Path constraint
@@ -184,7 +184,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
-        phase_transitions=phase_transitions,
+        state_transitions=state_transitions,
     )
 
 
