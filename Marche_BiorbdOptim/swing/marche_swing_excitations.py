@@ -28,16 +28,15 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
     val = activation - excitation
     return val
 
-def modify_isometric_force(biorbd_model, value):
+def modify_isometric_force(biorbd_model, value, fiso_init):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init[n_muscle])
             n_muscle += 1
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, q_ref, excitations_ref, nb_threads,
+    biorbd_model, final_time, nb_shooting, markers_ref, q_ref, excitations_ref, fiso_init, nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -81,7 +80,7 @@ def prepare_ocp(
     )
     # Initial guess
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
-    init_u[-nb_mus :, :] = excitations_ref
+    init_u[-nb_mus :, :] = excitations_ref[:, :-1]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
@@ -92,6 +91,7 @@ def prepare_ocp(
         "bounds": bound_length,  # The bounds
         "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
         "size": nb_mus,  # The number of elements this particular parameter vector has
+        "fiso_init":fiso_init,
     }
 
     # ------------- #
@@ -108,7 +108,7 @@ def prepare_ocp(
         objective_functions,
         constraints,
         nb_threads=nb_threads,
-        parameters=parameters,
+        # parameters=parameters,
     )
 
 
@@ -131,8 +131,16 @@ if __name__ == "__main__":
     emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "swing")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
+
+    # Get initial isometric forces
+    fiso_init = []
+    n_muscle = 0
+    for nGrp in range(biorbd_model.nbMuscleGroups()):
+        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
+            fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
+
     # Track these data
-    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, q_ref, excitation_ref, nb_threads=4,)
+    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, q_ref, excitation_ref, fiso_init, nb_threads=4,)
     # --- Add plot kalman --- #
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 
@@ -147,13 +155,13 @@ if __name__ == "__main__":
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",
         },
-        show_online_optim=True,
+        show_online_optim=False,
     )
     toc = time() - tic
     print(f"Time to solve : {toc}sec")
 
     # --- Save the optimal control program and the solution --- #
-    ocp.save(sol, "marche_swing_excitation")
+    ocp.save(sol, "marche_swing_excitation_sans_params")
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()

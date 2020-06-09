@@ -32,16 +32,15 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
     val = activation - excitation
     return val
 
-def modify_isometric_force(biorbd_model, value):
+def modify_isometric_force(biorbd_model, value, fiso_init):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init[n_muscle])
             n_muscle += 1
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, q_ref, grf_ref, nb_threads,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, q_ref, grf_ref, fiso_init, nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -81,9 +80,8 @@ def prepare_ocp(
 
     # Initial guess
     init_x = np.zeros((biorbd_model.nbQ() + biorbd_model.nbQdot() + biorbd_model.nbMuscleTotal(), nb_shooting + 1))
-    for i in range(nb_shooting + 1):
-        init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[:, i]
-        init_x[-biorbd_model.nbMuscleTotal() :, i] = excitation_ref[:, i]
+    init_x[[0, 1, 5, 8, 9, 10], :] = q_ref
+    init_x[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define control path constraint
@@ -93,9 +91,8 @@ def prepare_ocp(
     )
     # Initial guess
     init_u = np.zeros((biorbd_model.nbGeneralizedTorque() + biorbd_model.nbMuscleTotal(), nb_shooting))
-    for i in range(nb_shooting):
-        init_u[1, i] = -500
-        init_u[-biorbd_model.nbMuscleTotal() :, i] = excitation_ref[:, i]
+    init_u[1, :] = np.repeat(-500, n_shooting_points)
+    init_u[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref[:, :-1]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
@@ -107,6 +104,7 @@ def prepare_ocp(
         "bounds": bound_length,  # The bounds
         "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
         "size": nb_mus,  # The number of elements this particular parameter vector has
+        "fiso_init": fiso_init,
     }
 
     # ------------- #
@@ -147,6 +145,13 @@ if __name__ == "__main__":
     emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "stance")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 
+    # Get initial isometric forces
+    fiso_init = []
+    n_muscle = 0
+    for nGrp in range(biorbd_model.nbMuscleGroups()):
+        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
+            fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
+
     # Track these data
     ocp = prepare_ocp(
         biorbd_model,
@@ -156,9 +161,10 @@ if __name__ == "__main__":
         excitation_ref=excitation_ref,
         q_ref=q_ref,
         grf_ref=grf_ref,
+        fiso_init = fiso_init,
         nb_threads=4,
     )
-    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 10])
+    ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 
     # --- Solve the program --- #
     tic = time()
@@ -192,11 +198,7 @@ if __name__ == "__main__":
     n_frames = q.shape[1]
 
     # --- Save the optimal control program and the solution --- #
-    ocp.save(sol, "marche_stance_excitation")
-
-    # # --- Load the optimal control program and the solution --- #
-    # ocp_load, sol_load = OptimalControlProgram.load("marche_stance_excitation.bo")
-    # result = ShowResult(ocp_load, sol_load)
+    ocp.save(sol, "marche_stance_excitation_2")
 
     # --- Show results --- #
-    ShowResult(ocp, sol).animate(nb_frames=200)
+    ShowResult(ocp, sol).animate()

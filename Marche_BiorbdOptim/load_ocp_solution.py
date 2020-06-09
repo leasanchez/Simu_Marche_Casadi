@@ -35,34 +35,39 @@ def modify_isometric_force(biorbd_model, value):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
             biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
             n_muscle += 1
 
 # --- Load the optimal control program and the solution --- #
 PROJET = Path(__file__).parent
-file = "swing/marche_swing_excitation.bo"
+# file = "stance/marche_stance_excitation_2.bo"
+file_2 = "swing/RES/parametres/marche_swing_excitation_sans_params.bo"
 gaitphase = 'swing'
-# ocp, sol = OptimalControlProgram.load("stance/marche_stance_excitation.bo")
-ocp, sol = OptimalControlProgram.load(str(PROJET) + "/" + file)
+# ocp, sol = OptimalControlProgram.load(str(PROJET) + "/" + file)
+ocp_init, sol_init = OptimalControlProgram.load(str(PROJET) + "/" + file_2)
 
-biorbd_model = ocp.nlp[0]["model"]
-n_shooting_points = ocp.nlp[0]["ns"]
-final_time = ocp.nlp[0]['tf']
-nb_q = ocp.nlp[0]['nbQ']
-nb_qdot = ocp.nlp[0]['nbQdot']
+biorbd_model = ocp_init.nlp[0]["model"]
+n_shooting_points = ocp_init.nlp[0]["ns"]
+final_time = ocp_init.nlp[0]['tf']
+nb_q = ocp_init.nlp[0]['nbQ']
+nb_qdot = ocp_init.nlp[0]['nbQdot']
 nb_marker = biorbd_model.nbMarkers()
-nb_mus = ocp.nlp[0]['nbMuscles']
-nb_tau = ocp.nlp[0]['nbTau']
+nb_mus = ocp_init.nlp[0]['nbMuscles']
+nb_tau = ocp_init.nlp[0]['nbTau']
 
 # --- Get Results --- #
-states_sol, controls_sol, params_sol = Data.get_data(ocp, sol, get_parameters=True)
-q = states_sol["q"]
-q_dot = states_sol["q_dot"]
-activations = states_sol["muscles"]
-tau = controls_sol["tau"]
-excitations = controls_sol["muscles"]
-print(params_sol[ocp.nlp[0]['p'].name()])
+# states_sol, controls_sol, params_sol = Data.get_data(ocp, sol, get_parameters=True)
+states_init, controls_init = Data.get_data(ocp_init, sol_init)
+# q = states_sol["q"]
+# q_dot = states_sol["q_dot"]
+activations = np.load(str(PROJET) + "/swing/RES/parametres/activations_params.npy")
+activations_init = states_init["muscles"]
+# tau = controls_sol["tau"]
+excitations = np.load(str(PROJET) + "/swing/RES/parametres/excitations_params.npy")
+excitations_init = controls_init["muscles"]
+# params_sol = params_sol[ocp.nlp[0]['p'].name()]
+params_sol =np.load(str(PROJET) + "/swing/RES/parametres/params.npy")
+print(params_sol)
 
 # Generate data from file
 Data_to_track = Data_to_track(name_subject="equincocont01")
@@ -72,6 +77,37 @@ markers_ref = Data_to_track.load_data_markers(biorbd_model, final_time, n_shooti
 q_ref = Data_to_track.load_data_q(biorbd_model, final_time, n_shooting_points, gaitphase)  # get q from kalman
 emg_ref = Data_to_track.load_data_emg(biorbd_model, final_time, n_shooting_points, gaitphase)  # get emg
 excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
+
+# --- Comparison muscle activation and excitation with/without parameters --- #
+def plot_control(ax, t, x, color="b"):
+    nbPoints = len(np.array(x))
+    for n in range(nbPoints - 1):
+        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+
+figure, axes = plt.subplots(4, 5, sharex=True)
+axes = axes.flatten()
+t = np.linspace(0, final_time, n_shooting_points + 1)
+for i in range(biorbd_model.nbMuscleTotal()):
+    name_mus = biorbd_model.muscle(i).name().to_string()
+    param_value = str(np.round(params_sol[i], 2))
+    plot_control(axes[i], t, excitation_ref[i, :], color="k--")
+
+    plot_control(axes[i], t, excitations_init[i, :], color="r--")
+    axes[i].plot(t, activations_init[i, :], 'r.-') # without parameters
+
+    plot_control(axes[i], t, excitations[i, :], color="b--")
+    axes[i].plot(t, activations[i, :], 'b.-') # with parameters
+    axes[i].text(0.03, 0.9, param_value)
+
+    axes[i].set_title(name_mus)
+    axes[i].set_ylim([0, 1])
+    axes[i].set_yticks(np.arange(0, 1, step=1 / 5,))
+    axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+axes[-1].remove()
+axes[-2].remove()
+axes[-3].remove()
+
+plt.show()
 
 # --- Get markers position from q_sol and q_ref --- #
 markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))

@@ -256,7 +256,7 @@ if __name__ == "__main__":
         show_online_optim=False,
     )
 
-
+    ocp.save(sol, "marche_gait_equin_activation")
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
     # result.graphs()

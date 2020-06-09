@@ -3,6 +3,7 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX, tanh
 from matplotlib import pyplot as plt
 import biorbd
+from Marche_BiorbdOptim.LoadData import Data_to_track
 
 
 def generate_activation(biorbd_model, final_time, nb_shooting, emg_ref):
@@ -93,29 +94,25 @@ n_shooting_points = 25
 Gaitphase = "stance"
 
 # Generate data from file
-from Marche_BiorbdOptim.LoadData import (
-    load_data_markers,
-    load_data_q,
-    load_data_emg,
-    load_data_GRF,
-    load_muscularExcitation,
-)
-
-name_subject = "equincocont01"
-grf_ref, T, T_stance, T_swing = load_data_GRF(name_subject, biorbd_model, n_shooting_points)
+Data_to_track = Data_to_track(name_subject="equincocont01")
+[T, T_stance, T_swing] = Data_to_track.GetTime()
 final_time = T_stance
 
-t, markers_ref = load_data_markers(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-emg_ref = load_data_emg(name_subject, biorbd_model, final_time, n_shooting_points, Gaitphase)
-excitation_ref = load_muscularExcitation(emg_ref)
+grf_ref = Data_to_track.load_data_GRF(biorbd_model, T_stance, n_shooting_points)  # get ground reaction forces
+markers_ref = Data_to_track.load_data_markers(
+    biorbd_model, T_stance, n_shooting_points, "stance"
+)  # get markers position
+q_ref = Data_to_track.load_data_q(biorbd_model, T_stance, n_shooting_points, "stance")  # get q from kalman
+emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "stance")  # get emg
+excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
 activation_ref = generate_activation(
     biorbd_model=biorbd_model, final_time=final_time, nb_shooting=n_shooting_points, emg_ref=excitation_ref
 )
-mus = np.load("./RES/equincocont01/activations/mus/mus.npy")
-mus_int = np.load("./RES/equincocont01/activations/mus_int/mus_int.npy")
-mus_state = np.load("./RES/equincocont01/excitations/mus_state/mus_state.npy")
+mus = np.load("stance/RES/equincocont01/activations/mus/mus.npy")
+mus_int = np.load("stance/RES/equincocont01/activations/mus_int/mus_int.npy")
+mus_state = np.load("stance/RES/equincocont01/excitations/mus_state/mus_state.npy")
 mus_shift_ref = np.concatenate((mus[:, 0:1], mus[:, :-1]), axis=1)
-mus_shift = np.load("./RES/equincocont01/activations/mus_shift/mus_shift.npy")
+mus_shift = np.load("stance/RES/equincocont01/activations/mus_shift/mus_shift.npy")
 
 rms_mus = np.zeros(17)
 rms_mus_state = np.zeros(17)

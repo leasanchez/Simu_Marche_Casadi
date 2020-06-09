@@ -244,11 +244,14 @@ class Data_to_track:
         # markers = self.load_data_markers(biorbd_model, final_time, n_shooting_points, GaitPhase)
         # import biorbd
         # k = biorbd.KalmanReconsMarkers(biorbd_model)
-        # q_reconstruct = biorbd.GeneralizedCoordinates()
-        # qdot_reconstruct = biorbd.GeneralizedVelocity()
+        # q_reconstruct = biorbd.GeneralizedCoordinates(biorbd_model)
+        # qdot_reconstruct = biorbd.GeneralizedVelocity(biorbd_model.nbQdot())
         # for i in range(n_shooting_points + 1):
-        #     k.reconstructFrame(biorbd_model, markers[0, :, i], q_reconstruct, qdot_reconstruct)
-        # #
+        #     m = markers[:, 0, i]
+        #     for n_mark in range(1, biorbd_model.nbMarkers()):
+        #         m = np.concatenate((m, markers[:, n_mark, i]))
+        #     k.reconstructFrame(biorbd_model, m)
+        #
         # # LOAD MAT FILE FOR GENERALIZED COORDINATES
         kalman = sio.loadmat(self.kalman_file)
         Q_real = kalman["Q2"]
