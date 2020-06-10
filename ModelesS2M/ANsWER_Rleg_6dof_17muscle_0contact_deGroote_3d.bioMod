@@ -72,8 +72,6 @@ segment pelvis
 		0	0.064617	0
 		0	0	0.064617
 	com	-0.093546	-0.028679	0
-	mesh    0                0              0
-	mesh    -0.083804       -0.09161        0.082232
 endsegment
 // ---- Markers
 marker	L_IAS
@@ -122,8 +120,6 @@ segment femur_r
 		0	0.036976	0
 		0	0	0.14317
 	com	0	-0.14785	0
-	mesh    0        0              0
-	mesh    0       -0.3627         0
 endsegment
 // ---- Markers
 marker	R_FTC
@@ -183,8 +179,6 @@ segment tibia_r
 		0	0.0047781	0
 		0	0	0.028936
 	com	0	-0.17087	0
-	mesh    0        0              0
-	mesh    0       -0.42392        0
 endsegment
 // ---- Markers
 marker	R_FAX
@@ -267,13 +261,12 @@ segment talus_r
 		-pi/6 pi/9
     	rangesQdot -5.2360 5.2360
 		   -5.2360 5.2360  
+	mass	0.042104
 	inertia
 		2.7894e-06	0	0
 		0	9.298e-07	0
 		0	0	2.7894e-06
 	com	0.0054828	0.0022928	0
-	mesh    0               0               0
-	mesh   -0.048617       -0.041819        0.0078952
 endsegment
 // ---- Markers
 // no marker
@@ -296,8 +289,6 @@ segment foot_r
 		0	0.0021516	0
 		0	0	0.0024947
 	com	0.10155	0.015551	0
-	mesh    0.0054278      0              0
-	mesh    0.200778       0              0
 endsegment
 // ---- Markers
 // no marker
@@ -357,25 +348,6 @@ marker	R_FMP5
 	position	0.096359	0.00353103	0.0532144
 	technical	1
 endmarker
-// ---- Contact
-// mettre 2 points? hallux + Meta 5 
-contact    Meta_1_r // FM1?
-	parent    foot_marker_r
-	position    0.156485	-0.02	-0.0323195
-	axis    xyz
-endcontact
-
-contact    Meta_5_r // FM5
-	parent    foot_marker_r
-	position    0.156485	-0.02	0.0638694
-	axis    xyz
-endcontact
-
-contact    c_heel_r
-	parent    foot_marker_r
-	position    0.0054278	-0.02	0.00220395
-	axis    xyz
-endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment

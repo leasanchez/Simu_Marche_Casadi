@@ -127,6 +127,30 @@ class Data_to_track:
 
         return M
 
+    def load_data_Moment(self, biorbd_model, final_time, n_shooting_points):
+        # GET MOMENT
+        M_real = self.GetMoment()
+        M_real = M_real[:, :, self.idx_platform].T
+
+        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+        M_ref = []
+        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+        for i in range(len(final_time)):
+            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+            f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+            M = f_stance(node_t_stance)
+            M_ref.append(M[[1, 0, 2], :])
+        return M_ref
+
+    def GetFootCenterPosition(self):
+        # Compute Center of pressure
+        CoP = self.ComputeCoP()
+        # get foot center position
+        Center = CoP[self.idx_heel_rise, :, self.idx_platform]
+        return Center[[1, 0, 2]]
+
+
     def ComputeCoP(self):
         measurements = c3d(self.file)
         analog = measurements["data"]["analogs"]
