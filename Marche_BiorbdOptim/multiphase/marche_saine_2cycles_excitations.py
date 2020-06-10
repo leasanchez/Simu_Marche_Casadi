@@ -21,26 +21,16 @@ from biorbd_optim import (
 )
 
 
-def get_last_contact_forces(ocp, nlp, t, x, u, data_to_track=()):
-    force = nlp["contact_forces_func"](x[-1], u[-1])
+def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
+    force = nlp["contact_forces_func"](x[-1], u[-1], p)
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
 
 
-def get_muscles_first_node(ocp, nlp, t, x, u):
+def get_muscles_first_node(ocp, nlp, t, x, u, p):
     activation = x[0][2 * nlp["nbQ"] :]
     excitation = u[0][nlp["nbQ"] :]
     val = activation - excitation
-    return val
-
-
-def get_qdot_post_impact(ocp, nlp, t, x, u):
-    # Aliases
-    nb_q = nlp["nbQ"]
-    q = x[-1][:nb_q]
-    qdot_pre = x[-1][nb_q : 2 * nb_q]
-    qdot_post = nlp["model"].ComputeConstraintImpulsesDirect(q, qdot_pre)
-    val = qdot_pre - qdot_post
     return val
 
 
@@ -68,7 +58,7 @@ def prepare_ocp(
                 "data_to_track": excitation_ref[0][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -88,14 +78,14 @@ def prepare_ocp(
                 "data_to_track": excitation_ref[2][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[2]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
-            {
-                "type": Objective.Mayer.CUSTOM,
-                "weight": 0.00005,
-                "function": get_last_contact_forces,
-                "data_to_track": grf_ref[2].T,
-                "instant": Instant.ALL,
-            },
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
+            # {
+            #     "type": Objective.Mayer.CUSTOM,
+            #     "weight": 0.00005,
+            #     "function": get_last_contact_forces,
+            #     "data_to_track": grf_ref[2].T,
+            #     "instant": Instant.ALL,
+            # },
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -141,9 +131,8 @@ def prepare_ocp(
                 nb_shooting[n_p] + 1,
             )
         )
-        for i in range(nb_shooting[n_p] + 1):
-            init_x[[0, 1, 5, 8, 9, 10], i] = q_ref[n_p][:, i]
-            init_x[-biorbd_model[n_p].nbMuscleTotal() :, i] = excitation_ref[n_p][:, i]
+        init_x[[0, 1, 5, 8, 9, 11], :] = q_ref[n_p]
+        init_x[-biorbd_model[n_p].nbMuscleTotal() :, :] = excitation_ref[n_p]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
 
@@ -164,10 +153,9 @@ def prepare_ocp(
         init_u = np.zeros(
             (biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p])
         )
-        for i in range(nb_shooting[n_p]):
-            if n_p != 3:
-                init_u[1, i] = -500
-            init_u[-biorbd_model[n_p].nbMuscleTotal() :, i] = excitation_ref[n_p][:, i]
+        if (n_p != 3):
+            init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
+        init_u[-biorbd_model[n_p].nbMuscleTotal() :, :] = excitation_ref[n_p][:, :-1]
         UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
         U_init.append(UI)
 
@@ -228,14 +216,6 @@ if __name__ == "__main__":
     excitation_ref = []
     for i in range(len(phase_time)):
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
-
-    # Track these data
-    biorbd_model = (
-        biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Heel.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_2contacts_deGroote_3d.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Forefoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_0contact_deGroote_3d.bioMod"),
-    )
 
     ocp = prepare_ocp(
         biorbd_model=biorbd_model,
