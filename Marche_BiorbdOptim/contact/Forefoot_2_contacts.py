@@ -21,16 +21,12 @@ from biorbd_optim import (
 )
 
 def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
-    p_heel = np.linspace(0, 1, nb_shooting + 1)
-    p = 0.4
-    # Forces
-    F_Heel = MX.sym("F_Heel", 3 * (nb_shooting + 1), 1)
+    p = 0.5  # repartition entre les 2 points
+
     F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
-    F_Meta5 = MX.sym("F_Meta5", 3 * (nb_shooting + 1), 1)
-    # Moments
-    M_Heel = MX.sym("M_Heel", 3 * (nb_shooting + 1), 1)
+    F_Meta5 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
     M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta5", 3 * (nb_shooting + 1), 1)
+    M_Meta5 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
 
     objective = 0
     lbg = []
@@ -38,36 +34,34 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     constraint = []
     for i in range(nb_shooting + 1):
         # Aliases
-        fh = F_Heel[3 * i: 3 * (i + 1)]
         fm1 = F_Meta1[3 * i: 3 * (i + 1)]
         fm5 = F_Meta5[3 * i: 3 * (i + 1)]
-        mh = M_Heel[3 * i: 3 * (i + 1)]
         mm1 = M_Meta1[3 * i: 3 * (i + 1)]
         mm5 = M_Meta5[3 * i: 3 * (i + 1)]
 
-        # --- Torseur equilibre ---
-        # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
-        sf = fm1 + fm5 + fh
+        # sum forces = 0 --> Fp1 + Fp2 = Ftrack
+        sf = fm1 + fm5
         jf = sf - grf_ref[:, i]
         objective += 100 * mtimes(jf.T, jf)
+
         # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5) + mh + dot(coord[2], fh)
+        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5)
         jm = sm - M_ref[:, i]
         objective += 100 * mtimes(jm.T, jm)
 
-        # --- Dispatch on different contact points ---
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
+        # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
+        jf2 = p * fm1 - (1 - p) * fm5
         objective += mtimes(jf2.T, jf2)
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - ((1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5))))
+
+        # use of p to dispatch moments
+        jm2 = p * (mm1 + dot(coord[0], fm1)) - (1 - p) * (mm5 + dot(coord[1], fm5))
         objective += mtimes(jm2.T, jm2)
 
-        # --- Forces constraints ---
         # positive vertical force
-        constraint += (fh[2], fm1[2], fm5[2])
-        lbg += [0] * 3
-        ubg += [1000] * 3
+        constraint += (fm1[2], fm5[2])
+        lbg += [0] * 2
+        ubg += [1000] * 2
+
         # non slipping --> -0.4*Fz < Fx < 0.4*Fz
         constraint += ((-0.4 * fm1[2] - fm1[0]), (-0.4 * fm5[2] - fm5[0]))
         lbg += [-1000] * 2
@@ -77,24 +71,23 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         lbg += [0] * 2
         ubg += [1000] * 2
 
-    w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
+    w = [F_Meta1, F_Meta5, M_Meta1, M_Meta5]
     nlp = {'x': vertcat(*w), 'f': objective, 'g': vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)),
+    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)),
                  lbx=-1000,
                  ubx=1000,
                  lbg=lbg,
                  ubg=ubg)
 
-    FH = res['x'][:3 * (nb_shooting + 1)]
-    FM1 = res['x'][3 * (nb_shooting + 1): 6 * (nb_shooting + 1)]
-    FM5 = res['x'][6 * (nb_shooting + 1): 9 * (nb_shooting + 1)]
-    grf_dispatch_ref = np.zeros((3*3, nb_shooting + 1))
+    FM1 = res['x'][:3 * (nb_shooting + 1)]
+    FM5 = res['x'][3 * (nb_shooting + 1): 6 * (nb_shooting + 1)]
+
+    grf_dispatch_ref = np.zeros((3 * 2, nb_shooting + 1))
     for i in range(3):
-        grf_dispatch_ref[i, :] = np.array(FH[i::3]).squeeze()
-        grf_dispatch_ref[i + 3, :] = np.array(FM1[i::3]).squeeze()
-        grf_dispatch_ref[i + 6, :] = np.array(FM5[i::3]).squeeze()
+        grf_dispatch_ref[i, :] = np.array(FM1[i::3]).squeeze()
+        grf_dispatch_ref[i + 3, :] = np.array(FM5[i::3]).squeeze()
     return grf_dispatch_ref
 
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
@@ -111,7 +104,7 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
 
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,nb_threads,
 ):
 
     # Problem parameters
@@ -125,11 +118,11 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = (
-            # {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            # {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[:, :-1].T,},
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1, "data_to_track": markers_ref},
-              {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
-            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
+            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
+            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[:, :-1].T,},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
         )
 
     # Dynamics
@@ -148,6 +141,7 @@ def prepare_ocp(
 
     # Initial guess
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1,))
+    # init_x[[0, 1, 5, 8, 9, 11], :] = q_ref
     init_x[:nb_q, :] = q_ref
     init_x[-nb_mus:, :] = excitation_ref
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
@@ -177,6 +171,7 @@ def prepare_ocp(
         U_bounds,
         objective_functions,
         constraints,
+        nb_threads=nb_threads,
     )
 
 
@@ -202,27 +197,26 @@ if __name__ == "__main__":
     markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
     q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points, "stance")
     emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
-
     excitation_ref = []
     for i in range(len(phase_time)):
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
-    Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]), 0])
-    Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
-    Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
-    grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
+    Meta1 = np.array([np.mean(markers_ref[2][0, 21, :]), np.mean(markers_ref[2][1, 21, :]), 0])
+    Meta5 = np.array([np.mean(markers_ref[2][0, 24, :]), np.mean(markers_ref[2][1, 24, :]), 0])
+    grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
 
-    Q_ref = np.zeros((biorbd_model[1].nbQ(), number_shooting_points[1] + 1))
-    Q_ref[[0, 1, 5, 8, 9, 11],:] = q_ref[1]
+    Q_ref = np.zeros((biorbd_model[2].nbQ(), number_shooting_points[2] + 1))
+    Q_ref[[0, 1, 5, 8, 9, 11],:] = q_ref[2]
 
     ocp = prepare_ocp(
-        biorbd_model=biorbd_model[1],
-        final_time=phase_time[1],
-        nb_shooting=number_shooting_points[1],
-        markers_ref=markers_ref[1],
-        excitation_ref=excitation_ref[1],
-        grf_ref=grf_dispatch_ref[[0, 2, 3, 5, 6, 8], :],
+        biorbd_model=biorbd_model[2],
+        final_time=phase_time[2],
+        nb_shooting=number_shooting_points[2],
+        markers_ref=markers_ref[2],
+        excitation_ref=excitation_ref[2],
+        grf_ref=grf_dispatch_ref[[0, 2, 3, 5], :],
         q_ref=Q_ref,
+        nb_threads=4,
     )
 
     # --- Solve the program --- #

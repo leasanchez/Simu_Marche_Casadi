@@ -359,23 +359,22 @@ marker	R_FMP5
 endmarker
 // ---- Contact
 // mettre 2 points? hallux + Meta 5 
-contact    Meta_1_r // FMP1?
-	parent    foot_marker_r
-	position    0.144628	0.00808546	-0.030874
-	axis    xyz
-endcontact
-
-contact    Meta_5_r // FM5
-	parent    foot_marker_r
-	position    0.156485	-0.00712829	0.0638694
-	axis    xyz
-endcontact
-
 contact    c_heel_r
 	parent    foot_marker_r
-	position    0.0054278	0.00177226	0.00220395
-	axis    xyz
+	position    0.0094278	-0.02	0.00220395
+	axis    xz
 endcontact
+contact    Meta_1_r 
+	parent    foot_marker_r
+	position    0.144628	-0.02	-0.030874
+	axis    xz
+endcontact
+contact    Meta_5_r 
+	parent    foot_marker_r
+	position    0.156485	-0.02	0.0638694
+	axis    xz
+endcontact
+
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment
