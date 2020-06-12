@@ -17,6 +17,7 @@ from biorbd_optim import (
     ShowResult,
     Data,
     InterpolationType,
+    StateTransition,
 )
 
 
@@ -82,7 +83,7 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[0].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[0].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
             {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[:, :-1].T},
@@ -90,7 +91,7 @@ def prepare_ocp(
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track":excitation_ref[1].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[1].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
             {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
         ),
@@ -103,7 +104,12 @@ def prepare_ocp(
     )
 
     # Constraints
-    constraints = ()
+    constraints = (
+        ({"type": Constraint.CUSTOM, "function": get_muscles_first_node, "instant": Instant.START}, ),
+        (),
+    )
+     # Impact
+    # state_transitions = ({"type": StateTransition.IMPACT, "phase_pre_idx": 1,})
 
     # Path constraint
     X_bounds = []
@@ -115,13 +121,27 @@ def prepare_ocp(
         X_bounds.append(XB)
 
     # Initial guess
+    param_init = np.load('./RES/params.npy')
+    q_init = np.load('./RES/q.npy')
+    q_dot_init = np.load('./RES/qdot.npy')
+    activations_init = np.load('./RES/activations.npy')
+    excitations_init = np.load('./RES/excitations.npy')
+    tau_init = np.load('./RES/tau.npy')
+
     X_init = []
     for n_p in range(nb_phases):
         init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[n_p] + 1))
         # init_x[[0, 1, 5, 8, 9, 11], :] = q_ref[n_p]
-        init_x[:nb_q, :] = q_ref[n_p]
-        init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref[n_p]
-        init_x[-nb_mus:, :] = excitation_ref[n_p]
+        if n_p == 0 :
+            s = 0
+            f = nb_shooting[n_p] + 1
+        else:
+            s = nb_shooting[n_p - 1]
+            f = sum(nb_shooting) + 1
+
+        init_x[:nb_q, :] = q_init[:, s:f]
+        init_x[nb_q:nb_q + nb_qdot, :] = q_dot_init[:, s:f]
+        init_x[-nb_mus:, :] = activations_init[:, s:f]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
 
@@ -140,9 +160,15 @@ def prepare_ocp(
     U_init = []
     for n_p in range(nb_phases):
         init_u = np.zeros((nb_tau + nb_mus, nb_shooting[n_p]))
-        if n_p == 0:
-            init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
-        init_u[-nb_mus:, ] = excitation_ref[n_p][:, :-1]
+        if n_p == 0 :
+            s = 0
+            f = nb_shooting[n_p]
+        else:
+            s = nb_shooting[n_p - 1]
+            f = sum(nb_shooting)
+
+        init_u[:nb_tau, :] = tau_init[:, s:f]
+        init_u[-nb_mus:, ] = excitations_init[:, s:f]
         UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
         U_init.append(UI)
 
@@ -152,7 +178,7 @@ def prepare_ocp(
         "name": "force_isometric",  # The name of the parameter
         "function": modify_isometric_force,  # The function that modifies the biorbd model
         "bounds": bound_length,  # The bounds
-        "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
+        "initial_guess": InitialConditions(param_init),  # The initial guess
         "size": nb_mus,  # The number of elements this particular parameter vector has
         "fiso_init" : fiso_init,
     },)
@@ -171,6 +197,7 @@ def prepare_ocp(
         objective_functions,
         constraints,
         parameters=(parameters, parameters),
+        # state_transitions = state_transitions,
     )
 
 
