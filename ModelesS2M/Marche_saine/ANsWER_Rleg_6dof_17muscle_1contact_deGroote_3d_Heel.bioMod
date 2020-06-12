@@ -351,8 +351,8 @@ endmarker
 // ---- Contact
 contact    c_heel_r
 	parent    foot_marker_r
-	position    0.0054278	-0.02	0.00220395
-	axis    xyz
+	position    0.0094278	-0.02	0.00220395
+	axis    z
 endcontact
 
 // --------------------------------------------------------------------------------------------------------

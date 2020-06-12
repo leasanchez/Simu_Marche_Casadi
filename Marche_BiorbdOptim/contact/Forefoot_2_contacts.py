@@ -102,9 +102,20 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
     val = activation - excitation
     return val
 
+def modify_isometric_force(biorbd_model, value, fiso_init):
+    n_muscle = 0
+    for nGrp in range(biorbd_model.nbMuscleGroups()):
+        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init[n_muscle])
+            n_muscle += 1
+
+def plot_control(ax, t, x, color="b"):
+    nbPoints = len(np.array(x))
+    for n in range(nbPoints - 1):
+        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,nb_threads,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref,nb_threads, fiso_init,
 ):
 
     # Problem parameters
@@ -121,8 +132,8 @@ def prepare_ocp(
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[:, :-1].T,},
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref.T},
         )
 
     # Dynamics
@@ -131,8 +142,18 @@ def prepare_ocp(
     )
 
     # Constraints
-    constraints = ()
+    constraints = {"type": Constraint.CUSTOM, "function": get_muscles_first_node, "instant": Instant.START}
 
+    # Define the parameter to optimize
+    bound_length = Bounds(min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT)
+    parameters = {
+        "name": "force_isometric",  # The name of the parameter
+        "function": modify_isometric_force,  # The function that modifies the biorbd model
+        "bounds": bound_length,  # The bounds
+        "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
+        "size": nb_mus,  # The number of elements this particular parameter vector has
+        "fiso_init": fiso_init,
+    }
     # Path constraint
     X_bounds = QAndQDotBounds(biorbd_model)
     X_bounds.concatenate(
@@ -172,6 +193,7 @@ def prepare_ocp(
         objective_functions,
         constraints,
         nb_threads=nb_threads,
+        parameters=parameters,
     )
 
 
@@ -204,9 +226,23 @@ if __name__ == "__main__":
     Meta1 = np.array([np.mean(markers_ref[2][0, 21, :]), np.mean(markers_ref[2][1, 21, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[2][0, 24, :]), np.mean(markers_ref[2][1, 24, :]), 0])
     grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
+    grf_dispatch_ref = grf_dispatch_ref[[2, 5], :]
+
+    plt.figure()
+    plt.plot(grf_ref[2][2, :].T, 'k--')
+    plt.plot(grf_dispatch_ref.T)
+    plt.legend(('platform', 'Meta1', 'Meta5'))
+    plt.show()
 
     Q_ref = np.zeros((biorbd_model[2].nbQ(), number_shooting_points[2] + 1))
     Q_ref[[0, 1, 5, 8, 9, 11],:] = q_ref[2]
+
+    # Get initial isometric forces
+    fiso_init = []
+    n_muscle = 0
+    for nGrp in range(biorbd_model[2].nbMuscleGroups()):
+        for nMus in range(biorbd_model[2].muscleGroup(nGrp).nbMuscles()):
+            fiso_init.append(biorbd_model[2].muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
 
     ocp = prepare_ocp(
         biorbd_model=biorbd_model[2],
@@ -214,9 +250,10 @@ if __name__ == "__main__":
         nb_shooting=number_shooting_points[2],
         markers_ref=markers_ref[2],
         excitation_ref=excitation_ref[2],
-        grf_ref=grf_dispatch_ref[[0, 2, 3, 5], :],
+        grf_ref=grf_dispatch_ref,
         q_ref=Q_ref,
         nb_threads=4,
+        fiso_init=fiso_init,
     )
 
     # --- Solve the program --- #
@@ -233,14 +270,62 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    activations = states_sol["muscles"]
-    tau = controls_sol["tau"]
-    excitations = controls_sol["muscles"]
+    states, controls, params = Data.get_data(ocp, sol, get_parameters=True)
+    q, q_dot, activations, tau, excitations = states["q"], states["q_dot"], states["muscles"], controls["tau"], controls["muscles"]
+    params = params[ocp.nlp[0]['p'].name()]
+    x = np.concatenate((q, q_dot, activations))
+    u = np.concatenate((tau, excitations))
+    contact_forces = np.array(ocp.nlp[0]["contact_forces_func"](x[:, :-1], u[:, :-1], params))
+
+    # --- Plot ---
+    # Muscles
+    figure, axes = plt.subplots(4, 5, sharex=True)
+    axes = axes.flatten()
+    t = np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
+    for i in range(biorbd_model[2].nbMuscleTotal()):
+        name_mus = biorbd_model[2].muscle(i).name().to_string()
+        param_value = str(np.round(params[i], 2))
+
+        plot_control(axes[i], t, excitation_ref[2][i, :], color="k--")
+        plot_control(axes[i], t, excitations[i, :], color="r--")
+        axes[i].plot(t, activations[i, :], 'r.-', linewidth=0.6)  # without parameters
+        axes[i].text(0.03, 0.9, param_value)
+
+        axes[i].set_title(name_mus)
+        axes[i].set_ylim([0, 1])
+        axes[i].set_yticks(np.arange(0, 1, step=1 / 5, ))
+        axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    axes[-1].remove()
+    axes[-2].remove()
+    axes[-3].remove()
+    plt.show()
+
+    # Q
+    figure, axes = plt.subplots(4, 3, sharex=True)
+    axes = axes.flatten()
+    for i in range(biorbd_model[2].nbQ()):
+        param_value = str(np.round(params[i], 2))
+
+        if i > 2 :
+            plot_control(axes[i], t, Q_ref[i, :] * 180/np.pi, color="k--")
+            axes[i].plot(t, q[i, :] * 180/np.pi, 'r.-', linewidth=0.6)
+        else:
+            plot_control(axes[i], t, Q_ref[i, :], color="k--")
+            axes[i].plot(t, q[i, :], 'r.-', linewidth=0.6)  # without parameters
+
+        axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    plt.show()
+
+    # Contact forces
+    figure, axes = plt.subplots(2, 2, sharex=True)
+    axes = axes.flatten()
+    for i in range(biorbd_model[2].nbContacts()):
+        plot_control(axes[i], t, grf_dispatch_ref[i, :], color="k--")
+        axes[i].plot(t[:-1], contact_forces[i, :], 'r-', linewidth=0.6)
+
+        axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    plt.show()
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
     result.animate()
-    result.graphs()
