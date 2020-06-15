@@ -361,12 +361,12 @@ endmarker
 contact    c_heel_r
 	parent    foot_marker_r
 	position    0.0094278	-0.02	0.00220395
-	axis    z
+	axis    xz
 endcontact
 contact    Meta_1_r 
 	parent    foot_marker_r
 	position    0.144628	-0.02	-0.030874
-	axis    z
+	axis    xz
 endcontact
 contact    Meta_5_r 
 	parent    foot_marker_r

@@ -7,7 +7,7 @@ from Marche_BiorbdOptim.LoadData import Data_to_track
 biorbd_model = (
     biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Heel.bioMod"),
     biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_3contacts_deGroote_3d.bioMod"),
-    biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Forefoot.bioMod"),
+    biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_contact_deGroote_3d_Forefoot.bioMod"),
 )
 # Problem parameters
 number_shooting_points = [5, 10, 15]
@@ -23,13 +23,10 @@ markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_
 # foot markers position
 plt.figure('foot position')
 plt.plot(markers_ref[0][0, 19, :] + 0.04 , markers_ref[0][1, 19, :], 'b+')
-plt.plot(markers_ref[1][0, 19, :] + 0.04, markers_ref[1][1, 19, :], 'b.')
 plt.text(0.575, 0.153, 'talon')
 plt.plot(markers_ref[1][0, 21, :], markers_ref[1][1, 21, :], 'r+')
-plt.plot(markers_ref[2][0, 21, :], markers_ref[2][1, 21, :], 'r.')
 plt.text(0.68, 0.165, 'FMP1')
 plt.plot(markers_ref[1][0, 24, :], markers_ref[1][1, 24, :], 'g+')
-plt.plot(markers_ref[2][0, 24, :], markers_ref[2][1, 24, :], 'g.')
 plt.text(0.68, 0.07, 'FM5')
 plt.show()
 
@@ -43,6 +40,9 @@ Meta5 = np.array([np.mean(markers_ref[0][0, 24, :]), np.mean(markers_ref[0][1, 2
 
 # --- 2 contacts forefoot ---
 p = 0.5 # repartition entre les 2 points
+px = np.repeat(0.5, number_shooting_points[2] + 1)
+px[:5] = np.linspace(0, 0.5, 5)
+
 
 F_Meta1 = MX.sym("F_Meta1", 3 * (number_shooting_points[2] + 1), 1)
 F_Meta5 = MX.sym("F_Meta1", 3 * (number_shooting_points[2] + 1), 1)
@@ -70,9 +70,15 @@ for i in range(number_shooting_points[2] + 1):
     jm = sm - M_ref[2][:, i]
     objective += 100 * mtimes(jm.T, jm)
 
+    # # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
+    # jf2 = p*fm1 - (1-p)*fm5
+    # objective += mtimes(jf2.T, jf2)
+
     # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
-    jf2 = p*fm1 - (1-p)*fm5
-    objective += mtimes(jf2.T, jf2)
+    jf2 = p*fm1[2] - (1-p)*fm5[2]
+    jf3 = px[i]*p * fm1[0] - (1-px[i])*(1 - p) * fm5[0]
+    jf4 = p * fm1[1] - (1 - p) * fm5[1]
+    objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf4, jf4)
 
     # use of p to dispatch moments
     jm2 = p*(mm1 + dot(Meta1, fm1)) - (1-p)*(mm5 + dot(Meta5, fm5))
@@ -127,7 +133,7 @@ plt.show()
 
 # --- 3 contact points ---
 p_heel = np.linspace(0, 1, number_shooting_points[1] + 1)
-p = 0.4
+p = 0.5
  # Forces
 F_Heel = MX.sym("F_Heel", 3 * (number_shooting_points[1] + 1), 1)
 F_Meta1 = MX.sym("F_Meta1", 3 * (number_shooting_points[1] + 1), 1)
@@ -161,12 +167,15 @@ for i in range(number_shooting_points[1] + 1):
     objective += 100 * mtimes(jm.T, jm)
 
     # --- Dispatch on different contact points ---
+    # # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
+    # jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
+    # objective += mtimes(jf2.T, jf2)
     # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-    jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
-    objective += mtimes(jf2.T, jf2)
-    # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-    j2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
-    objective += mtimes(j2.T, j2)
+    jf2 = p_heel[i] * fh[2] - ((1 - p_heel[i]) * (p * fm1[2] + (1 - p) * fm5[2]))
+    jf3 = p_heel[i] * fh[0] - ((1 - p_heel[i]) * (1 * fm1[0] + 0 * fm5[0]))
+    jf32 = fm5[0]
+    jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
+    objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
 
     # --- Forces constraints ---
     # positive vertical force
@@ -204,10 +213,11 @@ for i in range(3):
     force_meta1[i, :] = np.array(FM1[i::3]).squeeze()
     force_meta5[i, :] = np.array(FM5[i::3]).squeeze()
 
-plt.figure('contact forces 3 points')
-plt.plot(grf_ref[1][2, :], 'k')
-plt.plot(force_heel[2, :], 'g')
-plt.plot(force_meta1[2, :], 'r')
-plt.plot(force_meta5[2, :], 'b')
-plt.legend(('plateforme', 'Heel', 'Meta 1', 'Meta 5'))
+for i in range(3):
+    plt.figure(f'contact forces {i + 1}')
+    plt.plot(grf_ref[1][i, :], 'k')
+    plt.plot(force_heel[i, :], 'g')
+    plt.plot(force_meta1[i, :], 'r')
+    plt.plot(force_meta5[i, :], 'b')
+    plt.legend(('plateforme', 'Heel', 'Meta 1', 'Meta 5'))
 plt.show()
