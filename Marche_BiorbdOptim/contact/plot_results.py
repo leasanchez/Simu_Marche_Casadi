@@ -2,9 +2,9 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol
 from matplotlib import pyplot as plt
 import biorbd
+from BiorbdViz import BiorbdViz
 from pathlib import Path
 from Marche_BiorbdOptim.LoadData import Data_to_track
-from biorbd_optim import Dynamics
 
 def plot_control(ax, t, x, color="b"):
     nbPoints = len(np.array(x))
@@ -220,9 +220,10 @@ Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1
 Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
 Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
 grf_flatfoot_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
-grf_flatfoot_ref = grf_flatfoot_ref[[0, 2, 3, 5, 8], :]
+grf_flatfoot_ref = grf_flatfoot_ref[[0, 1, 2, 3, 5, 8], :]
 grf_forefoot_ref = get_dispatch_forefoot_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
 grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
+grf_ref=(grf_ref[0], grf_flatfoot_ref)
 
 Q_ref_0 = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
 Q_ref_0[[0, 1, 5, 8, 9, 11], :] = q_ref[0]
@@ -248,6 +249,9 @@ params = np.load(path_file + "params.npy")
 t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)))
 # t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
+# b = BiorbdViz(loaded_model=biorbd_model[0])
+# b.load_movement(q)
+
 
 # --- Muscle activation and excitation --- #
 figure, axes = plt.subplots(4, 5, sharex=True)
@@ -285,7 +289,7 @@ for i in range(nb_q):
     axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
     axes[i].plot(t, Q, color="k", linestyle='--', linewidth=0.7)
     axes[i].set_title(q_name[i])
-    axes[i].set_ylim([np.max(q[i, :]), np.min(q[i, :])])
+    # axes[i].set_ylim([np.max(q[i, :]), np.min(q[i, :])])
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
 
 # --- Compute contact forces --- #
@@ -303,11 +307,19 @@ for n_p in range(2):
             ["x", "u", "p"],
             ["GRF"],
         ).expand()
-    for i in range(number_shooting_points[n_p]):
+    for i in range(number_shooting_points[n_p] + 1):
         state = np.concatenate((q[:, idx + i], q_dot[:, idx + i], activations[:, idx + i]))
         control = np.concatenate((tau[:, idx + i], excitations[:, idx + i]))
         cf[:, i] = np.array(computeGRF(state, control, params)).squeeze()
     contact_forces.append(cf)
+    figure, axes = plt.subplots(1, biorbd_model[n_p].nbContacts())
+    axes = axes.flatten()
+    for c in range(biorbd_model[n_p].nbContacts()):
+        axes[c].set_title(biorbd_model[n_p].contactName(c).to_string())
+        axes[c].plot(cf[c, :])
+        axes[c].plot(grf_ref[n_p][c, :], 'k--')
     idx = number_shooting_points[n_p]
+
+plt.show()
 
 

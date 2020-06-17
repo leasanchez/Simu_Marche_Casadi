@@ -21,7 +21,9 @@ from biorbd_optim import (
 )
 
 def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
-    p_heel = np.linspace(0, 1, nb_shooting + 1)
+    # p_heel = np.linspace(0, 1, nb_shooting + 1)
+    x = np.linspace(-number_shooting_points[1], number_shooting_points[1], number_shooting_points[1] + 1, dtype=int)
+    p_heel = 1 / (1 + np.exp(-x))
     # p_heel = 1 - p_heel
     p = 0.4
     # Forces
@@ -137,15 +139,25 @@ def prepare_ocp(
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[0][:, :-1].T,},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11],
+            #  "data_to_track": q_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1,
              "data_to_track": excitation_ref[1][:, :-1].T, },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref[1].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
+            {
+                "type": Objective.Mayer.CUSTOM,
+                "weight": 0.00005,
+                "function": get_last_contact_forces,
+                "data_to_track": grf_ref[1].T,
+                "instant": Instant.ALL,
+            },
         ),
     )
 
@@ -228,7 +240,7 @@ if __name__ == "__main__":
   )
 
     # Problem parameters
-    number_shooting_points = [5, 10, 15]
+    number_shooting_points = [10, 5, 15]
 
     # Generate data from file
     Data_to_track = Data_to_track("normal01", multiple_contact=True)
@@ -248,7 +260,8 @@ if __name__ == "__main__":
     Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
     grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
-    grf_dispatch_ref = grf_dispatch_ref[[0, 2, 3, 5, 8], :]
+    grf_dispatch_ref = grf_dispatch_ref[[0, 1, 2, 3, 5, 8], :]
+    grf_dispatch_ref[1, :] = grf_ref[1][1, :]
 
     plt.figure()
     plt.plot(grf_ref[1][2, :].T, 'k--')
@@ -274,7 +287,7 @@ if __name__ == "__main__":
         nb_shooting=(number_shooting_points[0], number_shooting_points[1]),
         markers_ref=(markers_ref[0], markers_ref[1]),
         excitation_ref=(excitation_ref[0], excitation_ref[1]),
-        grf_ref=(grf_ref[0][[0, 2], :], grf_dispatch_ref),
+        grf_ref=(grf_ref[0], grf_dispatch_ref),
         q_ref=(Q_ref_0, Q_ref_1),
         fiso_init=fiso_init,
     )
@@ -294,19 +307,21 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    states_sol, controls_sol, params_sol = Data.get_data(ocp, sol["x"], get_parameters=True)
     q = states_sol["q"]
     q_dot = states_sol["q_dot"]
     activations = states_sol["muscles"]
     tau = controls_sol["tau"]
     excitations = controls_sol["muscles"]
+    params = params_sol[ocp.nlp[0]['p'].name()]
 
     # --- Save Results --- #
-    np.save('excitations', excitations)
-    np.save('activations', activations)
-    np.save('tau', tau)
-    np.save('q_dot', q_dot)
-    np.save('q', q)
+    np.save('./RES/heel_strike/excitations', excitations)
+    np.save('./RES/heel_strike/activations', activations)
+    np.save('./RES/heel_strike/tau', tau)
+    np.save('./RES/heel_strike/q_dot', q_dot)
+    np.save('./RES/heel_strike/q', q)
+    np.save('./RES/heel_strike/params', params)
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)

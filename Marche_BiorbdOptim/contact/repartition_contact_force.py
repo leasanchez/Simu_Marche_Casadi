@@ -22,7 +22,7 @@ markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_
 
 # foot markers position
 plt.figure('foot position')
-plt.plot(markers_ref[0][0, 19, :] + 0.04 , markers_ref[0][1, 19, :], 'b+')
+plt.plot(markers_ref[1][0, 19, :] + 0.04 , markers_ref[1][1, 19, :], 'b+')
 plt.text(0.575, 0.153, 'talon')
 plt.plot(markers_ref[1][0, 21, :], markers_ref[1][1, 21, :], 'r+')
 plt.text(0.68, 0.165, 'FMP1')
@@ -70,15 +70,15 @@ for i in range(number_shooting_points[2] + 1):
     jm = sm - M_ref[2][:, i]
     objective += 100 * mtimes(jm.T, jm)
 
-    # # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
-    # jf2 = p*fm1 - (1-p)*fm5
-    # objective += mtimes(jf2.T, jf2)
-
     # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
-    jf2 = p*fm1[2] - (1-p)*fm5[2]
-    jf3 = px[i]*p * fm1[0] - (1-px[i])*(1 - p) * fm5[0]
-    jf4 = p * fm1[1] - (1 - p) * fm5[1]
-    objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf4, jf4)
+    jf2 = p*fm1 - (1-p)*fm5
+    objective += mtimes(jf2.T, jf2)
+
+    # # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
+    # jf2 = p*fm1[2] - (1-p)*fm5[2]
+    # jf3 = px[i]*p * fm1[0] - (1-px[i])*(1 - p) * fm5[0]
+    # jf4 = p * fm1[1] - (1 - p) * fm5[1]
+    # objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf4, jf4)
 
     # use of p to dispatch moments
     jm2 = p*(mm1 + dot(Meta1, fm1)) - (1-p)*(mm5 + dot(Meta5, fm5))
@@ -133,6 +133,8 @@ plt.show()
 
 # --- 3 contact points ---
 p_heel = np.linspace(0, 1, number_shooting_points[1] + 1)
+x = np.linspace(-number_shooting_points[1], number_shooting_points[1], number_shooting_points[1] + 1, dtype=int)
+p_heel_sig = 1/(1 + np.exp(-x))
 p = 0.5
  # Forces
 F_Heel = MX.sym("F_Heel", 3 * (number_shooting_points[1] + 1), 1)
@@ -167,15 +169,15 @@ for i in range(number_shooting_points[1] + 1):
     objective += 100 * mtimes(jm.T, jm)
 
     # --- Dispatch on different contact points ---
-    # # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-    # jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
-    # objective += mtimes(jf2.T, jf2)
     # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-    jf2 = p_heel[i] * fh[2] - ((1 - p_heel[i]) * (p * fm1[2] + (1 - p) * fm5[2]))
-    jf3 = p_heel[i] * fh[0] - ((1 - p_heel[i]) * (1 * fm1[0] + 0 * fm5[0]))
-    jf32 = fm5[0]
-    jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
-    objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
+    jf2 = p_heel_sig[i] * fh - ((1 - p_heel_sig[i]) * (p * fm1 + (1 - p) * fm5))
+    objective += mtimes(jf2.T, jf2)
+    # # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
+    # jf2 = p_heel[i] * fh[2] - ((1 - p_heel[i]) * (p * fm1[2] + (1 - p) * fm5[2]))
+    # jf3 = p_heel[i] * fh[0] - ((1 - p_heel[i]) * (1 * fm1[0] + 0 * fm5[0]))
+    # jf32 = fm5[0]
+    # jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
+    # objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
 
     # --- Forces constraints ---
     # positive vertical force
@@ -183,13 +185,13 @@ for i in range(number_shooting_points[1] + 1):
     lbg += [0] * 3
     ubg += [1000] * 3
     # non slipping --> -0.4*Fz < Fx < 0.4*Fz
-    constraint += ((-0.4*fm1[2] - fm1[0]), (-0.4*fm5[2] - fm5[0]))
-    lbg += [-1000]*2
-    ubg += [0]*2
+    constraint += ((-0.4*fh[2] - fh[0]), (-0.4*fm1[2] - fm1[0]), (-0.4*fm5[2] - fm5[0]))
+    lbg += [-1000]*3
+    ubg += [0]*3
 
-    constraint += ((0.4*fm1[2] - fm1[0]), (0.4*fm5[2] - fm5[0]))
-    lbg += [0]*2
-    ubg += [1000]*2
+    constraint += ((0.4*fh[2] - fh[0]), (0.4*fm1[2] - fm1[0]), (0.4*fm5[2] - fm5[0]))
+    lbg += [0]*3
+    ubg += [1000]*3
 
 w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
 nlp = {'x': vertcat(*w), 'f': objective, 'g': vertcat(*constraint)}

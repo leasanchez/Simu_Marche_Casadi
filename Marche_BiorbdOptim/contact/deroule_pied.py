@@ -178,7 +178,7 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1], p)
     val = force - data_to_track[t[-1], :]
-    return dot(val, val)
+    return mtimes(val.T, val)
 
 def get_muscles_first_node(ocp, nlp, t, x, u, p):
     activation = x[0][2 * nlp["nbQ"] :]
@@ -210,23 +210,33 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1, "data_to_track": excitation_ref[0][:, :-1].T,},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[0][:, :-1].T,},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11],
+            #  "data_to_track": q_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1,
+            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1,
              "data_to_track": excitation_ref[1][:, :-1].T, },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref[1].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 1,
              "data_to_track": excitation_ref[2][:, :-1].T, },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[2]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 200, "data_to_track": markers_ref[2]},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
+            {
+                "type": Objective.Mayer.CUSTOM,
+                "weight": 0.00005,
+                "function": get_last_contact_forces,
+                "data_to_track": grf_ref[2].T,
+                "instant": Instant.ALL,
+            },
         ),
     )
 
@@ -332,7 +342,7 @@ if __name__ == "__main__":
     Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
     grf_flatfoot_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
-    grf_flatfoot_ref = grf_flatfoot_ref[[0, 2, 3, 5, 8], :]
+    grf_flatfoot_ref = grf_flatfoot_ref[[0, 1, 2, 3, 5, 8], :]
     grf_forefoot_ref = get_dispatch_forefoot_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
     grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
 
@@ -357,7 +367,7 @@ if __name__ == "__main__":
         nb_shooting=number_shooting_points,
         markers_ref=markers_ref,
         excitation_ref=excitation_ref,
-        grf_ref=(grf_ref[0][[0, 2], :], grf_flatfoot_ref, grf_forefoot_ref),
+        grf_ref=(grf_ref[0], grf_flatfoot_ref, grf_forefoot_ref),
         q_ref=(Q_ref_0, Q_ref_1, Q_ref_2),
         fiso_init=fiso_init,
     )
