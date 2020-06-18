@@ -6,10 +6,10 @@ from BiorbdViz import BiorbdViz
 from pathlib import Path
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
-def plot_control(ax, t, x, color="b"):
+def plot_control(ax, t, x, color="k", linestyle="--", linewidth=0.7):
     nbPoints = len(np.array(x))
     for n in range(nbPoints - 1):
-        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
+        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color, linestyle, linewidth)
 
 def get_forces(biorbd_model, states, controls, parameters):
     nb_q = biorbd_model.nbQ()
@@ -24,16 +24,15 @@ def get_forces(biorbd_model, states, controls, parameters):
             biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(parameters[n_muscle] * fiso_init)
             n_muscle += 1
 
-    muscles_states = biorbd.VecBiorbdMuscleStateDynamics(nb_mus)
+    muscles_states = biorbd.VecBiorbdMuscleState(nb_mus)
     muscles_excitation = controls[nb_tau :]
     muscles_activations = states[nb_q + nb_qdot :]
 
     for k in range(nb_mus):
         muscles_states[k].setExcitation(muscles_excitation[k])
         muscles_states[k].setActivation(muscles_activations[k])
-    muscles_activations_dot = biorbd_model.activationDot(muscles_states).to_mx()
 
-    muscles_tau = biorbd_model.muscularJointTorque(muscles_states, True, states[:nb_q], states[nb_q: nb_q + nb_qdot]).to_mx()
+    muscles_tau = biorbd_model.muscularJointTorque(muscles_states, states[:nb_q], states[nb_q: nb_q + nb_qdot]).to_mx()
     tau = muscles_tau + controls[:nb_tau]
     cs = biorbd_model.getConstraints()
     biorbd.Model.ForwardDynamicsConstraintsDirect(biorbd_model, states[:nb_q], states[nb_q: nb_q + nb_qdot], tau, cs)
@@ -114,8 +113,8 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     return grf_dispatch_ref
 
 def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
-    p_heel = np.linspace(0, 1, nb_shooting + 1)
-    # p_heel = 1 - p_heel
+    x = np.linspace(-number_shooting_points[1], number_shooting_points[1], number_shooting_points[1] + 1, dtype=int)
+    p_heel = 1 / (1 + np.exp(-x))
     p = 0.4
     # Forces
     F_Heel = MX.sym("F_Heel", 3 * (nb_shooting + 1), 1)
@@ -259,19 +258,21 @@ axes = axes.flatten()
 for i in range(nb_mus):
     name_mus = biorbd_model[0].muscle(i).name().to_string()
     param_value = str(np.round(params[i], 2))
-    # plot_control(axes[i], t, np.concatenate((excitation_ref[0][i, :], excitation_ref[1][i, 1:], excitation_ref[2][i, 1:])), color="k--")
-    plot_control(axes[i], t, np.concatenate((excitation_ref[0][i, :], excitation_ref[1][i, 1:])), color="k--")
-    plot_control(axes[i], t, excitations[i, :], color="r--")
-    axes[i].plot(t, activations[i, :], 'r.-', linewidth=0.6)
-    axes[i].text(0.03, 0.9, param_value)
-
+    e = np.concatenate((excitation_ref[0][i, :], excitation_ref[1][i, 1:]))
+    plot_control(axes[i], t, e, color="k--")
+    plot_control(axes[i], t, excitations[i, :], color="tab:red", linestyle="--", linewidth=0.7)
+    axes[i].plot(t, activations[i, :], color="tab:red", linestyle="-", linewidth=1)
+    axes[i].plot([phase_time[0], phase_time[0]], [0, 1], color="k", linestyle="--", linewidth=1)
     axes[i].set_title(name_mus)
     axes[i].set_ylim([0, 1])
+    axes[i].set_xlim([0, t[-1]])
     axes[i].set_yticks(np.arange(0, 1, step=1 / 5,))
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    axes[i].text(0.03, 0.9, param_value)
 axes[-1].remove()
 axes[-2].remove()
 axes[-3].remove()
+plt.show()
 
 # --- Generalized positions --- #
 q_name = []
@@ -289,7 +290,7 @@ for i in range(nb_q):
     axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
     axes[i].plot(t, Q, color="k", linestyle='--', linewidth=0.7)
     axes[i].set_title(q_name[i])
-    # axes[i].set_ylim([np.max(q[i, :]), np.min(q[i, :])])
+    axes[i].plot([phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1)
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
 
 # --- Compute contact forces --- #
