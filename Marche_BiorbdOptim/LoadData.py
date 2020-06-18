@@ -3,13 +3,14 @@ import numpy as np
 from scipy.interpolate import interp1d
 import scipy.io as sio
 
-
 class Data_to_track:
     def __init__(self, name_subject, multiple_contact=False):
         PROJET = "/home/leasanchez/programmation/Simu_Marche_Casadi/"
         self.name_subject = name_subject
         self.file = PROJET + "DonneesMouvement/" + name_subject + "_out.c3d"
         self.kalman_file = PROJET + "DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
+        self.Q_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_q_KalmanFilter.txt"
+        self.Qdot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qdot_KalmanFilter.txt"
         self.idx_start, self.idx_stop_stance, self.idx_stop = self.Get_Event()
         self.idx_2_contacts = 0
         self.idx_heel_rise = 0
@@ -144,14 +145,6 @@ class Data_to_track:
             M_ref.append(M[[1, 0, 2], :])
         return M_ref
 
-    def GetFootCenterPosition(self):
-        # Compute Center of pressure
-        CoP = self.ComputeCoP()
-        # get foot center position
-        Center = CoP[self.idx_heel_rise, :, self.idx_platform]
-        return Center[[1, 0, 2]]
-
-
     def ComputeCoP(self):
         measurements = c3d(self.file)
         analog = measurements["data"]["analogs"]
@@ -263,20 +256,74 @@ class Data_to_track:
 
         return markers_ref
 
+    def load_q_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+        Q = np.loadtxt(self.Q_KalmanFilter_file)
+        nb_q = biorbd_model.nbQ()
+        nb_frame = int(len(Q)/nb_q)
+        q_init = np.zeros((nb_q, nb_frame))
+        for n in range(nb_frame):
+            q_init[:, n] = Q[n*nb_q: n*nb_q + nb_q]
+
+        # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
+        if GaitPhase == "stance":
+            if self.multiple_contact:
+                q_ref = []
+                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+                for i in range(len(final_time)):
+                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    f_stance = interp1d(t_stance, q_init[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+                    q_ref.append(f_stance(node_t_stance))
+            else:
+                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
+                node_t = np.linspace(0, final_time, n_shooting_points + 1)
+                f = interp1d(t, q_init[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
+                q_ref = f(node_t)
+        elif GaitPhase == "swing":
+            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance) + 1)
+            node_t = np.linspace(0, final_time, n_shooting_points + 1)
+            f = interp1d(t, q_init[:, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
+            q_ref = f(node_t)
+        else:
+            raise RuntimeError("Gaitphase doesn't exist")
+        return q_ref
+
+    def load_qdot_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+        Q = np.loadtxt(self.Qdot_KalmanFilter_file)
+        nb_q = biorbd_model.nbQ()
+        nb_frame = int(len(Q)/nb_q)
+        qdot_init = np.zeros((nb_q, nb_frame))
+        for n in range(nb_frame):
+            qdot_init[:, n] = Q[n*nb_q: n*nb_q + nb_q]
+
+        # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
+        if GaitPhase == "stance":
+            if self.multiple_contact:
+                qdot_ref = []
+                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+                for i in range(len(final_time)):
+                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    f_stance = interp1d(t_stance, qdot_init[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+                    qdot_ref.append(f_stance(node_t_stance))
+            else:
+                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
+                node_t = np.linspace(0, final_time, n_shooting_points + 1)
+                f = interp1d(t, qdot_init[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
+                qdot_ref = f(node_t)
+        elif GaitPhase == "swing":
+            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance) + 1)
+            node_t = np.linspace(0, final_time, n_shooting_points + 1)
+            f = interp1d(t, qdot_init[:, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
+            qdot_ref = f(node_t)
+        else:
+            raise RuntimeError("Gaitphase doesn't exist")
+        return qdot_ref
+
     def load_data_q(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         # Create initial vector for joint position (nbNoeuds x nbQ)
         # Based on Kalman filter??
-        # markers = self.load_data_markers(biorbd_model, final_time, n_shooting_points, GaitPhase)
-        # import biorbd
-        # k = biorbd.KalmanReconsMarkers(biorbd_model)
-        # q_reconstruct = biorbd.GeneralizedCoordinates(biorbd_model)
-        # qdot_reconstruct = biorbd.GeneralizedVelocity(biorbd_model.nbQdot())
-        # for i in range(n_shooting_points + 1):
-        #     m = markers[:, 0, i]
-        #     for n_mark in range(1, biorbd_model.nbMarkers()):
-        #         m = np.concatenate((m, markers[:, n_mark, i]))
-        #     k.reconstructFrame(biorbd_model, m)
-        #
+
         # # LOAD MAT FILE FOR GENERALIZED COORDINATES
         kalman = sio.loadmat(self.kalman_file)
         Q_real = kalman["Q2"]
@@ -304,33 +351,6 @@ class Data_to_track:
         else:
             raise RuntimeError("Gaitphase doesn't exist")
         return q_ref
-
-    def load_data_qdot(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
-        # LOAD MAT FILE FOR GENERALIZED COORDINATES
-        kalman = sio.loadmat(self.kalman_file)
-        Q_real = kalman["Q2"]
-        Qdot = np.zeros((biorbd_model.nbQ(), Q_real.shape[1] - 1))
-        dt = final_time / n_shooting_points
-        for i in range(biorbd_model.nbQ()):
-            Qdot[i, :] = np.diff(Q_real[i, :]) / dt
-
-        [start, stop_stance, stop] = self.Get_Event()
-
-        # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
-        if GaitPhase == "stance":
-            t = np.linspace(0, final_time, int(stop_stance - start) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, Qdot[:, int(start) : int(stop_stance) + 1], kind="cubic")
-            qdot_ref = f(node_t)
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, int(stop - stop_stance) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, Qdot[:, int(stop_stance) : int(stop) + 1], kind="cubic")
-            qdot_ref = f(node_t)
-        else:
-            raise RuntimeError("Gaitphase doesn't exist")
-
-        return qdot_ref
 
     def load_data_emg(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         # Load c3d file and get the muscular excitation from emg
