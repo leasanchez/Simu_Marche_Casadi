@@ -47,22 +47,18 @@ def get_initial_value():
     tau_ig = []
     excitations_ig = []
 
-    ocp_load_swing, sol_load_swing = OptimalControlProgram.load(
-        "../swing/RES/parametres/marche_swing_excitation_sans_params.bo"
-    )
-    ocp_load_stance, sol_load_stance = OptimalControlProgram.load(
-        "../stance/RES/equincocont01/parametres/marche_stance_excitation_sans_param.bo"
-    )
-    ocp_load = [ocp_load_stance, ocp_load_swing]
-    sol_load = [sol_load_stance, sol_load_swing]
+    file_swing = "../swing/RES/parametres/"
+    file_stance = "../stance/RES/equincocont01/parametres/"
+    file = (file_stance, file_swing)
 
-    for i in range(len(ocp_load)):
-        states_sol, controls_sol = Data.get_data(ocp_load[i], sol_load[i]["x"])
-        q_ig.append(states_sol["q"])
-        qdot_ig.append(states_sol["q_dot"])
-        activations_ig.append(states_sol["muscles"])
-        tau_ig.append(controls_sol["tau"])
-        excitations_ig.append(controls_sol["muscles"])
+    for i in range(2):
+        path_file = file[i]
+        q_ig.append(np.load(path_file + "q.npy"))
+        qdot_ig.append(np.load(path_file + "q_dot.npy"))
+        activations_ig.append(np.load(path_file + "activations.npy"))
+        tau_ig.append(np.load(path_file + "tau.npy"))
+        excitations_ig.append(np.load(path_file + "excitations.npy"))
+
     return q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig
 
 
@@ -84,16 +80,16 @@ def prepare_ocp(
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[0].T},
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[:, :-1].T},
             {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.000005, "instant": Instant.ALL}
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[1].T},
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[1]},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
+            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
         ),
     )
 
@@ -264,8 +260,8 @@ if __name__ == "__main__":
         excitation_ref=excitation_ref,
         grf_ref=grf_ref,
         q_ref=q_ig,
-        qdot_ref = qdot_ig,
-        fiso_init = fiso_init,
+        qdot_ref=qdot_ig,
+        fiso_init=fiso_init,
     )
 
     # --- Solve the program --- #
@@ -279,10 +275,28 @@ if __name__ == "__main__":
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",
         },
-        show_online_optim=True,
+        show_online_optim=False,
     )
     toc = time() - tic
     print(f"Time to solve : {toc}sec")
+
+    # --- Get Results --- #
+    states_sol, controls_sol, params_sol = Data.get_data(ocp, sol["x"], get_parameters=True)
+    q = states_sol["q"]
+    q_dot = states_sol["q_dot"]
+    activations = states_sol["muscles"]
+    tau = controls_sol["tau"]
+    excitations = controls_sol["muscles"]
+    params = params_sol[ocp.nlp[0]["p"].name()]
+
+    # --- Save Results --- #
+    np.save('./RES/equincocont01/excitations', excitations)
+    np.save('./RES/equincocont01/activations', activations)
+    np.save('./RES/equincocont01/tau', tau)
+    np.save('./RES/equincocont01/q_dot', q_dot)
+    np.save('./RES/equincocont01/q', q)
+    np.save('./RES/equincocont01/params', params)
+
 
     ocp.save(sol, "marche_gait_equin_excitation")
 

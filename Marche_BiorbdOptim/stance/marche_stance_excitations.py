@@ -133,7 +133,7 @@ if __name__ == "__main__":
     Gaitphase = "stance"
 
     # Generate data from file
-    Data_to_track = Data_to_track(name_subject="equincocont01")
+    Data_to_track = Data_to_track(name_subject="equincocont03")
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     final_time = T_stance
 
@@ -184,21 +184,21 @@ if __name__ == "__main__":
     print(f"Time to solve : {toc}sec")
 
     # --- Get Results --- #
-    states_sol, controls_sol, params_sol = Data.get_data(ocp, sol, get_parameters=True)
+    states_sol, controls_sol, params_sol = Data.get_data(ocp, sol["x"], get_parameters=True)
     q = states_sol["q"]
     q_dot = states_sol["q_dot"]
     activations = states_sol["muscles"]
     tau = controls_sol["tau"]
     excitations = controls_sol["muscles"]
+    params = params_sol[ocp.nlp[0]["p"].name()]
 
-    n_q = ocp.nlp[0]["model"].nbQ()
-    n_qdot = ocp.nlp[0]["model"].nbQdot()
-    nb_marker = biorbd_model.nbMarkers()
-    n_mus = ocp.nlp[0]["model"].nbMuscleTotal()
-    n_frames = q.shape[1]
-
-    # --- Save the optimal control program and the solution --- #
-    ocp.save(sol, "marche_stance_excitation_2")
+    # --- Save Results --- #
+    np.save('./RES/equincocont03/excitations', excitations)
+    np.save('./RES/equincocont03/activations', activations)
+    np.save('./RES/equincocont03/tau', tau)
+    np.save('./RES/equincocont03/q_dot', q_dot)
+    np.save('./RES/equincocont03/q', q)
+    np.save('./RES/equincocont03/params', params)
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()

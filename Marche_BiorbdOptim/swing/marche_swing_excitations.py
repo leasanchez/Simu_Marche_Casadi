@@ -51,8 +51,8 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, 11)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitations_ref[:, :-1].T},
-        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 5, "states_idx": [0, 1, 5, 8, 9, 10], "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 5, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref},
     )
 
     # Dynamics
@@ -69,7 +69,7 @@ def prepare_ocp(
 
     # Initial guess
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
-    init_x[[0, 1, 5, 8, 9, 10], :] = q_ref
+    init_x[:nb_q, :] = Q_ref
     init_x[-nb_mus:, :] = excitations_ref
     X_init = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
 
@@ -108,7 +108,7 @@ def prepare_ocp(
         objective_functions,
         constraints,
         nb_threads=nb_threads,
-        # parameters=parameters,
+        parameters=parameters,
     )
 
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     Gaitphase = "swing"
 
     # Generate data from file
-    Data_to_track = Data_to_track(name_subject="equincocont01")
+    Data_to_track = Data_to_track(name_subject="equincocont03")
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     final_time = T_swing
 
@@ -130,7 +130,8 @@ if __name__ == "__main__":
     q_ref = Data_to_track.load_data_q(biorbd_model, T_stance, n_shooting_points, "swing")  # get q from kalman
     emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "swing")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
-
+    Q_ref = np.zeros((biorbd_model.nbQ(), n_shooting_points + 1))
+    Q_ref [[0, 1, 5, 8, 9, 11],:] = q_ref
 
     # Get initial isometric forces
     fiso_init = []
@@ -140,7 +141,7 @@ if __name__ == "__main__":
             fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
 
     # Track these data
-    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, q_ref, excitation_ref, fiso_init, nb_threads=4,)
+    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, Q_ref, excitation_ref, fiso_init, nb_threads=4,)
     # --- Add plot kalman --- #
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 
@@ -160,9 +161,38 @@ if __name__ == "__main__":
     toc = time() - tic
     print(f"Time to solve : {toc}sec")
 
-    # --- Save the optimal control program and the solution --- #
-    ocp.save(sol, "marche_swing_excitation_sans_params")
+    # --- Get Results --- #
+    states_sol, controls_sol, params_sol = Data.get_data(ocp, sol["x"], get_parameters=True)
+    q = states_sol["q"]
+    q_dot = states_sol["q_dot"]
+    activations = states_sol["muscles"]
+    tau = controls_sol["tau"]
+    excitations = controls_sol["muscles"]
+    params = params_sol[ocp.nlp[0]["p"].name()]
+
+    # --- Save Results --- #
+    np.save('./RES/equincocont03/excitations', excitations)
+    np.save('./RES/equincocont03/activations', activations)
+    np.save('./RES/equincocont03/tau', tau)
+    np.save('./RES/equincocont03/q_dot', q_dot)
+    np.save('./RES/equincocont03/q', q)
+    np.save('./RES/equincocont03/params', params)
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
+t = np.linspace(0, final_time, n_shooting_points + 1)
+q_name = []
+for s in range(biorbd_model.nbSegment()):
+    seg_name = biorbd_model.segment(s).name().to_string()
+    for d in range(biorbd_model.segment(s).nbDof()):
+        dof_name = biorbd_model.segment(s).nameDof(d).to_string()
+        q_name.append(seg_name + '_' + dof_name)
 
+figure, axes = plt.subplots(4, 3, sharex=True)
+axes = axes.flatten()
+for i in range(biorbd_model.nbQ()):
+    axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
+    axes[i].plot(t, Q_ref[i, :], color="k", linestyle='--', linewidth=0.7)
+    axes[i].set_title(q_name[i])
+    # axes[i].set_ylim([np.max(q[i, :]), np.min(q[i, :])])
+    axes[i].grid(color="k", linestyle="--", linewidth=0.5)
