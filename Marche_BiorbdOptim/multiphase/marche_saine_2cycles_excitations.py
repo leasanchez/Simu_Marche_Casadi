@@ -153,7 +153,7 @@ def prepare_ocp(
         init_u = np.zeros(
             (biorbd_model[n_p].nbGeneralizedTorque() + biorbd_model[n_p].nbMuscleTotal(), nb_shooting[n_p])
         )
-        if (n_p != 3):
+        if n_p != 3:
             init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
         init_u[-biorbd_model[n_p].nbMuscleTotal() :, :] = excitation_ref[n_p][:, :-1]
         UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)

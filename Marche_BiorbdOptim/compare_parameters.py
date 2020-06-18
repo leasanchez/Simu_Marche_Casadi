@@ -20,16 +20,19 @@ from biorbd_optim import (
     Constraint,
 )
 
+
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1], p)
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
+
 
 def get_muscles_first_node(ocp, nlp, t, x, u, p):
     activation = x[0][2 * nlp["nbQ"] :]
     excitation = u[0][nlp["nbQ"] :]
     val = activation - excitation
     return val
+
 
 def modify_isometric_force(biorbd_model, value):
     n_muscle = 0
@@ -38,22 +41,23 @@ def modify_isometric_force(biorbd_model, value):
             biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
             n_muscle += 1
 
+
 # --- Load the optimal control program and the solution --- #
 PROJET = Path(__file__).parent
 # file = "stance/marche_stance_excitation_2.bo"
 file_2 = "swing/RES/parametres/marche_swing_excitation_sans_params.bo"
-gaitphase = 'swing'
+gaitphase = "swing"
 # ocp, sol = OptimalControlProgram.load(str(PROJET) + "/" + file)
 ocp_init, sol_init = OptimalControlProgram.load(str(PROJET) + "/" + file_2)
 
 biorbd_model = ocp_init.nlp[0]["model"]
 n_shooting_points = ocp_init.nlp[0]["ns"]
-final_time = ocp_init.nlp[0]['tf']
-nb_q = ocp_init.nlp[0]['nbQ']
-nb_qdot = ocp_init.nlp[0]['nbQdot']
+final_time = ocp_init.nlp[0]["tf"]
+nb_q = ocp_init.nlp[0]["nbQ"]
+nb_qdot = ocp_init.nlp[0]["nbQdot"]
 nb_marker = biorbd_model.nbMarkers()
-nb_mus = ocp_init.nlp[0]['nbMuscles']
-nb_tau = ocp_init.nlp[0]['nbTau']
+nb_mus = ocp_init.nlp[0]["nbMuscles"]
+nb_tau = ocp_init.nlp[0]["nbTau"]
 
 # --- Get Results --- #
 # states_sol, controls_sol, params_sol = Data.get_data(ocp, sol, get_parameters=True)
@@ -66,14 +70,16 @@ activations_init = states_init["muscles"]
 excitations = np.load(str(PROJET) + "/swing/RES/parametres/excitations_params.npy")
 excitations_init = controls_init["muscles"]
 # params_sol = params_sol[ocp.nlp[0]['p'].name()]
-params_sol =np.load(str(PROJET) + "/swing/RES/parametres/params.npy")
+params_sol = np.load(str(PROJET) + "/swing/RES/parametres/params.npy")
 print(params_sol)
 
 # Generate data from file
 Data_to_track = Data_to_track(name_subject="equincocont01")
 
 grf_ref = Data_to_track.load_data_GRF(biorbd_model, final_time, n_shooting_points)  # get ground reaction forces
-markers_ref = Data_to_track.load_data_markers(biorbd_model, final_time, n_shooting_points, gaitphase)  # get markers position
+markers_ref = Data_to_track.load_data_markers(
+    biorbd_model, final_time, n_shooting_points, gaitphase
+)  # get markers position
 q_ref = Data_to_track.load_data_q(biorbd_model, final_time, n_shooting_points, gaitphase)  # get q from kalman
 emg_ref = Data_to_track.load_data_emg(biorbd_model, final_time, n_shooting_points, gaitphase)  # get emg
 excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
@@ -84,6 +90,7 @@ def plot_control(ax, t, x, color="b"):
     for n in range(nbPoints - 1):
         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color)
 
+
 figure, axes = plt.subplots(4, 5, sharex=True)
 axes = axes.flatten()
 t = np.linspace(0, final_time, n_shooting_points + 1)
@@ -93,10 +100,10 @@ for i in range(biorbd_model.nbMuscleTotal()):
     plot_control(axes[i], t, excitation_ref[i, :], color="k--")
 
     plot_control(axes[i], t, excitations_init[i, :], color="r--")
-    axes[i].plot(t, activations_init[i, :], 'r.-') # without parameters
+    axes[i].plot(t, activations_init[i, :], "r.-")  # without parameters
 
     plot_control(axes[i], t, excitations[i, :], color="b--")
-    axes[i].plot(t, activations[i, :], 'b.-') # with parameters
+    axes[i].plot(t, activations[i, :], "b.-")  # with parameters
     axes[i].text(0.03, 0.9, param_value)
 
     axes[i].set_title(name_mus)
@@ -183,12 +190,7 @@ axes = axes.flatten()
 title_markers = ["x axis", "y axis", "z axis"]
 for i in range(3):
     axes[i].bar(
-        np.linspace(0, nb_marker, nb_marker),
-        hist_diff_track[i, :],
-        width=1.0,
-        facecolor="b",
-        edgecolor="k",
-        alpha=0.5,
+        np.linspace(0, nb_marker, nb_marker), hist_diff_track[i, :], width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
     )
     axes[i].set_xticks(np.arange(nb_marker))
     axes[i].set_xticklabels(label_markers, rotation=90)
@@ -197,12 +199,7 @@ for i in range(3):
     axes[i].set_title("markers differences between sol and exp")
 
     axes[i + 3].bar(
-        np.linspace(0, nb_marker, nb_marker),
-        hist_diff_sol[i, :],
-        width=1.0,
-        facecolor="b",
-        edgecolor="k",
-        alpha=0.5,
+        np.linspace(0, nb_marker, nb_marker), hist_diff_sol[i, :], width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
     )
     axes[i + 3].set_xticks(np.arange(nb_marker))
     axes[i + 3].set_xticklabels(label_markers, rotation=90)
@@ -228,4 +225,3 @@ for i in range(3):
 ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 result = ShowResult(ocp, sol)
 result.graphs()
-

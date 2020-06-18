@@ -6,10 +6,12 @@ from BiorbdViz import BiorbdViz
 from pathlib import Path
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
+
 def plot_control(ax, t, x, color="k", linestyle="--", linewidth=0.7):
     nbPoints = len(np.array(x))
     for n in range(nbPoints - 1):
         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color, linestyle, linewidth)
+
 
 def get_forces(biorbd_model, states, controls, parameters):
     nb_q = biorbd_model.nbQ()
@@ -21,22 +23,25 @@ def get_forces(biorbd_model, states, controls, parameters):
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
             fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(parameters[n_muscle] * fiso_init)
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(
+                parameters[n_muscle] * fiso_init
+            )
             n_muscle += 1
 
     muscles_states = biorbd.VecBiorbdMuscleState(nb_mus)
-    muscles_excitation = controls[nb_tau :]
+    muscles_excitation = controls[nb_tau:]
     muscles_activations = states[nb_q + nb_qdot :]
 
     for k in range(nb_mus):
         muscles_states[k].setExcitation(muscles_excitation[k])
         muscles_states[k].setActivation(muscles_activations[k])
 
-    muscles_tau = biorbd_model.muscularJointTorque(muscles_states, states[:nb_q], states[nb_q: nb_q + nb_qdot]).to_mx()
+    muscles_tau = biorbd_model.muscularJointTorque(muscles_states, states[:nb_q], states[nb_q : nb_q + nb_qdot]).to_mx()
     tau = muscles_tau + controls[:nb_tau]
     cs = biorbd_model.getConstraints()
-    biorbd.Model.ForwardDynamicsConstraintsDirect(biorbd_model, states[:nb_q], states[nb_q: nb_q + nb_qdot], tau, cs)
+    biorbd.Model.ForwardDynamicsConstraintsDirect(biorbd_model, states[:nb_q], states[nb_q : nb_q + nb_qdot], tau, cs)
     return cs.getForce().to_mx()
+
 
 def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     p = 0.5  # repartition entre les 2 points
@@ -54,10 +59,10 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     constraint = []
     for i in range(nb_shooting + 1):
         # Aliases
-        fm1 = F_Meta1[3 * i: 3 * (i + 1)]
-        fm5 = F_Meta5[3 * i: 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i: 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i: 3 * (i + 1)]
+        fm1 = F_Meta1[3 * i : 3 * (i + 1)]
+        fm5 = F_Meta5[3 * i : 3 * (i + 1)]
+        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
+        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
 
         # sum forces = 0 --> Fp1 + Fp2 = Ftrack
         sf = fm1 + fm5
@@ -94,23 +99,20 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         ubg += [1000] * 2
 
     w = [F_Meta1, F_Meta5, M_Meta1, M_Meta5]
-    nlp = {'x': vertcat(*w), 'f': objective, 'g': vertcat(*constraint)}
+    nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)),
-                 lbx=-1000,
-                 ubx=1000,
-                 lbg=lbg,
-                 ubg=ubg)
+    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
 
-    FM1 = res['x'][:3 * (nb_shooting + 1)]
-    FM5 = res['x'][3 * (nb_shooting + 1): 6 * (nb_shooting + 1)]
+    FM1 = res["x"][: 3 * (nb_shooting + 1)]
+    FM5 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
 
     grf_dispatch_ref = np.zeros((3 * 2, nb_shooting + 1))
     for i in range(3):
         grf_dispatch_ref[i, :] = np.array(FM1[i::3]).squeeze()
         grf_dispatch_ref[i + 3, :] = np.array(FM5[i::3]).squeeze()
     return grf_dispatch_ref
+
 
 def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     x = np.linspace(-number_shooting_points[1], number_shooting_points[1], number_shooting_points[1] + 1, dtype=int)
@@ -131,12 +133,12 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     constraint = []
     for i in range(nb_shooting + 1):
         # Aliases
-        fh = F_Heel[3 * i: 3 * (i + 1)]
-        fm1 = F_Meta1[3 * i: 3 * (i + 1)]
-        fm5 = F_Meta5[3 * i: 3 * (i + 1)]
-        mh = M_Heel[3 * i: 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i: 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i: 3 * (i + 1)]
+        fh = F_Heel[3 * i : 3 * (i + 1)]
+        fm1 = F_Meta1[3 * i : 3 * (i + 1)]
+        fm5 = F_Meta5[3 * i : 3 * (i + 1)]
+        mh = M_Heel[3 * i : 3 * (i + 1)]
+        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
+        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
 
         # --- Torseur equilibre ---
         # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
@@ -156,7 +158,9 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
         objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
         # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - ((1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5))))
+        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - (
+            (1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5)))
+        )
         objective += mtimes(jm2.T, jm2)
 
         # --- Forces constraints ---
@@ -174,24 +178,21 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         ubg += [1000] * 2
 
     w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
-    nlp = {'x': vertcat(*w), 'f': objective, 'g': vertcat(*constraint)}
+    nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)),
-                 lbx=-1000,
-                 ubx=1000,
-                 lbg=lbg,
-                 ubg=ubg)
+    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
 
-    FH = res['x'][:3 * (nb_shooting + 1)]
-    FM1 = res['x'][3 * (nb_shooting + 1): 6 * (nb_shooting + 1)]
-    FM5 = res['x'][6 * (nb_shooting + 1): 9 * (nb_shooting + 1)]
-    grf_dispatch_ref = np.zeros((3*3, nb_shooting + 1))
+    FH = res["x"][: 3 * (nb_shooting + 1)]
+    FM1 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
+    FM5 = res["x"][6 * (nb_shooting + 1) : 9 * (nb_shooting + 1)]
+    grf_dispatch_ref = np.zeros((3 * 3, nb_shooting + 1))
     for i in range(3):
         grf_dispatch_ref[i, :] = np.array(FH[i::3]).squeeze()
         grf_dispatch_ref[i + 3, :] = np.array(FM1[i::3]).squeeze()
         grf_dispatch_ref[i + 6, :] = np.array(FM5[i::3]).squeeze()
     return grf_dispatch_ref
+
 
 # --- Problem parameter --- #
 biorbd_model = (
@@ -222,7 +223,7 @@ grf_flatfoot_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Met
 grf_flatfoot_ref = grf_flatfoot_ref[[0, 1, 2, 3, 5, 8], :]
 grf_forefoot_ref = get_dispatch_forefoot_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
 grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
-grf_ref=(grf_ref[0], grf_flatfoot_ref)
+grf_ref = (grf_ref[0], grf_flatfoot_ref)
 
 Q_ref_0 = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
 Q_ref_0[[0, 1, 5, 8, 9, 11], :] = q_ref[0]
@@ -280,17 +281,19 @@ for s in range(biorbd_model[0].nbSegment()):
     seg_name = biorbd_model[0].segment(s).name().to_string()
     for d in range(biorbd_model[0].segment(s).nbDof()):
         dof_name = biorbd_model[0].segment(s).nameDof(d).to_string()
-        q_name.append(seg_name + '_' + dof_name)
+        q_name.append(seg_name + "_" + dof_name)
 
 figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
     # Q = np.concatenate((Q_ref_0[i, :], Q_ref_1[i, 1:], Q_ref_2[i, 1:]))
     Q = np.concatenate((Q_ref_0[i, :], Q_ref_1[i, 1:]))
-    axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
-    axes[i].plot(t, Q, color="k", linestyle='--', linewidth=0.7)
+    axes[i].plot(t, q[i, :], color="tab:red", linestyle="-", linewidth=1)
+    axes[i].plot(t, Q, color="k", linestyle="--", linewidth=0.7)
     axes[i].set_title(q_name[i])
-    axes[i].plot([phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1)
+    axes[i].plot(
+        [phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1
+    )
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
 
 # --- Compute contact forces --- #
@@ -302,12 +305,12 @@ for n_p in range(2):
     symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
     symbolic_params = MX.sym("p", nb_mus, 1)
     computeGRF = Function(
-            "ComputeGRF",
-            [symbolic_states, symbolic_controls, symbolic_params],
-            [get_forces(biorbd_model[n_p], symbolic_states, symbolic_controls, symbolic_params)],
-            ["x", "u", "p"],
-            ["GRF"],
-        ).expand()
+        "ComputeGRF",
+        [symbolic_states, symbolic_controls, symbolic_params],
+        [get_forces(biorbd_model[n_p], symbolic_states, symbolic_controls, symbolic_params)],
+        ["x", "u", "p"],
+        ["GRF"],
+    ).expand()
     for i in range(number_shooting_points[n_p] + 1):
         state = np.concatenate((q[:, idx + i], q_dot[:, idx + i], activations[:, idx + i]))
         control = np.concatenate((tau[:, idx + i], excitations[:, idx + i]))
@@ -318,9 +321,7 @@ for n_p in range(2):
     for c in range(biorbd_model[n_p].nbContacts()):
         axes[c].set_title(biorbd_model[n_p].contactName(c).to_string())
         axes[c].plot(cf[c, :])
-        axes[c].plot(grf_ref[n_p][c, :], 'k--')
+        axes[c].plot(grf_ref[n_p][c, :], "k--")
     idx = number_shooting_points[n_p]
 
 plt.show()
-
-

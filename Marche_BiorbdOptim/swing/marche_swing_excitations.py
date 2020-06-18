@@ -28,12 +28,16 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
     val = activation - excitation
     return val
 
+
 def modify_isometric_force(biorbd_model, value, fiso_init):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init[n_muscle])
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(
+                value[n_muscle] * fiso_init[n_muscle]
+            )
             n_muscle += 1
+
 
 def prepare_ocp(
     biorbd_model, final_time, nb_shooting, markers_ref, q_ref, excitations_ref, fiso_init, nb_threads,
@@ -63,9 +67,7 @@ def prepare_ocp(
 
     # Path constraint
     X_bounds = QAndQDotBounds(biorbd_model)
-    X_bounds.concatenate(
-        Bounds([activation_min] * nb_mus, [activation_max] * nb_mus)
-    )
+    X_bounds.concatenate(Bounds([activation_min] * nb_mus, [activation_max] * nb_mus))
 
     # Initial guess
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
@@ -75,23 +77,24 @@ def prepare_ocp(
 
     # Define control path constraint
     U_bounds = Bounds(
-        [torque_min] * nb_tau + [activation_min] * nb_mus,
-        [torque_max] * nb_tau + [activation_max] * nb_mus,
+        [torque_min] * nb_tau + [activation_min] * nb_mus, [torque_max] * nb_tau + [activation_max] * nb_mus,
     )
     # Initial guess
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
-    init_u[-nb_mus :, :] = excitations_ref[:, :-1]
+    init_u[-nb_mus:, :] = excitations_ref[:, :-1]
     U_init = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
-    bound_length = Bounds(min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT)
+    bound_length = Bounds(
+        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT
+    )
     parameters = {
         "name": "force_isometric",  # The name of the parameter
         "function": modify_isometric_force,  # The function that modifies the biorbd model
         "bounds": bound_length,  # The bounds
         "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
         "size": nb_mus,  # The number of elements this particular parameter vector has
-        "fiso_init":fiso_init,
+        "fiso_init": fiso_init,
     }
 
     # ------------- #
@@ -131,7 +134,7 @@ if __name__ == "__main__":
     emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "swing")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
     Q_ref = np.zeros((biorbd_model.nbQ(), n_shooting_points + 1))
-    Q_ref [[0, 1, 5, 8, 9, 11],:] = q_ref
+    Q_ref[[0, 1, 5, 8, 9, 11], :] = q_ref
 
     # Get initial isometric forces
     fiso_init = []
@@ -141,7 +144,9 @@ if __name__ == "__main__":
             fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
 
     # Track these data
-    ocp = prepare_ocp(biorbd_model, final_time, n_shooting_points, markers_ref, Q_ref, excitation_ref, fiso_init, nb_threads=4,)
+    ocp = prepare_ocp(
+        biorbd_model, final_time, n_shooting_points, markers_ref, Q_ref, excitation_ref, fiso_init, nb_threads=4,
+    )
     # --- Add plot kalman --- #
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
 
@@ -171,12 +176,12 @@ if __name__ == "__main__":
     params = params_sol[ocp.nlp[0]["p"].name()]
 
     # --- Save Results --- #
-    np.save('./RES/equincocont03/excitations', excitations)
-    np.save('./RES/equincocont03/activations', activations)
-    np.save('./RES/equincocont03/tau', tau)
-    np.save('./RES/equincocont03/q_dot', q_dot)
-    np.save('./RES/equincocont03/q', q)
-    np.save('./RES/equincocont03/params', params)
+    np.save("./RES/equincocont03/excitations", excitations)
+    np.save("./RES/equincocont03/activations", activations)
+    np.save("./RES/equincocont03/tau", tau)
+    np.save("./RES/equincocont03/q_dot", q_dot)
+    np.save("./RES/equincocont03/q", q)
+    np.save("./RES/equincocont03/params", params)
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
@@ -186,13 +191,13 @@ for s in range(biorbd_model.nbSegment()):
     seg_name = biorbd_model.segment(s).name().to_string()
     for d in range(biorbd_model.segment(s).nbDof()):
         dof_name = biorbd_model.segment(s).nameDof(d).to_string()
-        q_name.append(seg_name + '_' + dof_name)
+        q_name.append(seg_name + "_" + dof_name)
 
 figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(biorbd_model.nbQ()):
-    axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
-    axes[i].plot(t, Q_ref[i, :], color="k", linestyle='--', linewidth=0.7)
+    axes[i].plot(t, q[i, :], color="tab:red", linestyle="-", linewidth=1)
+    axes[i].plot(t, Q_ref[i, :], color="k", linestyle="--", linewidth=0.7)
     axes[i].set_title(q_name[i])
     # axes[i].set_ylim([np.max(q[i, :]), np.min(q[i, :])])
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)

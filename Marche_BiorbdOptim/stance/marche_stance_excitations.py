@@ -32,12 +32,16 @@ def get_muscles_first_node(ocp, nlp, t, x, u, p):
     val = activation - excitation
     return val
 
+
 def modify_isometric_force(biorbd_model, value, fiso_init):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init[n_muscle])
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(
+                value[n_muscle] * fiso_init[n_muscle]
+            )
             n_muscle += 1
+
 
 def prepare_ocp(
     biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, q_ref, grf_ref, fiso_init, nb_threads,
@@ -97,7 +101,9 @@ def prepare_ocp(
 
     # Define the parameter to optimize
     # Give the parameter some min and max bounds
-    bound_length = Bounds(min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT)
+    bound_length = Bounds(
+        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT
+    )
     parameters = {
         "name": "force_isometric",  # The name of the parameter
         "function": modify_isometric_force,  # The function that modifies the biorbd model
@@ -161,7 +167,7 @@ if __name__ == "__main__":
         excitation_ref=excitation_ref,
         q_ref=q_ref,
         grf_ref=grf_ref,
-        fiso_init = fiso_init,
+        fiso_init=fiso_init,
         nb_threads=4,
     )
     ocp.add_plot("q", lambda x, u: q_ref, PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
@@ -193,12 +199,12 @@ if __name__ == "__main__":
     params = params_sol[ocp.nlp[0]["p"].name()]
 
     # --- Save Results --- #
-    np.save('./RES/equincocont03/excitations', excitations)
-    np.save('./RES/equincocont03/activations', activations)
-    np.save('./RES/equincocont03/tau', tau)
-    np.save('./RES/equincocont03/q_dot', q_dot)
-    np.save('./RES/equincocont03/q', q)
-    np.save('./RES/equincocont03/params', params)
+    np.save("./RES/equincocont03/excitations", excitations)
+    np.save("./RES/equincocont03/activations", activations)
+    np.save("./RES/equincocont03/tau", tau)
+    np.save("./RES/equincocont03/q_dot", q_dot)
+    np.save("./RES/equincocont03/q", q)
+    np.save("./RES/equincocont03/params", params)
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()

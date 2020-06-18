@@ -24,6 +24,7 @@ def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
     val = force - data_to_track[t[-1], :]
     return dot(val, val)
 
+
 def modify_isometric_force(biorbd_model, value):
     n_muscle = 0
     for nGrp in range(biorbd_model.nbMuscleGroups()):
@@ -31,6 +32,7 @@ def modify_isometric_force(biorbd_model, value):
             fiso_init = biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx()
             biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(value[n_muscle] * fiso_init)
             n_muscle += 1
+
 
 def generate_activation(biorbd_model, final_time, nb_shooting, emg_ref):
     # Aliases
@@ -101,8 +103,13 @@ def prepare_ocp(
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": activation_ref[0].T},
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref[0]},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
-            {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track": grf_ref.T,
-             "weight": 0.00005, "instant": Instant.ALL}
+            {
+                "type": Objective.Mayer.CUSTOM,
+                "function": get_last_contact_forces,
+                "data_to_track": grf_ref.T,
+                "weight": 0.00005,
+                "instant": Instant.ALL,
+            },
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
@@ -149,7 +156,7 @@ def prepare_ocp(
     init_u = []
     for i in range(nb_phases):
         init_u_s = np.zeros((nb_q + nb_mus, nb_shooting[i]))
-        if (i == 0) :
+        if i == 0:
             init_u_s[1, i] = -500
         init_u_s[-nb_mus:, :] = activation_ref[i][:, :-1]
         init_u.append(init_u_s)
@@ -160,14 +167,18 @@ def prepare_ocp(
     ]
 
     # Define the parameter to optimize
-    bound_length = Bounds(min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT)
-    parameter = ({
-        "name": "force_isometric",  # The name of the parameter
-        "function": modify_isometric_force,  # The function that modifies the biorbd model
-        "bounds": bound_length,  # The bounds
-        "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
-        "size": nb_mus,  # The number of elements this particular parameter vector has
-    }, )
+    bound_length = Bounds(
+        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT
+    )
+    parameter = (
+        {
+            "name": "force_isometric",  # The name of the parameter
+            "function": modify_isometric_force,  # The function that modifies the biorbd model
+            "bounds": bound_length,  # The bounds
+            "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
+            "size": nb_mus,  # The number of elements this particular parameter vector has
+        },
+    )
     # ------------- #
 
     return OptimalControlProgram(
@@ -226,7 +237,14 @@ if __name__ == "__main__":
     excitation_ref = []
     for i in range(len(phase_time)):
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
-        activation_ref.append(generate_activation(biorbd_model[i], final_time=phase_time[i], nb_shooting=number_shooting_points[i], emg_ref=excitation_ref[i]))
+        activation_ref.append(
+            generate_activation(
+                biorbd_model[i],
+                final_time=phase_time[i],
+                nb_shooting=number_shooting_points[i],
+                emg_ref=excitation_ref[i],
+            )
+        )
 
     biorbd_model = (
         biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Forefoot.bioMod"),

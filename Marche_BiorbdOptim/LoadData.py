@@ -3,6 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import scipy.io as sio
 
+
 class Data_to_track:
     def __init__(self, name_subject, multiple_contact=False):
         PROJET = "/home/leasanchez/programmation/Simu_Marche_Casadi/"
@@ -91,13 +92,13 @@ class Data_to_track:
         T_Forefoot = 1 / freq * ((self.idx_stop_stance - self.idx_start) - int(idx_1_contact) + 1)
         T_stance = [T_Heel, T_2_contact, T_Forefoot]
 
-       # # plot
-       #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform], '+')
-       #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2], '+')
-       #  plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
-       #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
-       #  plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
-       #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
+        # # plot
+        #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform], '+')
+        #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2], '+')
+        #  plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
+        #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
+        #  plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
+        #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
 
         return T_stance
 
@@ -259,10 +260,10 @@ class Data_to_track:
     def load_q_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         Q = np.loadtxt(self.Q_KalmanFilter_file)
         nb_q = biorbd_model.nbQ()
-        nb_frame = int(len(Q)/nb_q)
+        nb_frame = int(len(Q) / nb_q)
         q_init = np.zeros((nb_q, nb_frame))
         for n in range(nb_frame):
-            q_init[:, n] = Q[n*nb_q: n*nb_q + nb_q]
+            q_init[:, n] = Q[n * nb_q : n * nb_q + nb_q]
 
         # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
         if GaitPhase == "stance":
@@ -291,10 +292,10 @@ class Data_to_track:
     def load_qdot_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         Q = np.loadtxt(self.Qdot_KalmanFilter_file)
         nb_q = biorbd_model.nbQ()
-        nb_frame = int(len(Q)/nb_q)
+        nb_frame = int(len(Q) / nb_q)
         qdot_init = np.zeros((nb_q, nb_frame))
         for n in range(nb_frame):
-            qdot_init[:, n] = Q[n*nb_q: n*nb_q + nb_q]
+            qdot_init[:, n] = Q[n * nb_q : n * nb_q + nb_q]
 
         # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
         if GaitPhase == "stance":
