@@ -30,10 +30,6 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     F_Heel = MX.sym("F_Heel", 3 * (nb_shooting + 1), 1)
     F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
     F_Meta5 = MX.sym("F_Meta5", 3 * (nb_shooting + 1), 1)
-    # Moments
-    M_Heel = MX.sym("M_Heel", 3 * (nb_shooting + 1), 1)
-    M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta5", 3 * (nb_shooting + 1), 1)
 
     objective = 0
     lbg = []
@@ -44,9 +40,6 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         fh = F_Heel[3 * i: 3 * (i + 1)]
         fm1 = F_Meta1[3 * i: 3 * (i + 1)]
         fm5 = F_Meta5[3 * i: 3 * (i + 1)]
-        mh = M_Heel[3 * i: 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i: 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i: 3 * (i + 1)]
 
         # --- Torseur equilibre ---
         # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
@@ -54,20 +47,14 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         jf = sf - grf_ref[:, i]
         objective += 100 * mtimes(jf.T, jf)
         # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5) + mh + dot(coord[2], fh)
+        sm = dot(coord[0], fm1) + dot(coord[1], fm5) + dot(coord[2], fh)
         jm = sm - M_ref[:, i]
         objective += 100 * mtimes(jm.T, jm)
 
         # --- Dispatch on different contact points ---
         # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jf2 = p_heel[i] * fh[2] - ((1 - p_heel[i]) * (p * fm1[2] + (1 - p) * fm5[2]))
-        jf3 = p_heel[i] * fh[0] - ((1 - p_heel[i]) * (1 * fm1[0] + 0 * fm5[0]))
-        jf32 = fm5[0]
-        jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
-        objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - ((1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5))))
-        objective += mtimes(jm2.T, jm2)
+        jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
+        objective += mtimes(jf2.T, jf2)
 
         # --- Forces constraints ---
         # positive vertical force
@@ -83,11 +70,11 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         lbg += [0] * 2
         ubg += [1000] * 2
 
-    w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
+    w = [F_Heel, F_Meta1, F_Meta5]
     nlp = {'x': vertcat(*w), 'f': objective, 'g': vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)),
+    res = solver(x0=np.zeros(9 * (number_shooting_points[1] + 1)),
                  lbx=-1000,
                  ubx=1000,
                  lbg=lbg,
@@ -142,7 +129,7 @@ def prepare_ocp(
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11],
             #  "data_to_track": q_ref[0].T},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -150,14 +137,14 @@ def prepare_ocp(
              "data_to_track": excitation_ref[1][:, :-1].T, },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref[1].T},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
-            {
-                "type": Objective.Mayer.CUSTOM,
-                "weight": 0.00005,
-                "function": get_last_contact_forces,
-                "data_to_track": grf_ref[1].T,
-                "instant": Instant.ALL,
-            },
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0000005, "data_to_track": grf_ref[1].T},
+            # {
+            #     "type": Objective.Mayer.CUSTOM,
+            #     "weight": 0.0000005,
+            #     "function": get_last_contact_forces,
+            #     "data_to_track": grf_ref[1].T,
+            #     "instant": Instant.ALL,
+            # },
         ),
     )
 
@@ -260,12 +247,10 @@ if __name__ == "__main__":
     Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
     grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
-    grf_dispatch_ref = grf_dispatch_ref[[0, 1, 2, 3, 5, 8], :]
-    grf_dispatch_ref[1, :] = grf_ref[1][1, :]
 
     plt.figure()
     plt.plot(grf_ref[1][2, :].T, 'k--')
-    plt.plot(grf_dispatch_ref[[1, 3, 4], :].T)
+    plt.plot(grf_dispatch_ref[[2, 3, 8], :].T)
     plt.legend(('platform','heel', 'Meta1', 'Meta5'))
     plt.show()
 
@@ -292,7 +277,6 @@ if __name__ == "__main__":
         fiso_init=fiso_init,
     )
 
-    # ocp.add_plot("q", lambda x, u: q_ref[1], PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
     # --- Solve the program --- #
     sol = ocp.solve(
         solver="ipopt",

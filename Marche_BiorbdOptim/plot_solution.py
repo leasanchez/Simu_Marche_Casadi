@@ -24,7 +24,6 @@ biorbd_model = (
     biorbd.Model(str(PROJECT_FOLDER) + "/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
     biorbd.Model(str(PROJECT_FOLDER) + "/ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_0contact_deGroote_3d.bioMod"),
 )
-model_q = biorbd.Model(str(PROJECT_FOLDER) + "/ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
 
 # Problem parameters
 number_shooting_points = [25, 25]
@@ -38,7 +37,6 @@ nb_tau = biorbd_model[0].nbGeneralizedTorque()
 # Generate data from file
 markers_ref = []
 q_ref = []
-Q_ref = []
 emg_ref = []
 Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
 [T, T_stance, T_swing] = Data_to_track.GetTime()
@@ -46,16 +44,13 @@ phase_time = [T_stance, T_swing]
 grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[0])
 markers_ref.append(Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
 markers_ref.append(Data_to_track.load_data_markers(biorbd_model[1], phase_time[1], number_shooting_points[1], "swing"))
-q_ref.append(Data_to_track.load_data_q(model_q, T_stance, number_shooting_points[0], "stance"))
-q_ref.append(Data_to_track.load_data_q(model_q, phase_time[1], number_shooting_points[1], "swing"))
+q_ref.append(Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
+q_ref.append(Data_to_track.load_q_kalman(biorbd_model[0], phase_time[1], number_shooting_points[1], "swing"))
 emg_ref.append(Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
 emg_ref.append(Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing"))
 excitation_ref = []
 for i in range(len(phase_time)):
     excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
-    Q_ref_init = np.zeros((nb_q, number_shooting_points[i] + 1))
-    Q_ref_init[[0, 1, 5, 8, 9, 11], :] = q_ref[i]
-    Q_ref.append(Q_ref_init)
 
 # --- Load the optimal control program and the solution --- #
 file = "./multiphase/RES/equincocont01/"
@@ -101,12 +96,13 @@ for s in range(biorbd_model[0].nbSegment()):
 figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
-    Q = np.concatenate((Q_ref[0][i, :], Q_ref[1][i, 1:]))
+    Q = np.concatenate((q_ref[0][i, :], q_ref[1][i, 1:]))
     axes[i].plot(t, q[i, :], color="tab:red", linestyle='-', linewidth=1)
     axes[i].plot(t, Q, color="k", linestyle='--', linewidth=0.7)
     axes[i].set_title(q_name[i])
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
     axes[i].plot([phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1)
+plt.show()
 
 # --- Get markers position from q_sol and q_ref --- #
 markers_sol = np.ndarray((3, nb_marker, ocp.nlp[0]["ns"] + 1))

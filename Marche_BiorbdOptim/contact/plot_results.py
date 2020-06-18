@@ -248,8 +248,8 @@ params = np.load(path_file + "params.npy")
 t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)))
 # t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
-# b = BiorbdViz(loaded_model=biorbd_model[0])
-# b.load_movement(q)
+b = BiorbdViz(loaded_model=biorbd_model[1])
+b.load_movement(q)
 
 
 # --- Muscle activation and excitation --- #

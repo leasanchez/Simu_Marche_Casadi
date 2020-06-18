@@ -80,16 +80,16 @@ def prepare_ocp(
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[0].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
-            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
+            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[0].T},
             {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[:, :-1].T},
             {"type": Objective.Mayer.CUSTOM, "function": get_last_contact_forces, "data_to_track":grf_ref.T, "weight": 0.000005, "instant": Instant.ALL}
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx":range(6, nb_q)},
             {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track":excitation_ref[1].T},
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
-            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
+            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": range(nb_q), "data_to_track": q_ref[1].T},
         ),
     )
 
@@ -210,33 +210,27 @@ if __name__ == "__main__":
     number_shooting_points = [25, 25]
 
     # Generate data from file
+    markers_ref = []
+    q_ref = []
+    qdot_ref = []
+    emg_ref = []
+    excitation_ref = [] # init
+
     Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
-    phase_time = [T_stance, T_swing]  # get time for each phase
+    phase_time = [T_stance, T_swing]
 
-    grf_ref = Data_to_track.load_data_GRF(
-        biorbd_model[0], T_stance, number_shooting_points[0]
-    )  # get ground reaction forces
-    markers_ref = []
+    grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[0])
     markers_ref.append(Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
-    markers_ref.append(
-        Data_to_track.load_data_markers(biorbd_model[1], phase_time[1], number_shooting_points[1], "swing")
-    )  # get markers position
-
-    q_ref = []
-    q_ref.append(Data_to_track.load_data_q(model_q, T_stance, number_shooting_points[0], "stance"))
-    q_ref.append(
-        Data_to_track.load_data_q(model_q, phase_time[1], number_shooting_points[1], "swing")
-    )  # get q from kalman
-    q_ig, qdot_ig, activations_ig, tau_ig, excitations_ig = get_initial_value()
-
-    emg_ref = []
+    markers_ref.append(Data_to_track.load_data_markers(biorbd_model[1], phase_time[1], number_shooting_points[1], "swing"))
+    q_ref.append(Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
+    q_ref.append(Data_to_track.load_q_kalman(biorbd_model[0], phase_time[1], number_shooting_points[1], "swing"))
+    qdot_ref.append(Data_to_track.load_qdot_kalman(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
+    qdot_ref.append(Data_to_track.load_qdot_kalman(biorbd_model[0], phase_time[1], number_shooting_points[1], "swing"))
     emg_ref.append(Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points[0], "stance"))
     emg_ref.append(
         Data_to_track.load_data_emg(biorbd_model[-1], phase_time[-1], number_shooting_points[-1], "swing")
-    )  # get emg
-
-    excitation_ref = []
+    )
     for i in range(len(phase_time)):
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
@@ -259,8 +253,8 @@ if __name__ == "__main__":
         markers_ref=markers_ref,
         excitation_ref=excitation_ref,
         grf_ref=grf_ref,
-        q_ref=q_ig,
-        qdot_ref=qdot_ig,
+        q_ref=q_ref,
+        qdot_ref=qdot_ref,
         fiso_init=fiso_init,
     )
 

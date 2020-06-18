@@ -1,8 +1,28 @@
 import numpy as np
-from casadi import vertcat, MX, nlpsol, mtimes, dot
+from casadi import vertcat, MX, nlpsol, mtimes, dot, Function
 from matplotlib import pyplot as plt
 import biorbd
 from Marche_BiorbdOptim.LoadData import Data_to_track
+
+def get_forces(biorbd_model, states, controls):
+    nb_q = biorbd_model.nbQ()
+    nb_qdot = biorbd_model.nbQdot()
+    nb_tau = biorbd_model.nbGeneralizedTorque()
+    nb_mus = biorbd_model.nbMuscleTotal()
+
+    muscles_states = biorbd.VecBiorbdMuscleState(nb_mus)
+    muscles_excitation = controls[nb_tau :]
+    muscles_activations = states[nb_q + nb_qdot :]
+
+    for k in range(nb_mus):
+        muscles_states[k].setExcitation(muscles_excitation[k])
+        muscles_states[k].setActivation(muscles_activations[k])
+
+    muscles_tau = biorbd_model.muscularJointTorque(muscles_states, states[:nb_q], states[nb_q: nb_q + nb_qdot]).to_mx()
+    tau = muscles_tau + controls[:nb_tau]
+    cs = biorbd_model.getConstraints()
+    biorbd.Model.ForwardDynamicsConstraintsDirect(biorbd_model, states[:nb_q], states[nb_q: nb_q + nb_qdot], tau, cs)
+    return cs.getForce().to_mx()
 
 biorbd_model = (
     biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_Heel.bioMod"),
@@ -13,12 +33,18 @@ biorbd_model = (
 number_shooting_points = [5, 10, 15]
 
 # Generate data from file
-Data_to_track = Data_to_track("equincocont01", multiple_contact=True)
+Data_to_track = Data_to_track(name_subject="normal01", multiple_contact=True)
 [T, T_stance, T_swing] = Data_to_track.GetTime()
 phase_time = T_stance
-grf_ref = Data_to_track.load_data_GRF(biorbd_model, T_stance, number_shooting_points)
-M_ref = Data_to_track.load_data_Moment(biorbd_model, T_stance, number_shooting_points)
+grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points)
+M_ref = Data_to_track.load_data_Moment(biorbd_model[0], T_stance, number_shooting_points)
 markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
+q_ref = Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
+qdot_ref = Data_to_track.load_qdot_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
+emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
+excitation_ref = []
+for i in range(len(phase_time)):
+    excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
 # foot markers position
 plt.figure('foot position')
@@ -35,8 +61,39 @@ Heel = np.array([np.mean(markers_ref[0][0, 19, :] + 0.04), np.mean(markers_ref[0
 Meta1 = np.array([np.mean(markers_ref[0][0, 21, :]), np.mean(markers_ref[0][1, 21, :]), 0])
 Meta5 = np.array([np.mean(markers_ref[0][0, 24, :]), np.mean(markers_ref[0][1, 24, :]), 0])
 
-# def get_contact_forces_2_contacts(grf_ref, M_ref, contact_pos, p):
-#     return grf_dispatch_ref
+# Problem parameters
+nb_q = biorbd_model[0].nbQ()
+nb_qdot = biorbd_model[0].nbQdot()
+nb_tau = biorbd_model[0].nbGeneralizedTorque()
+nb_mus = biorbd_model[0].nbMuscleTotal()
+nb_contact = biorbd_model[0].nbContacts()
+
+# --- compute initial contact forces ---
+symbolic_states = MX.sym("x", nb_q + nb_qdot + nb_mus, 1)
+symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
+computeGRF = Function(
+            "computeGRF",
+            [symbolic_states, symbolic_controls],
+            [get_forces(biorbd_model[1], symbolic_states, symbolic_controls)],
+            ["x", "u"],
+            ["GRF"],
+        ).expand()
+
+cf = np.zeros((nb_contact*3, number_shooting_points[1] + 1))
+for n in range(number_shooting_points[1] + 1):
+    state = np.concatenate((q_ref[1][:, n], qdot_ref[1][:, n], excitation_ref[1][:, n]))
+    control = np.concatenate((np.zeros(nb_tau), excitation_ref[1][:, n]))
+    cf[:, n] = np.array(computeGRF(state, control)).squeeze()
+
+label = ["x", "y", "z"]
+for i in range(3):
+    plt.figure("contact forces" + label[i])
+    plt.plot(grf_ref[1][i, :], 'k')
+    plt.plot(cf[i, :], 'g')
+    plt.plot(cf[i + 3, :], 'r')
+    plt.plot(cf[i + 6, :], 'b')
+    plt.legend(('plateforme', 'heel', 'Meta 1', 'Meta 5'))
+plt.show()
 
 # --- 2 contacts forefoot ---
 p = 0.5 # repartition entre les 2 points
