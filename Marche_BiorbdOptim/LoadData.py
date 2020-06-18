@@ -6,9 +6,10 @@ import scipy.io as sio
 
 class Data_to_track:
     def __init__(self, name_subject, multiple_contact=False):
+        PROJET = "/home/leasanchez/programmation/Simu_Marche_Casadi/"
         self.name_subject = name_subject
-        self.file = "../../DonneesMouvement/" + name_subject + "_out.c3d"
-        self.kalman_file = "../../DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
+        self.file = PROJET + "DonneesMouvement/" + name_subject + "_out.c3d"
+        self.kalman_file = PROJET + "DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
         self.idx_start, self.idx_stop_stance, self.idx_stop = self.Get_Event()
         self.idx_2_contacts = 0
         self.idx_heel_rise = 0
