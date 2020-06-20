@@ -37,26 +37,17 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         # Aliases
         fm1 = F_Meta1[3 * i : 3 * (i + 1)]
         fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
 
         # sum forces = 0 --> Fp1 + Fp2 = Ftrack
         sf = fm1 + fm5
         jf = sf - grf_ref[:, i]
-        objective += 100 * mtimes(jf.T, jf)
-
-        # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5)
-        jm = sm - M_ref[:, i]
-        objective += 100 * mtimes(jm.T, jm)
+        constraint += (jf[0], jf[1], jf[2])
+        lbg += [0] * 3
+        ubg += [0] * 3
 
         # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
         jf2 = p * fm1 - (1 - p) * fm5
         objective += mtimes(jf2.T, jf2)
-
-        # use of p to dispatch moments
-        jm2 = p * (mm1 + dot(coord[0], fm1)) - (1 - p) * (mm5 + dot(coord[1], fm5))
-        objective += mtimes(jm2.T, jm2)
 
         # positive vertical force
         constraint += (fm1[2], fm5[2])
@@ -72,14 +63,14 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         lbg += [0] * 2
         ubg += [1000] * 2
 
-    w = [F_Meta1, F_Meta5, M_Meta1, M_Meta5]
+    w = [F_Meta1, F_Meta5]
     nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
+    res = solver(x0=np.zeros(6 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
 
     FM1 = res["x"][: 3 * (nb_shooting + 1)]
-    FM5 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
+    FM5 = res["x"][3 * (nb_shooting + 1) :]
 
     grf_dispatch_ref = np.zeros((3 * 2, nb_shooting + 1))
     for i in range(3):
@@ -134,9 +125,9 @@ def prepare_ocp(
     objective_functions = (
         {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
         {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[:, :-1].T,},
-        {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
-        # {"type": Objective.Lagrange.TRACK_STATE, "weight": 0.01, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref.T},
-        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref.T},
+        # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 100, "data_to_track": markers_ref},
+        {"type": Objective.Lagrange.TRACK_STATE, "weight": 10, "states_idx": range(nb_q), "data_to_track": q_ref.T},
+        {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref.T},
     )
 
     # Dynamics
@@ -222,7 +213,7 @@ if __name__ == "__main__":
     )  # get ground reaction forces
     M_ref = Data_to_track.load_data_Moment(biorbd_model[0], T_stance, number_shooting_points)
     markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
-    q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points, "stance")
+    q_ref = Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
     emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
     excitation_ref = []
     for i in range(len(phase_time)):
@@ -231,16 +222,13 @@ if __name__ == "__main__":
     Meta1 = np.array([np.mean(markers_ref[2][0, 21, :]), np.mean(markers_ref[2][1, 21, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[2][0, 24, :]), np.mean(markers_ref[2][1, 24, :]), 0])
     grf_dispatch_ref = get_dispatch_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
-    grf_dispatch_ref = grf_dispatch_ref[[2, 5], :]
+    grf_dispatch_ref = grf_dispatch_ref[[0, 2, 3, 5], :-1]
 
-    plt.figure()
-    plt.plot(grf_ref[2][2, :].T, "k--")
-    plt.plot(grf_dispatch_ref.T)
-    plt.legend(("platform", "Meta1", "Meta5"))
-    plt.show()
-
-    Q_ref = np.zeros((biorbd_model[2].nbQ(), number_shooting_points[2] + 1))
-    Q_ref[[0, 1, 5, 8, 9, 11], :] = q_ref[2]
+    # plt.figure()
+    # plt.plot(grf_ref[2][2, :].T, "k--")
+    # plt.plot(grf_dispatch_ref.T)
+    # plt.legend(("platform", "Meta1", "Meta5"))
+    # plt.show()
 
     # Get initial isometric forces
     fiso_init = []
@@ -256,7 +244,7 @@ if __name__ == "__main__":
         markers_ref=markers_ref[2],
         excitation_ref=excitation_ref[2],
         grf_ref=grf_dispatch_ref,
-        q_ref=Q_ref,
+        q_ref=q_ref[2],
         nb_threads=4,
         fiso_init=fiso_init,
     )
@@ -284,6 +272,15 @@ if __name__ == "__main__":
         controls["muscles"],
     )
     params = params[ocp.nlp[0]["p"].name()]
+
+    # --- Save Results --- #
+    np.save("./RES/forefoot/excitations", excitations)
+    np.save("./RES/forefoot/activations", activations)
+    np.save("./RES/forefoot/tau", tau)
+    np.save("./RES/forefoot/q_dot", q_dot)
+    np.save("./RES/forefoot/q", q)
+    np.save("./RES/forefoot/params", params)
+
     x = np.concatenate((q, q_dot, activations))
     u = np.concatenate((tau, excitations))
     contact_forces = np.array(ocp.nlp[0]["contact_forces_func"](x[:, :-1], u[:, :-1], params))
@@ -318,10 +315,10 @@ if __name__ == "__main__":
         param_value = str(np.round(params[i], 2))
 
         if i > 2:
-            plot_control(axes[i], t, Q_ref[i, :] * 180 / np.pi, color="k--")
+            plot_control(axes[i], t, q_ref[2][i, :] * 180 / np.pi, color="k--")
             axes[i].plot(t, q[i, :] * 180 / np.pi, "r.-", linewidth=0.6)
         else:
-            plot_control(axes[i], t, Q_ref[i, :], color="k--")
+            plot_control(axes[i], t, q_ref[2][i, :], color="k--")
             axes[i].plot(t, q[i, :], "r.-", linewidth=0.6)  # without parameters
 
         axes[i].grid(color="k", linestyle="--", linewidth=0.5)
