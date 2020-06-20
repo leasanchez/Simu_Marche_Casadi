@@ -87,7 +87,7 @@ def prepare_ocp(
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 1,
+                "weight": 100,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[0].T,
             },
@@ -106,7 +106,7 @@ def prepare_ocp(
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 1,
+                "weight": 100,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[1].T,
             },
