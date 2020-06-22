@@ -83,30 +83,30 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[0].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[0].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 100,
+                "weight": 50,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[0].T,
             },
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[:, :-1].T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[:, :-1].T},
             {
                 "type": Objective.Mayer.CUSTOM,
                 "function": get_last_contact_forces,
                 "data_to_track": grf_ref.T,
-                "weight": 0.000005,
+                "weight": 0.00005,
                 "instant": Instant.ALL,
             },
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[1].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[1].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 100,
+                "weight": 50,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[1].T,
             },
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     emg_ref = []
     excitation_ref = []  # init
 
-    Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
+    Data_to_track = Data_to_track("equincocont03", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     phase_time = [T_stance, T_swing]
 

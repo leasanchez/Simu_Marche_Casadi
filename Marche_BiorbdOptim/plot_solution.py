@@ -111,6 +111,40 @@ axes[-3].remove()
 plt.show()
 
 # --- Generalized positions --- #
+# init
+Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
+Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
+Q_ref[:, number_shooting_points[0] :] = q_ref[1]
+
+# compute RMSE
+diff_q = np.sqrt((q - Q_ref) * (q - Q_ref))
+mean_diff_q = np.zeros(nb_q)
+mean_diff_q_deg = np.zeros(nb_q)
+for i in range(nb_q):
+    mean_diff_q[i] = np.mean(diff_q[i, :])
+    if (i>2):
+        mean_diff_q_deg[i] = np.mean(diff_q[i, :])*180/np.pi
+    else:
+        mean_diff_q_deg[i] = np.mean(diff_q[i, :])
+
+# compute R2
+mean_q = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
+for i in range(nb_q):
+    mean_q[i, :] = np.repeat(np.mean(q[i, :]), np.sum(number_shooting_points) + 1)
+diff_q_square = (q - Q_ref) * (q - Q_ref)
+diff_q_mean = (q - mean_q) * (q - mean_q)
+
+R2_q = np.zeros(nb_q)
+for i in range(nb_q):
+    R2_q[i] = 1 - (np.sum(diff_q_square[i, :])/np.sum(diff_q_mean[i, :]))
+
+# compute pic error
+max_diff = np.zeros(nb_q)
+min_diff = np.zeros(nb_q)
+for i in range(nb_q):
+    max_diff[i] = np.sqrt((np.max(q[i, :]) - np.max(Q_ref[i, :])) * (np.max(q[i, :]) - np.max(Q_ref[i, :])))
+    min_diff[i] = np.sqrt((np.min(q[i, :]) - np.min(Q_ref[i, :])) * (np.min(q[i, :]) - np.min(Q_ref[i, :])))
+
 q_name = []
 for s in range(biorbd_model[0].nbSegment()):
     seg_name = biorbd_model[0].segment(s).name().to_string()
@@ -128,12 +162,16 @@ for i in range(nb_q):
         axes[i].plot(
             [phase_time[0], phase_time[0]], [np.min(q[i, :]*180/np.pi), np.max(q[i, :]*180/np.pi)], color="k", linestyle="--", linewidth=1
         )
+        axes[i].text(0, np.min(Q*180/np.pi), f"R2 : {np.round(R2_q[i], 3)}")
+        axes[i].set_ylabel('angle (degre)')
     else:
         axes[i].plot(t, q[i, :], color="tab:red", linestyle="-", linewidth=1)
         axes[i].plot(t, Q, color="k", linestyle="--", linewidth=1)
         axes[i].plot(
             [phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1
         )
+        axes[i].text(0, np.min(Q), f"R2 : {np.round(R2_q[i], 3)}")
+        axes[i].set_ylabel('position (m)')
 
     axes[i].set_title(q_name[i])
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
@@ -144,9 +182,6 @@ plt.show()
 # init
 markers_sol = np.ndarray((3, nb_markers, np.sum(number_shooting_points) + 1))
 markers_from_q_ref = np.ndarray((3, nb_markers, np.sum(number_shooting_points) + 1))
-Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
-Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
-Q_ref[:, number_shooting_points[0] :] = q_ref[1]
 M_ref = np.zeros((3, nb_markers, np.sum(number_shooting_points) + 1))
 M_ref[:, :, :number_shooting_points[0] + 1] = markers_ref[0]
 M_ref[:, :, number_shooting_points[0] :] = markers_ref[1]
@@ -173,6 +208,7 @@ for i in range(np.sum(number_shooting_points) + 1):
 
 diff_track = np.sqrt((markers_sol - M_ref) * (markers_sol - M_ref)) * 1e3
 diff_sol = np.sqrt((markers_sol - markers_from_q_ref) * (markers_sol - markers_from_q_ref)) * 1e3
+
 hist_diff_track = np.zeros((3, nb_markers))
 hist_diff_sol = np.zeros((3, nb_markers))
 
@@ -195,6 +231,12 @@ mean_diff_sol = [
     sum(hist_diff_sol[1, :]) / nb_markers,
     sum(hist_diff_sol[2, :]) / nb_markers,
 ]
+
+mean_diff_markers_track = np.zeros(nb_markers)
+mean_diff_markers_sol = np.zeros(nb_markers)
+for i in range(nb_markers):
+    mean_diff_markers_track[i] = np.sum(hist_diff_track[:, i])/3
+    mean_diff_markers_sol[i] = np.sum(hist_diff_sol[:, i])/3
 
 # --- Plot markers --- #
 label_markers = []
@@ -238,7 +280,7 @@ for i in range(3):
 
     axes[i].plot(t, diff_track[i, :, :].T)
     axes[i].set_xlabel("time (s)")
-    axes[i].set_ylabel("Mean differences in " + title_markers[i] + " (mm)")
+    axes[i].set_ylabel("Differences in " + title_markers[i] + " (mm)")
     axes[i].plot(
         [phase_time[0], phase_time[0]], [0, 120], color="k", linestyle="--", linewidth=1
     )
@@ -248,7 +290,7 @@ for i in range(3):
 
     axes[i + 3].plot(t, diff_sol[i, :, :].T)
     axes[i + 3].set_xlabel("time (s)")
-    axes[i + 3].set_ylabel("Mean differences in " + title_markers[i] + " (mm)")
+    axes[i + 3].set_ylabel("Differences in " + title_markers[i] + " (mm)")
     axes[i + 3].plot(
         [phase_time[0], phase_time[0]], [0, 120], color="k", linestyle="--", linewidth=1
     )
@@ -256,6 +298,27 @@ for i in range(3):
     axes[i + 3].set_ylim([0, 120])
     axes[i + 3].set_xlim([0, t[-1]])
 plt.legend(label_markers, bbox_to_anchor=(1,2), loc='best')
+
+figure, axes = plt.subplots(1, 2, sharey=True)
+axes = axes.flatten()
+axes[0].bar(
+    np.linspace(0, nb_markers, nb_markers), mean_diff_markers_track, width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
+)
+axes[0].set_xticks(np.arange(nb_markers))
+axes[0].set_xticklabels(label_markers, rotation=90)
+axes[0].set_title('Mean error between simulated marker position and position tracked')
+axes[0].plot([0, nb_markers], [np.mean(mean_diff_markers_track), np.mean(mean_diff_markers_track)], "--r")
+axes[0].set_ylim([0, 60])
+axes[0].set_ylabel('Mean difference (mm)')
+
+axes[1].bar(
+    np.linspace(0, nb_markers, nb_markers), mean_diff_markers_sol, width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
+)
+axes[1].set_xticks(np.arange(nb_markers))
+axes[1].set_xticklabels(label_markers, rotation=90, )
+axes[1].set_title('Mean error between simulated marker position and position from q_ref')
+axes[1].plot([0, nb_markers], [np.mean(mean_diff_markers_sol), np.mean(mean_diff_markers_sol)], "--r")
+axes[1].set_ylim([0, 60])
 plt.show()
 
 # --- Compute and plot ground reaction forces --- #
@@ -288,4 +351,6 @@ for i in range(3):
     axes[i].plot(
         [phase_time[0], phase_time[0]], [np.min(contact_forces[i, :]), np.max(contact_forces[i, :])], color="k", linestyle="--", linewidth=1
     )
+axes[0].set_ylabel('Contact forces (N)')
+axes[1].set_xlabel('time (s)')
 plt.show()
