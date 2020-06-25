@@ -78,7 +78,7 @@ for i in range(len(phase_time)):
     excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
 # --- Load the optimal control program and the solution --- #
-file = "./multiphase/RES/equincocont01/"
+file = "./multiphase/RES/equincocont03/"
 params = np.load(file + "params.npy")
 q = np.load(file + "q.npy")
 q_dot = np.load(file + "q_dot.npy")
@@ -136,7 +136,11 @@ diff_q_mean = (q - mean_q) * (q - mean_q)
 
 R2_q = np.zeros(nb_q)
 for i in range(nb_q):
-    R2_q[i] = 1 - (np.sum(diff_q_square[i, :])/np.sum(diff_q_mean[i, :]))
+    s = (np.sum(diff_q_square[i, :])/np.sum(diff_q_mean[i, :]))
+    if (s>1):
+        R2_q[i] = s - 1
+    else:
+        R2_q[i] = 1 - s
 
 # compute pic error
 max_diff = np.zeros(nb_q)

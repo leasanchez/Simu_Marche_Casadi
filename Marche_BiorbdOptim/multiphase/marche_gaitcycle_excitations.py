@@ -83,11 +83,11 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[0].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[0].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 50,
+                "weight": 100,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[0].T,
             },
@@ -102,11 +102,11 @@ def prepare_ocp(
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.1, "data_to_track": excitation_ref[1].T},
+            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[1].T},
             # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[1]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
-                "weight": 50,
+                "weight": 100,
                 "states_idx": range(nb_q),
                 "data_to_track": q_ref[1].T,
             },
@@ -147,7 +147,6 @@ def prepare_ocp(
     X_init = []
     for n_p in range(nb_phases):
         init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[n_p] + 1))
-        # init_x[[0, 1, 5, 8, 9, 11], :] = q_ref[n_p]
         if n_p == 0:
             s = 0
             f = nb_shooting[n_p] + 1
@@ -240,7 +239,7 @@ if __name__ == "__main__":
     emg_ref = []
     excitation_ref = []  # init
 
-    Data_to_track = Data_to_track("equincocont03", multiple_contact=False)
+    Data_to_track = Data_to_track("equincocont07", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     phase_time = [T_stance, T_swing]
 
@@ -308,12 +307,12 @@ if __name__ == "__main__":
     params = params_sol[ocp.nlp[0]["p"].name()]
 
     # --- Save Results --- #
-    np.save("./RES/equincocont01/excitations", excitations)
-    np.save("./RES/equincocont01/activations", activations)
-    np.save("./RES/equincocont01/tau", tau)
-    np.save("./RES/equincocont01/q_dot", q_dot)
-    np.save("./RES/equincocont01/q", q)
-    np.save("./RES/equincocont01/params", params)
+    np.save("./RES/equincocont05/excitations", excitations)
+    np.save("./RES/equincocont05/activations", activations)
+    np.save("./RES/equincocont05/tau", tau)
+    np.save("./RES/equincocont05/q_dot", q_dot)
+    np.save("./RES/equincocont05/q", q)
+    np.save("./RES/equincocont05/params", params)
 
     ocp.save(sol, "marche_gait_equin_excitation")
 
