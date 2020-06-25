@@ -220,7 +220,7 @@ def prepare_ocp(
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11],
             #  "data_to_track": q_ref[0].T},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -231,7 +231,7 @@ def prepare_ocp(
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
             # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref[1].T},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -241,7 +241,7 @@ def prepare_ocp(
                 "data_to_track": excitation_ref[2][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 200, "data_to_track": markers_ref[2]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
+            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
             {
                 "type": Objective.Mayer.CUSTOM,
                 "weight": 0.00005,
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     )  # get ground reaction forces
     M_ref = Data_to_track.load_data_Moment(biorbd_model[0], T_stance, number_shooting_points)
     markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
-    q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points, "stance")
+    q_ref = Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
     emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
     excitation_ref = []
     for i in range(len(phase_time)):
@@ -366,13 +366,6 @@ if __name__ == "__main__":
     )
     grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
 
-    Q_ref_0 = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
-    Q_ref_0[[0, 1, 5, 8, 9, 11], :] = q_ref[0]
-    Q_ref_1 = np.zeros((biorbd_model[1].nbQ(), number_shooting_points[1] + 1))
-    Q_ref_1[[0, 1, 5, 8, 9, 11], :] = q_ref[1]
-    Q_ref_2 = np.zeros((biorbd_model[2].nbQ(), number_shooting_points[2] + 1))
-    Q_ref_2[[0, 1, 5, 8, 9, 11], :] = q_ref[2]
-
     # Get initial isometric forces
     fiso_init = []
     n_muscle = 0
@@ -387,7 +380,7 @@ if __name__ == "__main__":
         markers_ref=markers_ref,
         excitation_ref=excitation_ref,
         grf_ref=(grf_ref[0], grf_flatfoot_ref, grf_forefoot_ref),
-        q_ref=(Q_ref_0, Q_ref_1, Q_ref_2),
+        q_ref=q_ref,
         fiso_init=fiso_init,
     )
 

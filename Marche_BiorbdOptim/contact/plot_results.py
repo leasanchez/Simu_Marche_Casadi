@@ -50,8 +50,6 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
 
     F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
     F_Meta5 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
 
     objective = 0
     lbg = []
@@ -61,8 +59,6 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         # Aliases
         fm1 = F_Meta1[3 * i : 3 * (i + 1)]
         fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
 
         # sum forces = 0 --> Fp1 + Fp2 = Ftrack
         sf = fm1 + fm5
@@ -70,7 +66,7 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         objective += 100 * mtimes(jf.T, jf)
 
         # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5)
+        sm = dot(coord[0], fm1) + dot(coord[1], fm5)
         jm = sm - M_ref[:, i]
         objective += 100 * mtimes(jm.T, jm)
 
@@ -79,10 +75,6 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         jf3 = px[i] * p * fm1[0] - (1 - px[i]) * (1 - p) * fm5[0]
         jf4 = p * fm1[1] - (1 - p) * fm5[1]
         objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf4, jf4)
-
-        # use of p to dispatch moments
-        jm2 = p * (mm1 + dot(coord[0], fm1)) - (1 - p) * (mm5 + dot(coord[1], fm5))
-        objective += mtimes(jm2.T, jm2)
 
         # positive vertical force
         constraint += (fm1[2], fm5[2])
@@ -98,11 +90,11 @@ def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         lbg += [0] * 2
         ubg += [1000] * 2
 
-    w = [F_Meta1, F_Meta5, M_Meta1, M_Meta5]
+    w = [F_Meta1, F_Meta5]
     nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
+    res = solver(x0=np.zeros(6 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
 
     FM1 = res["x"][: 3 * (nb_shooting + 1)]
     FM5 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
@@ -122,10 +114,6 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
     F_Heel = MX.sym("F_Heel", 3 * (nb_shooting + 1), 1)
     F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
     F_Meta5 = MX.sym("F_Meta5", 3 * (nb_shooting + 1), 1)
-    # Moments
-    M_Heel = MX.sym("M_Heel", 3 * (nb_shooting + 1), 1)
-    M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta5", 3 * (nb_shooting + 1), 1)
 
     objective = 0
     lbg = []
@@ -136,9 +124,6 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         fh = F_Heel[3 * i : 3 * (i + 1)]
         fm1 = F_Meta1[3 * i : 3 * (i + 1)]
         fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-        mh = M_Heel[3 * i : 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
 
         # --- Torseur equilibre ---
         # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
@@ -146,7 +131,7 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         jf = sf - grf_ref[:, i]
         objective += 100 * mtimes(jf.T, jf)
         # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5) + mh + dot(coord[2], fh)
+        sm = dot(coord[0], fm1) + dot(coord[1], fm5) + dot(coord[2], fh)
         jm = sm - M_ref[:, i]
         objective += 100 * mtimes(jm.T, jm)
 
@@ -157,11 +142,7 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         jf32 = fm5[0]
         jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
         objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - (
-            (1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5)))
-        )
-        objective += mtimes(jm2.T, jm2)
+
 
         # --- Forces constraints ---
         # positive vertical force
@@ -177,11 +158,11 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
         lbg += [0] * 2
         ubg += [1000] * 2
 
-    w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
+    w = [F_Heel, F_Meta1, F_Meta5]
     nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
+    res = solver(x0=np.zeros(9 * (number_shooting_points[1] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
 
     FH = res["x"][: 3 * (nb_shooting + 1)]
     FM1 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
@@ -203,13 +184,14 @@ biorbd_model = (
 number_shooting_points = [10, 5, 25]
 
 # Generate data from file
-Data_to_track = Data_to_track("equincocont01", multiple_contact=True)
+Data_to_track = Data_to_track("normal01", multiple_contact=True)
 [T, T_stance, T_swing] = Data_to_track.GetTime()
 phase_time = T_stance
 grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points)  # get ground reaction forces
 M_ref = Data_to_track.load_data_Moment(biorbd_model[0], T_stance, number_shooting_points)
 markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
-q_ref = Data_to_track.load_data_q(biorbd_model[0], T_stance, number_shooting_points, "stance")
+q_ref = Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
+qdot_ref = Data_to_track.load_qdot_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
 emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
 excitation_ref = []
 for i in range(len(phase_time)):
@@ -220,17 +202,8 @@ Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1
 Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
 Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
 grf_flatfoot_ref = get_dispatch_contact_forces(grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1])
-grf_flatfoot_ref = grf_flatfoot_ref[[0, 1, 2, 3, 5, 8], :]
 grf_forefoot_ref = get_dispatch_forefoot_contact_forces(grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2])
-grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
-grf_ref = (grf_ref[0], grf_flatfoot_ref)
-
-Q_ref_0 = np.zeros((biorbd_model[0].nbQ(), number_shooting_points[0] + 1))
-Q_ref_0[[0, 1, 5, 8, 9, 11], :] = q_ref[0]
-Q_ref_1 = np.zeros((biorbd_model[1].nbQ(), number_shooting_points[1] + 1))
-Q_ref_1[[0, 1, 5, 8, 9, 11], :] = q_ref[1]
-Q_ref_2 = np.zeros((biorbd_model[2].nbQ(), number_shooting_points[2] + 1))
-Q_ref_2[[0, 1, 5, 8, 9, 11], :] = q_ref[2]
+GRF = (grf_ref[0], grf_flatfoot_ref)
 
 # --- Load the solution --- #
 nb_q = biorbd_model[0].nbQ()
@@ -249,9 +222,26 @@ params = np.load(path_file + "params.npy")
 t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)))
 # t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
-b = BiorbdViz(loaded_model=biorbd_model[1])
-b.load_movement(q)
+model_seg = biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_3contacts_deGroote_3d_3segments.bioMod")
+b = BiorbdViz(loaded_model=model_seg)
+b2 = BiorbdViz(loaded_model=biorbd_model[1])
+# b.load_movement(q)
 
+# cf = np.zeros((model_seg.nbContacts(), number_shooting_points[2] + 1))
+# symbolic_states = MX.sym("x", nb_q + nb_qdot + nb_mus, 1)
+# symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
+# symbolic_params = MX.sym("p", nb_mus, 1)
+# computeGRF = Function(
+#     "ComputeGRF",
+#     [symbolic_states, symbolic_controls, symbolic_params],
+#     [get_forces(model_seg, symbolic_states, symbolic_controls, symbolic_params)],
+#     ["x", "u", "p"],
+#     ["GRF"],
+# ).expand()
+# for i in range(number_shooting_points[1] + 1):
+#     state = np.concatenate((q_ref[1][:, i], qdot_ref[1][:, i], excitation_ref[1][:, i]))
+#     control = np.concatenate((tau[:, number_shooting_points[0] + i], excitation_ref[1][:, i]))
+#     cf[:, i] = np.array(computeGRF(state, control, params)).squeeze()
 
 # --- Muscle activation and excitation --- #
 figure, axes = plt.subplots(4, 5, sharex=True)
@@ -287,7 +277,7 @@ figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
     # Q = np.concatenate((Q_ref_0[i, :], Q_ref_1[i, 1:], Q_ref_2[i, 1:]))
-    Q = np.concatenate((Q_ref_0[i, :], Q_ref_1[i, 1:]))
+    Q = np.concatenate((q_ref[0][i, :], q_ref[1][i, 1:]))
     axes[i].plot(t, q[i, :], color="tab:red", linestyle="-", linewidth=1)
     axes[i].plot(t, Q, color="k", linestyle="--", linewidth=0.7)
     axes[i].set_title(q_name[i])
@@ -295,6 +285,7 @@ for i in range(nb_q):
         [phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1
     )
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+plt.show()
 
 # --- Compute contact forces --- #
 contact_forces = []
@@ -312,16 +303,70 @@ for n_p in range(2):
         ["GRF"],
     ).expand()
     for i in range(number_shooting_points[n_p] + 1):
+        # state = np.concatenate((q_ref[n_p][:, i], qdot_ref[n_p][:, i], excitation_ref[n_p][:, i]))
         state = np.concatenate((q[:, idx + i], q_dot[:, idx + i], activations[:, idx + i]))
         control = np.concatenate((tau[:, idx + i], excitations[:, idx + i]))
+        # control = np.concatenate((tau[:, idx + i], excitation_ref[n_p][:, i]))
         cf[:, i] = np.array(computeGRF(state, control, params)).squeeze()
     contact_forces.append(cf)
-    figure, axes = plt.subplots(1, biorbd_model[n_p].nbContacts())
-    axes = axes.flatten()
-    for c in range(biorbd_model[n_p].nbContacts()):
-        axes[c].set_title(biorbd_model[n_p].contactName(c).to_string())
-        axes[c].plot(cf[c, :])
-        axes[c].plot(grf_ref[n_p][c, :], "k--")
     idx = number_shooting_points[n_p]
 
+figure, axes = plt.subplots(1, 3)
+axes = axes.flatten()
+t1 = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
+t2 = t1[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)
+# t3 = t2[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
+t = np.concatenate((t1[:-1], t2))
+
+axes[0].set_title("contact forces in x")
+Gx = np.concatenate((grf_ref[0][0, :], grf_ref[1][0, 1:]))
+F_heelx = np.concatenate((contact_forces[0][0, :], contact_forces[1][0, 1:]))
+F_meta5x = np.concatenate((np.zeros(number_shooting_points[0] + 1), contact_forces[1][4, 1:]))
+axes[0].plot(t, Gx, "k")
+axes[0].plot(t, F_heelx, "g")
+axes[0].plot(t, F_meta5x, "b")
+axes[0].plot([phase_time[0], phase_time[0]], [np.min(Gx), np.max(Gx)], 'k--')
+axes[0].legend(("plateforme", "Heel", "Meta 5"))
+axes[0].grid(color="k", linestyle="--", linewidth=0.5)
+
+axes[1].set_title("contact forces in y")
+Gy = np.concatenate((grf_ref[0][1, :], grf_ref[1][1, 1:]))
+F_heely = np.concatenate((contact_forces[0][1, :], contact_forces[1][1, 1:]))
+axes[1].plot(t, Gy, "k")
+axes[1].plot(t, F_heely, "g")
+axes[1].plot([phase_time[0], phase_time[0]], [np.min(Gy), np.max(Gy)],'k--')
+axes[1].legend(("plateforme", "Heel"))
+axes[1].grid(color="k", linestyle="--", linewidth=0.5)
+
+axes[2].set_title("contact forces in z")
+Gz = np.concatenate((grf_ref[0][2, :], grf_ref[1][2, 1:]))
+F_heelz = np.concatenate((contact_forces[0][2, :], contact_forces[1][2, 1:]))
+F_meta1z = np.concatenate((np.zeros(number_shooting_points[0] + 1), contact_forces[1][3, 1:]))
+F_meta5z = np.concatenate((np.zeros(number_shooting_points[0] + 1), contact_forces[1][5, 1:]))
+axes[2].plot(t, Gz, "k")
+axes[2].plot(t, F_heelz, "g")
+axes[2].plot(t, F_meta1z, "r")
+axes[2].plot(t, F_meta5z, "b")
+axes[2].plot([phase_time[0], phase_time[0]], [np.min(Gz), np.max(Gz)], 'k--')
+axes[2].legend(("plateforme", "Heel", "Meta 1", "Meta 5"))
+axes[2].grid(color="k", linestyle="--", linewidth=0.5)
 plt.show()
+
+#
+# for c in range(9):
+#     if (c < 3):
+#         G = np.concatenate((GRF[0][c, :], GRF[1][c, 1:]))
+#         CF = np.concatenate((contact_forces[0][c, :], contact_forces[1][c, 1:]))
+#     else:
+#         G = np.concatenate((np.zeros(number_shooting_points[0]), GRF[1][c, :]))
+#         CF = np.concatenate((np.zeros(number_shooting_points[0]), contact_forces[1][c, 1:]))
+#
+#     axes[c].set_title(biorbd_model[1].contactName(c).to_string())
+#     axes[c].plot(t, CF)
+#     axes[c].plot(t, G, "k--")
+#     axes[c].plot(
+#         [phase_time[0], phase_time[0]], [np.max(G), np.min(G)], color="k", linestyle="--", linewidth=1
+#     )
+#
+#
+# plt.show()
