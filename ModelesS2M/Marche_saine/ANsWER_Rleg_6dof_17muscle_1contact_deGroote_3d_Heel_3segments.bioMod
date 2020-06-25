@@ -110,7 +110,7 @@ segment femur_r
 	rotations	xyz
         rangesQ    -pi/9  pi/9 
                    -pi/9  pi/9 
-                   -pi/4  pi/4
+                   -pi/9  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -257,11 +257,10 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/6 
-		-pi/6 pi/6
+    	rangesQ -pi/6 pi/9 
+		-pi/6 pi/9
     	rangesQdot -5.2360 5.2360
 		   -5.2360 5.2360  
-	mass	0.042104
 	inertia
 		2.7894e-06	0	0
 		0	9.298e-07	0
@@ -275,6 +274,79 @@ endsegment
 // Informations about foot_r segment
 // --------------------------------------------------------------------------------------------------------
 // ---- Segment
+segment heel
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ    -0.05 0.05 
+	rangesQdot -5.2360 5.2360
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com	-0.024	        -0.0205	        0
+	mesh    0               0               0
+	mesh    -0.048617      -0.041819       -0
+endsegment
+// ---- Markers
+contact    Heel_r 
+	parent    heel
+	position    -0.048617      -0.043872	0
+	axis    xyz
+endcontact
+
+// ---- Segment
+segment meta1
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ    -0.05 0.05 
+	rangesQdot -5.2360 5.2360
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com    0.038	        -0.0205   	-0.016
+	mesh    0               0               0
+	mesh   0.076074        -0.043872        -0.0329475
+endsegment
+
+
+// ---- Segment
+segment meta5
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ    -0.05 0.05 
+	rangesQdot -5.2360 5.2360
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com     0.0135   	-0.0219  	0.025
+	mesh    0               0               0
+	mesh    0.027805        -0.043872       0.0511409
+endsegment
+
+// ---- Segment
 segment foot_r
 	parent talus_r
     RTinMatrix	1
@@ -283,15 +355,18 @@ segment foot_r
 		0	1	0	-0.041819
 		0	0	1	0.0078952
 		0	0	0	1
-	mass	0.82805
+	mass	0
 	inertia
-		0.00084519	0	0
-		0	0.0021516	0
-		0	0	0.0024947
-	com	0.10155	0.015551	0
+		0	0	0
+		0	0	0
+		0	0	0
+	com	0	0	0
+	mesh    0.0054278      0              0
+	mesh    0.17       0              0
 endsegment
 // ---- Markers
 // no marker
+
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_marker_r segment
@@ -349,18 +424,6 @@ marker	R_FMP5
 	technical	1
 endmarker
 
-// ---- Contact
-// mettre 2 points? hallux + Meta 5 
-contact    Meta_1_r 
-	parent    foot_marker_r
-	position    0.144628	-0.02	-0.030874
-	axis    xz
-endcontact
-contact    Meta_5_r 
-	parent    foot_marker_r
-	position    0.156485	-0.02	0.0638694
-	axis    xz
-endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment

@@ -270,6 +270,88 @@ segment talus_r
 endsegment
 // ---- Markers
 // no marker
+// --------------------------------------------------------------------------------------------------------
+// Informations about foot_r segment
+// --------------------------------------------------------------------------------------------------------
+// ---- Segment
+segment heel
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ     0    0 
+	rangesQdot  0    0
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com	-0.024	        -0.0205	        0
+	mesh    0               0               0
+	mesh    -0.048617      -0.041819       -0
+endsegment
+// ---- Markers
+
+
+// ---- Segment
+segment meta1
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ     0 0
+	rangesQdot  0 0
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com     0.038	        -0.0205   	-0.016
+	mesh    0               0               0
+	mesh   0.076074        -0.043872        -0.0329475
+endsegment
+// ---- Markers
+contact    Meta_1_r 
+	parent    meta1
+	position    0.076074     -0.043872	-0.0329475
+	axis    xyz
+endcontact
+
+// ---- Segment
+segment meta5
+	parent talus_r
+    RTinMatrix	1
+	RT
+		1	0	0	0
+		0	1	0	0
+		0	0	1	0
+		0	0	0	1
+	rotations	z
+    	rangesQ     0 0 
+	rangesQdot  0 0
+	mass	    0.27601
+	inertia
+		0.00028173	0	0
+		0	0.0007172	0
+		0	0	0.00083157
+	com     0.0135   	-0.0219  	0.025
+	mesh    0               0               0
+	mesh    0.027805        -0.043872       0.0511409
+endsegment
+// ---- Markers
+contact    Meta_5_r 
+	parent    meta5
+	position    0.027805    -0.043872	0.0511409
+	axis    xyz
+endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_r segment
@@ -292,6 +374,7 @@ segment foot_r
 endsegment
 // ---- Markers
 // no marker
+
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_marker_r segment
@@ -349,18 +432,6 @@ marker	R_FMP5
 	technical	1
 endmarker
 
-// ---- Contact
-// mettre 2 points? hallux + Meta 5 
-contact    Meta_1_r 
-	parent    foot_marker_r
-	position    0.144628	-0.02	-0.030874
-	axis    xz
-endcontact
-contact    Meta_5_r 
-	parent    foot_marker_r
-	position    0.156485	-0.02	0.0638694
-	axis    xz
-endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment

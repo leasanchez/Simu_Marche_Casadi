@@ -109,7 +109,7 @@ segment femur_r
 		0	0	0	1
 	rotations	xyz
         rangesQ    -pi/9  pi/9 
-                   -pi/18 pi/9 
+                   -pi/9  pi/9 
                    -pi/9  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
