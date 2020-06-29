@@ -3,6 +3,7 @@ from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
 from pathlib import Path
+import os
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
 
@@ -63,7 +64,7 @@ nb_markers = biorbd_model[0].nbMarkers()
 markers_ref = []
 q_ref = []
 emg_ref = []
-Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
+Data_to_track = Data_to_track("equincocont07", multiple_contact=False)
 [T, T_stance, T_swing] = Data_to_track.GetTime()
 phase_time = [T_stance, T_swing]
 grf_ref = Data_to_track.load_data_GRF(biorbd_model[0], T_stance, number_shooting_points[0])
@@ -78,7 +79,8 @@ for i in range(len(phase_time)):
     excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
 # --- Load the optimal control program and the solution --- #
-file = "./multiphase/RES/equincocont03/"
+name_subject = "equincocont07"
+file = "./multiphase/RES/equincocont07/"
 params = np.load(file + "params.npy")
 q = np.load(file + "q.npy")
 q_dot = np.load(file + "q_dot.npy")

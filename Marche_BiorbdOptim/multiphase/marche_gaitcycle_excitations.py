@@ -239,7 +239,7 @@ if __name__ == "__main__":
     emg_ref = []
     excitation_ref = []  # init
 
-    Data_to_track = Data_to_track("equincocont07", multiple_contact=False)
+    Data_to_track = Data_to_track("equincocont09", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     phase_time = [T_stance, T_swing]
 
@@ -307,12 +307,12 @@ if __name__ == "__main__":
     params = params_sol[ocp.nlp[0]["p"].name()]
 
     # --- Save Results --- #
-    np.save("./RES/equincocont05/excitations", excitations)
-    np.save("./RES/equincocont05/activations", activations)
-    np.save("./RES/equincocont05/tau", tau)
-    np.save("./RES/equincocont05/q_dot", q_dot)
-    np.save("./RES/equincocont05/q", q)
-    np.save("./RES/equincocont05/params", params)
+    np.save("./RES/equincocont09/excitations", excitations)
+    np.save("./RES/equincocont09/activations", activations)
+    np.save("./RES/equincocont09/tau", tau)
+    np.save("./RES/equincocont09/q_dot", q_dot)
+    np.save("./RES/equincocont09/q", q)
+    np.save("./RES/equincocont09/params", params)
 
     ocp.save(sol, "marche_gait_equin_excitation")
 
