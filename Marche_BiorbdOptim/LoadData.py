@@ -63,6 +63,52 @@ class Data_to_track:
             T_stance = self.GetTime_stance()
         return T, T_stance, T_swing
 
+    def GetMarkers_Position(self):
+     # Load c3d file and get the muscular excitation from emg
+     nbMarker = 26
+
+     # LOAD C3D FILE
+     measurements = c3d(self.file)
+     points = measurements["data"]["points"]
+     labels_markers = measurements["parameters"]["POINT"]["LABELS"]["value"]
+
+     # GET THE MARKERS POSITION (X, Y, Z) AT EACH POINT
+     markers = np.zeros((3, nbMarker, len(points[0, 0, :])))
+
+     # pelvis markers
+     markers[:, 0, :] = points[:3, labels_markers.index("L_IAS"), :] * 1e-3  # L_IAS
+     markers[:, 1, :] = points[:3, labels_markers.index("L_IPS"), :] * 1e-3  # L_IPS
+     markers[:, 2, :] = points[:3, labels_markers.index("R_IPS"), :] * 1e-3  # R_IPS
+     markers[:, 3, :] = points[:3, labels_markers.index("R_IAS"), :] * 1e-3  # R_IAS
+     # femur R markers
+     markers[:, 4, :] = points[:3, labels_markers.index("R_FTC"), :] * 1e-3  # R_FTC
+     markers[:, 5, :] = points[:3, labels_markers.index("R_Thigh_Top"), :] * 1e-3  # R_Thigh_Top
+     markers[:, 6, :] = points[:3, labels_markers.index("R_Thigh_Down"), :] * 1e-3  # R_Thigh_Down
+     markers[:, 7, :] = points[:3, labels_markers.index("R_Thigh_Front"), :] * 1e-3  # R_Thigh_Front
+     markers[:, 8, :] = points[:3, labels_markers.index("R_Thigh_Back"), :] * 1e-3  # R_Thigh_Back
+     markers[:, 9, :] = points[:3, labels_markers.index("R_FLE"), :] * 1e-3  # R_FLE
+     markers[:, 10, :] = points[:3, labels_markers.index("R_FME"), :] * 1e-3  # R_FME
+     #  tibia R markers
+     markers[:, 11, :] = points[:3, labels_markers.index("R_FAX"), :] * 1e-3  # R_FAX
+     markers[:, 12, :] = points[:3, labels_markers.index("R_TTC"), :] * 1e-3  # R_TTC
+     markers[:, 13, :] = points[:3, labels_markers.index("R_Shank_Top"), :] * 1e-3  # R_Shank_Top
+     markers[:, 14, :] = points[:3, labels_markers.index("R_Shank_Down"), :] * 1e-3  # R_Shank_Down
+     markers[:, 15, :] = points[:3, labels_markers.index("R_Shank_Front"), :] * 1e-3  # R_Shank_Front
+     markers[:, 16, :] = points[:3, labels_markers.index("R_Shank_Tibia"), :] * 1e-3  # R_Shank_Tibia
+     markers[:, 17, :] = points[:3, labels_markers.index("R_FAL"), :] * 1e-3  # R_FAL
+     markers[:, 18, :] = points[:3, labels_markers.index("R_TAM"), :] * 1e-3  # R_TAM
+     #  foot R markers
+     markers[:, 19, :] = points[:3, labels_markers.index("R_FCC"), :] * 1e-3  # R_FCC
+     markers[:, 20, :] = points[:3, labels_markers.index("R_FM1"), :] * 1e-3  # R_FM1
+     markers[:, 21, :] = points[:3, labels_markers.index("R_FMP1"), :] * 1e-3  # R_FMP1
+     markers[:, 22, :] = points[:3, labels_markers.index("R_FM2"), :] * 1e-3  # R_FM2
+     markers[:, 23, :] = points[:3, labels_markers.index("R_FMP2"), :] * 1e-3  # R_FMP2
+     markers[:, 24, :] = points[:3, labels_markers.index("R_FM5"), :] * 1e-3  # R_FM5
+     markers[:, 25, :] = points[:3, labels_markers.index("R_FMP5"), :] * 1e-3  # R_FMP5
+
+     return markers
+
+
     def GetTime_stance(self):
         """
         Get the different times that divides the stance phase :
@@ -73,33 +119,25 @@ class Data_to_track:
         measurements = c3d(self.file)
         freq = measurements["parameters"]["ANALOG"]["RATE"]["value"][0]
 
-        # Compute Center of pressure
-        CoP = self.ComputeCoP()
+        # get markers position
+        markers = self.GetMarkers_Position()
+        Heel = markers[:, 19, self.idx_start : self.idx_stop_stance]
+        Meta1 = markers[:, 20, self.idx_start : self.idx_stop_stance]
+        Meta5 = markers[:, 24, self.idx_start : self.idx_stop_stance]
 
-        # toe off of the left leg (no signal on the PF)
-        idx_2_contact = np.where(CoP[self.idx_start : self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2] == 0)[0][0]
-        self.idx_2_contacts = self.idx_start + int(idx_2_contact)
+        # Heel rise -- z > 0.02
+        idx_heel = np.where(Heel[2, :] > 0.023)
+        self.idx_heel_rise = self.idx_start + int(idx_heel[0][0])
 
-        # max before the left leg move forward -> heel rise
-        a = -CoP[
-            self.idx_start : (self.idx_stop_stance - 20), 1, self.idx_platform
-        ]  # Ps: -20 to exclude the propulsion with the toes
-        idx_1_contact = np.where(a == a.max())[0][0]
-        self.idx_heel_rise = self.idx_start + int(idx_1_contact)
+        # forefoot -- z < 0.02
+        idx_Meta1 = np.where(Meta1[2, :] < 0.023)
+        idx_Meta5 = np.where(Meta5[2, :] < 0.023)
+        self.idx_2_contacts = self.idx_start + np.max([idx_Meta5[0][0], idx_Meta1[0][0]])
 
-        T_Heel = 1 / freq * (int(idx_2_contact) + 1)
-        T_2_contact = 1 / freq * (int(idx_1_contact) - int(idx_2_contact) + 1)
-        T_Forefoot = 1 / freq * ((self.idx_stop_stance - self.idx_start) - int(idx_1_contact) + 1)
+        T_Heel = 1 / freq * (self.idx_2_contacts - self.idx_start + 1)
+        T_2_contact = 1 / freq * (self.idx_heel_rise - self.idx_2_contacts + 1)
+        T_Forefoot = 1 / freq * (self.idx_stop_stance - self.idx_heel_rise + 1)
         T_stance = [T_Heel, T_2_contact, T_Forefoot]
-
-        # # plot
-        #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform], '+')
-        #  plt.plot(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2], '+')
-        #  plt.plot([idx_2_contact, idx_2_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
-        #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
-        #  plt.plot([idx_1_contact, idx_1_contact], [np.min(-CoP[self.idx_start: self.idx_stop_stance, 1, (self.idx_platform - 1) ** 2]),
-        #                                            np.max(-CoP[self.idx_start: self.idx_stop_stance, 1, self.idx_platform])], 'k--')
-
         return T_stance
 
     def GetForces(self):
@@ -113,7 +151,6 @@ class Data_to_track:
             F[:, 0, p] = analog[0, labels_analog.index("Fx" + str(p + 1)), :].squeeze()  # Fx
             F[:, 1, p] = analog[0, labels_analog.index("Fy" + str(p + 1)), :].squeeze()  # Fy
             F[:, 2, p] = analog[0, labels_analog.index("Fz" + str(p + 1)), :].squeeze()  # Fz
-
         return F
 
     def GetMoment(self):
@@ -150,29 +187,24 @@ class Data_to_track:
         measurements = c3d(self.file)
         analog = measurements["data"]["analogs"]
         nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
-        corners = np.reshape(
-            np.reshape(measurements["parameters"]["FORCE_PLATFORM"]["CORNERS"]["value"] * 1e-3, (3 * 4 * 2, 1)),
-            (2, 4, 3),
-        )  # platform x corners x coord
+        corners = measurements["parameters"]["FORCE_PLATFORM"]["CORNERS"]["value"] * 1e-3 # platform x corners x coord
 
         CoP1 = np.zeros(((len(analog[0, 0, :]), 3, nbPF)))
         CoP = np.zeros(((len(analog[0, 0, :]), 3, nbPF)))
+
         F = self.GetForces()
         M = self.GetMoment()
 
         for p in range(nbPF):
             # Attention X et Y sont inversés sur la plaque !!!
             CoP1[:, 0, p] = np.divide(M[:, 0, p], F[:, 2, p])  # Mx/Fz
-            CoP1[:, 1, p] = -np.divide(M[:, 1, p], F[:, 2, p])  # -My/Fz
+            CoP1[:, 1, p] = - np.divide(M[:, 1, p], F[:, 2, p])  # My/Fz
             CoP1[:, :, p][np.isnan(CoP1[:, :, p])] = 0
 
             # Center of the platform
-            if p == 0:
-                CoP[:, 0, p] = (corners[p, 1, 0] - corners[p, 2, 0]) / 2 + CoP1[:, 0, p]  # xcenter + CoPx
-                CoP[:, 1, p] = (corners[p, 0, 1] - corners[p, 1, 1]) / 2 + CoP1[:, 1, p]  # ycenter + CoPy
-            else:
-                CoP[:, 0, p] = corners[p, 2, 0] + (corners[p, 1, 0] - corners[p, 2, 0]) / 2 + CoP1[:, 0, p]
-                CoP[:, 1, p] = (corners[p, 0, 1] - corners[p, 1, 1]) / 2 + CoP1[:, 1, p]
+            for p in range(2):
+                CoP[:, 0, p] = corners[0, 2, p] + (corners[0, 1, p] - corners[0, 2, p]) / 2 + CoP1[:, 0, p]
+                CoP[:, 1, p] = (corners[1, 0, p] - corners[1, 1,p]) / 2 + CoP1[:, 1, p]
         return CoP
 
     def GetGroundReactionForces(self):
@@ -189,47 +221,7 @@ class Data_to_track:
         return GRF
 
     def load_data_markers(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
-        # Load c3d file and get the muscular excitation from emg
-        nbMarker = biorbd_model.nbMarkers()
-
-        # LOAD C3D FILE
-        measurements = c3d(self.file)
-        points = measurements["data"]["points"]
-        labels_markers = measurements["parameters"]["POINT"]["LABELS"]["value"]
-
-        # GET THE MARKERS POSITION (X, Y, Z) AT EACH POINT
-        markers = np.zeros((3, nbMarker, len(points[0, 0, :])))
-
-        # pelvis markers
-        markers[:, 0, :] = points[:3, labels_markers.index("L_IAS"), :] * 1e-3  # L_IAS
-        markers[:, 1, :] = points[:3, labels_markers.index("L_IPS"), :] * 1e-3  # L_IPS
-        markers[:, 2, :] = points[:3, labels_markers.index("R_IPS"), :] * 1e-3  # R_IPS
-        markers[:, 3, :] = points[:3, labels_markers.index("R_IAS"), :] * 1e-3  # R_IAS
-        # femur R markers
-        markers[:, 4, :] = points[:3, labels_markers.index("R_FTC"), :] * 1e-3  # R_FTC
-        markers[:, 5, :] = points[:3, labels_markers.index("R_Thigh_Top"), :] * 1e-3  # R_Thigh_Top
-        markers[:, 6, :] = points[:3, labels_markers.index("R_Thigh_Down"), :] * 1e-3  # R_Thigh_Down
-        markers[:, 7, :] = points[:3, labels_markers.index("R_Thigh_Front"), :] * 1e-3  # R_Thigh_Front
-        markers[:, 8, :] = points[:3, labels_markers.index("R_Thigh_Back"), :] * 1e-3  # R_Thigh_Back
-        markers[:, 9, :] = points[:3, labels_markers.index("R_FLE"), :] * 1e-3  # R_FLE
-        markers[:, 10, :] = points[:3, labels_markers.index("R_FME"), :] * 1e-3  # R_FME
-        #  tibia R markers
-        markers[:, 11, :] = points[:3, labels_markers.index("R_FAX"), :] * 1e-3  # R_FAX
-        markers[:, 12, :] = points[:3, labels_markers.index("R_TTC"), :] * 1e-3  # R_TTC
-        markers[:, 13, :] = points[:3, labels_markers.index("R_Shank_Top"), :] * 1e-3  # R_Shank_Top
-        markers[:, 14, :] = points[:3, labels_markers.index("R_Shank_Down"), :] * 1e-3  # R_Shank_Down
-        markers[:, 15, :] = points[:3, labels_markers.index("R_Shank_Front"), :] * 1e-3  # R_Shank_Front
-        markers[:, 16, :] = points[:3, labels_markers.index("R_Shank_Tibia"), :] * 1e-3  # R_Shank_Tibia
-        markers[:, 17, :] = points[:3, labels_markers.index("R_FAL"), :] * 1e-3  # R_FAL
-        markers[:, 18, :] = points[:3, labels_markers.index("R_TAM"), :] * 1e-3  # R_TAM
-        #  foot R markers
-        markers[:, 19, :] = points[:3, labels_markers.index("R_FCC"), :] * 1e-3  # R_FCC
-        markers[:, 20, :] = points[:3, labels_markers.index("R_FM1"), :] * 1e-3  # R_FM1
-        markers[:, 21, :] = points[:3, labels_markers.index("R_FMP1"), :] * 1e-3  # R_FMP1
-        markers[:, 22, :] = points[:3, labels_markers.index("R_FM2"), :] * 1e-3  # R_FM2
-        markers[:, 23, :] = points[:3, labels_markers.index("R_FMP2"), :] * 1e-3  # R_FMP2
-        markers[:, 24, :] = points[:3, labels_markers.index("R_FM5"), :] * 1e-3  # R_FM5
-        markers[:, 25, :] = points[:3, labels_markers.index("R_FMP5"), :] * 1e-3  # R_FMP5
+        markers = self.GetMarkers_Position()
 
         # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR THE SWING PHASE
         if GaitPhase == "stance":
@@ -254,7 +246,6 @@ class Data_to_track:
             markers_ref = f(node_t)
         else:
             raise RuntimeError("Gaitphase doesn't exist")
-
         return markers_ref
 
     def load_q_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
