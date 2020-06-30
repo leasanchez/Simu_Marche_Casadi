@@ -6,6 +6,12 @@ from pathlib import Path
 import os
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
+
+def plot_control(ax, t, x, color="k", linestyle="--", linewidth=0.7):
+    nbPoints = len(np.array(x))
+    for n in range(nbPoints - 1):
+        ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color, linestyle, linewidth)
+
 def get_forces(biorbd_model, states, controls, parameters):
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
@@ -68,6 +74,10 @@ markers_name = biorbd_model[0].markerNames()
 for n_mark in range(nb_markers):
     label_markers.append(markers_name[n_mark].to_string())
 
+name_mus = []
+for i in range(nb_mus):
+    name_mus.append(biorbd_model[0].muscle(i).name().to_string())
+
 # casadi fcn
 symbolic_states = MX.sym("x", nb_q + nb_qdot + nb_mus, 1)
 symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
@@ -87,13 +97,14 @@ pic_max_mean = np.zeros(nb_q)
 pic_min_mean = np.zeros(nb_q)
 Diff_markers = np.zeros(nb_markers)
 Diff_marker = 0
+params_mean = np.zeros(nb_mus)
 
 # get results
 list_subjects = os.listdir(str(Path(__file__).parent) + "/multiphase/RES")
 results = []
 
 for subject in list_subjects:
-    if subject != "equincocont03":
+    if (subject != "equincocont03") and (subject != "equincocont11"):
         dict = {}
         dict["name_subject"] = subject
 
@@ -107,6 +118,7 @@ for subject in list_subjects:
         dict["excitations"] = np.load(file + "excitations.npy")
         dict["tau"] = np.load(file + "tau.npy")
 
+        params_mean += dict["params"].squeeze()
         # --- get data to track ----
         markers_ref = []
         q_ref = []
@@ -228,19 +240,22 @@ for subject in list_subjects:
 
 
 # mean between subject
-R2_mean = R2_mean/(len(list_subjects) - 1)
-RMSE_mean = RMSE_mean/(len(list_subjects) - 1)
-pic_max_mean = pic_max_mean/(len(list_subjects) - 1)
-pic_min_mean = pic_min_mean/(len(list_subjects) - 1)
-Diff_marker = Diff_marker/(len(list_subjects) - 1)
-Diff_markers = Diff_markers/(len(list_subjects) - 1)
+R2_mean = R2_mean/(len(list_subjects) - 2)
+RMSE_mean = RMSE_mean/(len(list_subjects) - 2)
+pic_max_mean = pic_max_mean/(len(list_subjects) - 2)
+pic_min_mean = pic_min_mean/(len(list_subjects) - 2)
+Diff_marker = Diff_marker/(len(list_subjects) - 2)
+Diff_markers = Diff_markers/(len(list_subjects) - 2)
+params_mean = params_mean/(len(list_subjects) - 2)
 
 # markers differences
+xmarker = np.arange(nb_markers)
+width = 1.0
 figure = plt.figure("Mean markers differences (mm)")
 plt.bar(
-    np.linspace(0, nb_markers, nb_markers), Diff_markers, width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
+    xmarker, Diff_markers, width=width, facecolor="b", edgecolor="k", alpha=0.5,
 )
-plt.xticks(np.arange(nb_markers), label_markers, rotation=90)
+plt.xticks(xmarker, label_markers, rotation=90)
 plt.plot([0, nb_markers], [Diff_marker, Diff_marker], "--r")
 plt.ylim([0, 60])
 plt.ylabel('Mean difference (mm)')
@@ -269,13 +284,13 @@ figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
     for dic in results:
-        Q = np.concatenate((dic["q_ref"][0][i, :], dic["q_ref"][1][i, 1:]))
         if (i>2):
             axes[i].plot(dic["q"][i, :]*180/np.pi, linestyle="-", linewidth=1)
         else:
             axes[i].plot(dic["q"][i, :], linestyle="-", linewidth=1)
 
     if (i > 2):
+        axes[i].plot(np.concatenate((dic["q_ref"][0][i, :]*180/np.pi, dic["q_ref"][1][i, 1:]*180/np.pi)), linestyle="--", color = "k", linewidth=1)
         axes[i].text(0, QRanges[i].min() * 180 / np.pi, f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('angle (degre)')
         axes[i].plot(
@@ -283,12 +298,13 @@ for i in range(nb_q):
             )
         axes[i].set_ylim([QRanges[i].min() * 180 / np.pi, QRanges[i].max() * 180 / np.pi])
     else:
-        axes[i].text(0, -0.5, f"R2 : {np.round(R2_mean[i], 3)}")
+        axes[i].plot(np.concatenate((dic["q_ref"][0][i, :], dic["q_ref"][1][i, 1:])), linestyle="--", color="k", linewidth=1)
+        axes[i].text(0, QRanges[i].min(), f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('position (m)')
         axes[i].plot(
-                [number_shooting_points[0], number_shooting_points[0]], [-0.5, 2], color="k", linestyle="--", linewidth=1
+                [number_shooting_points[0], number_shooting_points[0]], [QRanges[i].min(), QRanges[i].max()], color="k", linestyle="--", linewidth=1
             )
-        axes[i].set_ylim([-0.5, 2])
+        axes[i].set_ylim([QRanges[i].min(), QRanges[i].max()])
 
     axes[i].set_title(q_name[i])
     axes[i].set_xlim([0, 50])
@@ -297,4 +313,30 @@ axes[0].legend(leg)
 axes[10].set_xlabel('shooting points')
 plt.show()
 
-
+# --- Muscle activation and excitation --- #
+color_mus = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
+xaxis = np.linspace(0, np.sum(number_shooting_points) + 1,  np.sum(number_shooting_points) + 1, dtype=int)
+figure, axes = plt.subplots(4, 5, sharex=True)
+axes = axes.flatten()
+for i in range(nb_mus):
+    c = 0
+    for dic in results:
+        plot_control(axes[i], xaxis, dic["excitations"][i, :], color=color_mus[c], linestyle="--", linewidth=0.7)
+        axes[i].plot(dic["activations"][i, :], color=color_mus[c], linestyle="-", linewidth=1)
+        c += 1
+    axes[i].plot([number_shooting_points[0], number_shooting_points[0]], [0, 1], color="k", linestyle="--", linewidth=1)
+    axes[i].set_ylim([0, 1])
+    axes[i].set_xlim([0, np.sum(number_shooting_points) + 1])
+    axes[i].set_xticks(np.arange(0, np.sum(number_shooting_points) + 1, step = 10))
+    axes[i].set_yticks(np.arange(0, 1, step=1 / 5,))
+    axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    axes[i].text(1, 0.9, f"p : {np.round(params_mean[i], 2)}")
+    axes[i].set_title(name_mus[i])
+axes[-1].remove()
+axes[-2].remove()
+axes[-3].remove()
+axes[0].set_ylabel("muscular activation")
+axes[5].set_ylabel("muscular activation")
+axes[10].set_ylabel("muscular activation")
+axes[15].set_ylabel("muscular activation")
+plt.show()

@@ -115,8 +115,8 @@ def prepare_ocp(
 
     # Dynamics
     problem_type = (
-        ProblemType.muscle_excitations_and_torque_driven_with_contact,
-        ProblemType.muscle_excitations_and_torque_driven,
+        {"type": ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
+        {"type": ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN},
     )
 
     # Constraints
@@ -137,12 +137,12 @@ def prepare_ocp(
         X_bounds.append(XB)
 
     # Initial guess
-    param_init = np.load("./RES/params.npy")
-    q_init = np.load("./RES/q.npy")
-    q_dot_init = np.load("./RES/qdot.npy")
-    activations_init = np.load("./RES/activations.npy")
-    excitations_init = np.load("./RES/excitations.npy")
-    tau_init = np.load("./RES/tau.npy")
+    param_init = np.load("./RES/equincocont01/params.npy")
+    q_init = np.load("./RES/equincocont01/q.npy")
+    q_dot_init = np.load("./RES/equincocont01/q_dot.npy")
+    activations_init = np.load("./RES/equincocont01/activations.npy")
+    excitations_init = np.load("./RES/equincocont01/excitations.npy")
+    tau_init = np.load("./RES/equincocont01/tau.npy")
 
     X_init = []
     for n_p in range(nb_phases):
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     emg_ref = []
     excitation_ref = []  # init
 
-    Data_to_track = Data_to_track("equincocont09", multiple_contact=False)
+    Data_to_track = Data_to_track("equincocont11", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     phase_time = [T_stance, T_swing]
 
@@ -307,12 +307,12 @@ if __name__ == "__main__":
     params = params_sol[ocp.nlp[0]["p"].name()]
 
     # --- Save Results --- #
-    np.save("./RES/equincocont09/excitations", excitations)
-    np.save("./RES/equincocont09/activations", activations)
-    np.save("./RES/equincocont09/tau", tau)
-    np.save("./RES/equincocont09/q_dot", q_dot)
-    np.save("./RES/equincocont09/q", q)
-    np.save("./RES/equincocont09/params", params)
+    np.save("./RES/equincocont11/excitations", excitations)
+    np.save("./RES/equincocont11/activations", activations)
+    np.save("./RES/equincocont11/tau", tau)
+    np.save("./RES/equincocont11/q_dot", q_dot)
+    np.save("./RES/equincocont11/q", q)
+    np.save("./RES/equincocont11/params", params)
 
     ocp.save(sol, "marche_gait_equin_excitation")
 
