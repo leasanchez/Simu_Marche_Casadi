@@ -212,7 +212,7 @@ nb_tau = biorbd_model[0].nbGeneralizedTorque()
 nb_mus = biorbd_model[0].nbMuscleTotal()
 
 PROJET = Path(__file__).parent
-path_file = str(PROJET) + "/RES/heel_strike/"
+path_file = str(PROJET) + "/RES/stance_3phases/"
 q = np.load(path_file + "q.npy")
 q_dot = np.load(path_file + "q_dot.npy")
 activations = np.load(path_file + "activations.npy")
@@ -221,20 +221,25 @@ excitations = np.load(path_file + "excitations.npy")
 params = np.load(path_file + "params.npy")
 t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)))
-# t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
-model_seg = biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_3contacts_deGroote_3d_3segments.bioMod")
-b = BiorbdViz(loaded_model=model_seg)
-b2 = BiorbdViz(loaded_model=biorbd_model[1])
-# b.load_movement(q)
+t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
 
-# cf = np.zeros((model_seg.nbContacts(), number_shooting_points[2] + 1))
+Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
+Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
+Q_ref[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = q_ref[1]
+Q_ref[:, number_shooting_points[0] + number_shooting_points[1]:] = q_ref[2]
+
+b = BiorbdViz(loaded_model=biorbd_model[0])
+# b2 = BiorbdViz(loaded_model=biorbd_model[1])
+b.load_movement(Q_ref)
+
+# cf = np.zeros((biorbd_model[1].nbContacts(), number_shooting_points[2] + 1))
 # symbolic_states = MX.sym("x", nb_q + nb_qdot + nb_mus, 1)
 # symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
 # symbolic_params = MX.sym("p", nb_mus, 1)
 # computeGRF = Function(
 #     "ComputeGRF",
 #     [symbolic_states, symbolic_controls, symbolic_params],
-#     [get_forces(model_seg, symbolic_states, symbolic_controls, symbolic_params)],
+#     [get_forces(biorbd_model[1], symbolic_states, symbolic_controls, symbolic_params)],
 #     ["x", "u", "p"],
 #     ["GRF"],
 # ).expand()
@@ -254,6 +259,7 @@ for i in range(nb_mus):
     plot_control(axes[i], t, excitations[i, :], color="tab:red", linestyle="--", linewidth=0.7)
     axes[i].plot(t, activations[i, :], color="tab:red", linestyle="-", linewidth=1)
     axes[i].plot([phase_time[0], phase_time[0]], [0, 1], color="k", linestyle="--", linewidth=1)
+    axes[i].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]], [0, 1], color="k", linestyle="--", linewidth=1)
     axes[i].set_title(name_mus)
     axes[i].set_ylim([0, 1])
     axes[i].set_xlim([0, t[-1]])
@@ -276,14 +282,15 @@ for s in range(biorbd_model[0].nbSegment()):
 figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
-    # Q = np.concatenate((Q_ref_0[i, :], Q_ref_1[i, 1:], Q_ref_2[i, 1:]))
-    Q = np.concatenate((q_ref[0][i, :], q_ref[1][i, 1:]))
+    # Q = np.concatenate((q_ref[0][i, :], q_ref[1][i, 1:]))
+    Q = np.concatenate((q_ref[0][i, :], q_ref[1][i, 1:], q_ref[2][i, 1:]))
     axes[i].plot(t, q[i, :], color="tab:red", linestyle="-", linewidth=1)
     axes[i].plot(t, Q, color="k", linestyle="--", linewidth=0.7)
     axes[i].set_title(q_name[i])
     axes[i].plot(
         [phase_time[0], phase_time[0]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1
     )
+    axes[i].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]], [np.max(q[i, :]), np.min(q[i, :])], color="k", linestyle="--", linewidth=1)
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
 plt.show()
 
@@ -315,13 +322,14 @@ figure, axes = plt.subplots(1, 3)
 axes = axes.flatten()
 t1 = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t2 = t1[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)
-# t3 = t2[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
-t = np.concatenate((t1[:-1], t2))
+t3 = t2[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
+# t = np.concatenate((t1[:-1], t2))
+t = np.concatenate((t1[:-1], t2[:-1], t3))
 
 axes[0].set_title("contact forces in x")
 Gx = np.concatenate((grf_ref[0][0, :], grf_ref[1][0, 1:]))
-F_heelx = np.concatenate((contact_forces[0][0, :], contact_forces[1][0, 1:]))
-F_meta5x = np.concatenate((np.zeros(number_shooting_points[0] + 1), contact_forces[1][4, 1:]))
+F_heelx = np.concatenate((contact_forces[0][0, :], contact_forces[1][0, 1:], np.zeros(number_shooting_points[2])))
+F_meta5x = np.concatenate((np.zeros(number_shooting_points[0] + 1), contact_forces[1][4, 1:], contact_forces[1][4, 1:]))
 axes[0].plot(t, Gx, "k")
 axes[0].plot(t, F_heelx, "g")
 axes[0].plot(t, F_meta5x, "b")

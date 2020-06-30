@@ -111,7 +111,7 @@ segment femur_r
 		0	0	0	1
 	rotations	xyz
         rangesQ    -pi/9  pi/9 
-                   -pi/18 pi/9 
+                   -pi/9  pi/9 
                    -pi/9  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
@@ -358,20 +358,20 @@ marker	R_FMP5
 	technical	1
 endmarker
 // ---- Contact
-contact    c_heel_r
+contact    c_heel_r //FCC decale
 	parent    foot_marker_r
 	position    0.0094278	-0.0	0.00220395
 	axis    xyz
 endcontact
-contact    Meta_1_r 
+contact    Meta_1_r //FM1
 	parent    foot_marker_r
-	position    0.144628	-0.02	-0.030874
-	axis    xyz
+	position    0.19973	-0.02	-0.0323195
+	axis    z
 endcontact
-contact    Meta_5_r 
+contact    Meta_5_r //FM5
 	parent    foot_marker_r
-	position    0.156485	-0.02	0.0638694
-	axis    xyz
+	position   0.156485	-0.02	0.0638694
+	axis    xz
 endcontact
 
 

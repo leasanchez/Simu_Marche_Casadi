@@ -134,8 +134,12 @@ def get_dispatch_contact_forces_3d(grf_ref, M_ref, coord, nb_shooting):
         objective += mtimes(jf.T, jf)
 
         # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        jm = (dot(Heel, fh) + dot(Meta1, fm1) + dot(Meta5, fm5)) - M_ref[:, i]
-        objective += mtimes(jm.T, jm)
+        jm0 = (Heel[1] * fh[2] + Meta1[1] * fm1[2] + Meta5[1] * fm5[2]) - M_ref[0, i]
+        jm1 = (- Heel[0] * fh[2] - Meta1[0] * fm1[2] - Meta5[0] * fm5[2]) - M_ref[1, i]
+        jm2 = (Heel[0] * fh[1] - Heel[1] * fh[0] + Meta1[0] * fm1[1] - Meta1[1] * fm1[0] + Meta5[0] * fm5[1] - Meta5[1] * fm5[0]) - M_ref[2, i]
+        objective += jm0 * jm0 + jm1 * jm1 + jm2 * jm2
+        # jm = (dot(Heel, fh) + dot(Meta1, fm1) + dot(Meta5, fm5)) - M_ref[:, i]
+        # objective += mtimes(jm.T, jm)
 
         # --- Dispatch on different contact points ---
         jf2 = p_heel[i] * fh - ((1 - p_heel[i]) * (p * fm1 + (1 - p) * fm5))
@@ -152,9 +156,9 @@ def get_dispatch_contact_forces_3d(grf_ref, M_ref, coord, nb_shooting):
         lbg += [-1000] * 3
         ubg += [0] * 3
 
-        constraint += ((0.4 * fh[2] - fh[0]), (0.4 * fm1[2] - fm1[0]), (0.4 * fm5[2] - fm5[0]))
-        lbg += [0] * 3
-        ubg += [1000] * 3
+        constraint += ((0.4 * fh[2] - fh[0]), (0.6 * fh[2] - fh[1]), (0.4 * fm1[2] - fm1[0]), (0.4 * fm1[2] - fm1[1]), (0.4 * fm5[2] - fm5[0]), (0.4 * fm5[2] - fm5[1]))
+        lbg += [0] * 6
+        ubg += [1000] * 6
 
     w = [F_Heel, F_Meta1, F_Meta5]
     nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
@@ -226,7 +230,7 @@ def prepare_ocp(
                 "data_to_track": excitation_ref[0][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.000005, "data_to_track": grf_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
@@ -236,10 +240,10 @@ def prepare_ocp(
                 "data_to_track": excitation_ref[1][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
-            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0000005, "data_to_track": grf_ref[1].T},
+            {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
             {
                 "type": Objective.Mayer.CUSTOM,
-                "weight": 0.0000005,
+                "weight": 0.00005,
                 "function": get_last_contact_forces,
                 "data_to_track": grf_ref[1].T,
                 "instant": Instant.ALL,
@@ -286,10 +290,10 @@ def prepare_ocp(
     # Initial guess
     X_init = []
     for n_p in range(len(biorbd_model)):
-        Q = np.zeros((nb_q, number_shooting_points[n_p] + 1))
-        Q[:12] = q_ref[n_p]
+        # Q = np.zeros((nb_q, number_shooting_points[n_p] + 1))
+        # Q[:12] = q_ref[n_p]
         init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[n_p] + 1,))
-        init_x[:nb_q, :] = Q
+        init_x[:nb_q, :] = q_ref[n_p]
         init_x[-nb_mus:, :] = excitation_ref[n_p]
         XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
         X_init.append(XI)
@@ -381,12 +385,12 @@ if __name__ == "__main__":
             fiso_init.append(biorbd_model[2].muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
 
     ocp = prepare_ocp(
-        biorbd_model=model_segments,
+        biorbd_model=(biorbd_model[0], biorbd_model[1]),
         final_time=(phase_time[0], phase_time[1]),
         nb_shooting=(number_shooting_points[0], number_shooting_points[1]),
         markers_ref=(markers_ref[0], markers_ref[1]),
         excitation_ref=(excitation_ref[0], excitation_ref[1]),
-        grf_ref=(grf_ref[0], grf_dispatch_ref_3d),
+        grf_ref=(grf_ref[0], grf_dispatch_ref),
         q_ref=(q_ref[0], q_ref[1]),
         fiso_init=fiso_init,
     )

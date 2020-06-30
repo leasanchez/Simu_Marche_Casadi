@@ -174,7 +174,8 @@ def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
 
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1], p)
-    val = force - data_to_track[t[-1], :]
+    # val = force - data_to_track[t[-1], :]
+    val = force
     return mtimes(val.T, val)
 
 
@@ -214,41 +215,38 @@ def prepare_ocp(
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.1,
+                "weight": 0.001,
                 "data_to_track": excitation_ref[0][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
-            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11],
-            #  "data_to_track": q_ref[0].T},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.1,
+                "weight": 0.001,
                 "data_to_track": excitation_ref[1][:, :-1].T,
             },
             {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
-            # {"type": Objective.Lagrange.TRACK_STATE, "weight": 1, "states_idx": [0, 1, 5, 8, 9, 11], "data_to_track": q_ref[1].T},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 1,
+                "weight": 0.001,
                 "data_to_track": excitation_ref[2][:, :-1].T,
             },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 200, "data_to_track": markers_ref[2]},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[2]},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
-            {
-                "type": Objective.Mayer.CUSTOM,
-                "weight": 0.00005,
-                "function": get_last_contact_forces,
-                "data_to_track": grf_ref[2].T,
-                "instant": Instant.ALL,
-            },
+            # {
+            #     "type": Objective.Mayer.CUSTOM,
+            #     "weight": 0.00005,
+            #     "function": get_last_contact_forces,
+            #     "data_to_track": grf_ref[2].T,
+            #     "instant": Instant.ALL,
+            # },
         ),
     )
 
@@ -260,7 +258,35 @@ def prepare_ocp(
     )
 
     # Constraints
-    constraints = ({"type": Constraint.CUSTOM, "function": get_muscles_first_node, "instant": Instant.START},)
+    constraints = (
+        (
+            # {
+            #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
+            #     "direction": direction,
+            #     "instant": Instant.ALL,
+            #     "contact_force_idx": 2,
+            #     "boundary": 0,
+            # },
+                   ),
+        (
+           # {
+           #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
+           #     "direction": direction,
+           #     "instant": Instant.ALL,
+           #     "contact_force_idx": [2, 3, 5],
+           #     "boundary": 0,
+           # },
+        ),
+        (
+            # {
+            #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
+            #     "direction": direction,
+            #     "instant": Instant.ALL,
+            #     "contact_force_idx": [2, 4],
+            #     "boundary": 0,
+            # },
+        )
+    )
 
     # State Transitions
     state_transitions = ({"type": StateTransition.IMPACT, "phase_pre_idx": 0,},)
@@ -320,7 +346,7 @@ def prepare_ocp(
         X_bounds=(X_bounds, X_bounds, X_bounds),
         U_bounds=(U_bounds, U_bounds, U_bounds),
         objective_functions=objective_functions,
-        constraints=(constraints, (), ()),
+        constraints=constraints,
         parameters=(parameters, parameters, parameters),
         state_transitions=state_transitions,
     )
@@ -336,7 +362,7 @@ if __name__ == "__main__":
     )
 
     # Problem parameters
-    number_shooting_points = [10, 5, 25]
+    number_shooting_points = [5, 10, 25]
 
     # Generate data from file
     Data_to_track = Data_to_track("normal01", multiple_contact=True)
@@ -355,7 +381,7 @@ if __name__ == "__main__":
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
 
     Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]), 0])
-    Meta1 = np.array([np.mean(markers_ref[1][0, 21, :]), np.mean(markers_ref[1][1, 21, :]), 0])
+    Meta1 = np.array([np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]), 0])
     Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
     grf_flatfoot_ref = get_dispatch_contact_forces(
         grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1]
@@ -391,7 +417,7 @@ if __name__ == "__main__":
         options_ipopt={
             "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,
-            "ipopt.hessian_approximation": "exact",
+            "ipopt.hessian_approximation": "limited-memory",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",
         },
@@ -407,12 +433,12 @@ if __name__ == "__main__":
     excitations = controls_sol["muscles"]
 
     # --- Save Results --- #
-    np.save("excitations", excitations)
-    np.save("activations", activations)
-    np.save("tau", tau)
-    np.save("q_dot", q_dot)
-    np.save("q", q)
-    np.save("params", params[ocp.nlp[0]["p"].name()])
+    np.save("./RES/stance_3phases/excitations", excitations)
+    np.save("./RES/stance_3phases/activations", activations)
+    np.save("./RES/stance_3phases/tau", tau)
+    np.save("./RES/stance_3phases/q_dot", q_dot)
+    np.save("./RES/stance_3phases/q", q)
+    np.save("./RES/stance_3phases/params", params[ocp.nlp[0]["p"].name()])
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
