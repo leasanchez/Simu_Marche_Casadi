@@ -55,8 +55,10 @@ nb_tau = biorbd_model[0].nbGeneralizedTorque()
 nb_markers = biorbd_model[0].nbMarkers()
 
 q_name = []
+QRanges = []
 for s in range(biorbd_model[0].nbSegment()):
     seg_name = biorbd_model[0].segment(s).name().to_string()
+    QRanges += [q_range for q_range in biorbd_model[0].segment(s).QRanges()]
     for d in range(biorbd_model[0].segment(s).nbDof()):
         dof_name = biorbd_model[0].segment(s).nameDof(d).to_string()
         q_name.append(seg_name + "_" + dof_name)
@@ -91,7 +93,7 @@ list_subjects = os.listdir(str(Path(__file__).parent) + "/multiphase/RES")
 results = []
 
 for subject in list_subjects:
-    if subject != "equincocont09":
+    if subject != "equincocont03":
         dict = {}
         dict["name_subject"] = subject
 
@@ -274,27 +276,25 @@ for i in range(nb_q):
             axes[i].plot(dic["q"][i, :], linestyle="-", linewidth=1)
 
     if (i > 2):
-        axes[i].text(0, np.min(Q * 180 / np.pi), f"R2 : {np.round(R2_mean[i], 3)}")
+        axes[i].text(0, QRanges[i].min() * 180 / np.pi, f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('angle (degre)')
         axes[i].plot(
-                [number_shooting_points[0], number_shooting_points[0]], [np.min(dic["q"][i, :]*180/np.pi), np.max(dic["q"][i, :]*180/np.pi)], color="k", linestyle="--", linewidth=1
+                [number_shooting_points[0], number_shooting_points[0]], [QRanges[i].min() * 180 / np.pi, QRanges[i].max() * 180 / np.pi], color="k", linestyle="--", linewidth=1
             )
+        axes[i].set_ylim([QRanges[i].min() * 180 / np.pi, QRanges[i].max() * 180 / np.pi])
     else:
-        axes[i].text(0, np.min(Q), f"R2 : {np.round(R2_mean[i], 3)}")
+        axes[i].text(0, -0.5, f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('position (m)')
         axes[i].plot(
-                [number_shooting_points[0], number_shooting_points[0]], [np.min(dic["q"][i, :]), np.max(dic["q"][i, :])], color="k", linestyle="--", linewidth=1
+                [number_shooting_points[0], number_shooting_points[0]], [-0.5, 2], color="k", linestyle="--", linewidth=1
             )
+        axes[i].set_ylim([-0.5, 2])
+
     axes[i].set_title(q_name[i])
+    axes[i].set_xlim([0, 50])
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
 axes[0].legend(leg)
+axes[10].set_xlabel('shooting points')
 plt.show()
-
-
-figure, axes = plt.subplots(1, 3)
-axes[0].bar(
-    np.linspace(0, nb_q, nb_q), RMSE_mean, width=1.0, facecolor="b", edgecolor="k", alpha=0.5,
-)
-axes[0].xticks(np.arange(nb_q), q_name, rotation=90)
 
 

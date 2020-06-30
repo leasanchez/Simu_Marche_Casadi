@@ -164,7 +164,6 @@ class Data_to_track:
             M[:, 0, p] = analog[0, labels_analog.index("Mx" + str(p + 1)), :].squeeze() * 1e-3  # Fx
             M[:, 1, p] = analog[0, labels_analog.index("My" + str(p + 1)), :].squeeze() * 1e-3  # Fy
             M[:, 2, p] = analog[0, labels_analog.index("Mz" + str(p + 1)), :].squeeze() * 1e-3  # Fz
-
         return M
 
     def load_data_Moment(self, biorbd_model, final_time, n_shooting_points):
@@ -436,7 +435,6 @@ class Data_to_track:
             f_stance = interp1d(t_stance, GRF[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
             G = f_stance(node_t_stance)
             GRF_real = G[[1, 0, 2], :]
-
         return GRF_real
 
     def load_muscularExcitation(self, emg_ref):
