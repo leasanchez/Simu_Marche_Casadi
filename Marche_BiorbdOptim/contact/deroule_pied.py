@@ -213,32 +213,36 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q), "data_to_track": q_ref[0].T},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.001,
+                "weight": 0.01,
                 "data_to_track": excitation_ref[0][:, :-1].T,
             },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
+            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q),"data_to_track": q_ref[1].T},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.001,
+                "weight": 0.01,
                 "data_to_track": excitation_ref[1][:, :-1].T,
             },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
+            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
         ),
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
+            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q),
+             "data_to_track": q_ref[2].T},
             {
                 "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.001,
+                "weight": 0.01,
                 "data_to_track": excitation_ref[2][:, :-1].T,
             },
-            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[2]},
+            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[2]},
             # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
             # {
             #     "type": Objective.Mayer.CUSTOM,
@@ -252,9 +256,9 @@ def prepare_ocp(
 
     # Dynamics
     problem_type = (
-        ProblemType.muscle_excitations_and_torque_driven_with_contact,
-        ProblemType.muscle_excitations_and_torque_driven_with_contact,
-        ProblemType.muscle_excitations_and_torque_driven_with_contact,
+        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
+        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
+        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
     )
 
     # Constraints
@@ -362,12 +366,12 @@ if __name__ == "__main__":
     )
 
     # Problem parameters
-    number_shooting_points = [5, 10, 25]
+    number_shooting_points = (5, 10, 25)
 
     # Generate data from file
     Data_to_track = Data_to_track("normal01", multiple_contact=True)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
-    phase_time = [T_stance[0], T_stance[1], T_stance[2]]  # get time for each phase
+    phase_time = (T_stance[0], T_stance[1], T_stance[2])  # get time for each phase
 
     grf_ref = Data_to_track.load_data_GRF(
         biorbd_model[0], T_stance, number_shooting_points

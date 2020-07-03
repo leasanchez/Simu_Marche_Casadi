@@ -223,14 +223,14 @@ t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)))
 t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)))
 
-Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
-Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
-Q_ref[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = q_ref[1]
-Q_ref[:, number_shooting_points[0] + number_shooting_points[1]:] = q_ref[2]
-
-b = BiorbdViz(loaded_model=biorbd_model[0])
-# b2 = BiorbdViz(loaded_model=biorbd_model[1])
-b.load_movement(Q_ref)
+# Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
+# Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
+# Q_ref[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = q_ref[1]
+# Q_ref[:, number_shooting_points[0] + number_shooting_points[1]:] = q_ref[2]
+#
+# b = BiorbdViz(loaded_model=biorbd_model[0])
+# # b2 = BiorbdViz(loaded_model=biorbd_model[1])
+# b.load_movement(Q_ref)
 
 # cf = np.zeros((biorbd_model[1].nbContacts(), number_shooting_points[2] + 1))
 # symbolic_states = MX.sym("x", nb_q + nb_qdot + nb_mus, 1)

@@ -47,26 +47,13 @@ emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting
 excitation_ref = []
 for i in range(len(phase_time)):
     excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
-CoP = Data_to_track.ComputeCoP()
-CoP_stance_3contacts = CoP[Data_to_track.idx_2_contacts:Data_to_track.idx_heel_rise + 1, :, Data_to_track.idx_platform]
-
-# foot markers position + CoP
-plt.figure("foot position")
-plt.plot(markers_ref[1][0, 19, :] + 0.04, markers_ref[1][1, 19, :], "g+")
-plt.text(np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]) + 0.0025, "talon")
-plt.plot(markers_ref[1][0, 20, :], markers_ref[1][1, 20, :], "r+")
-plt.text(np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]) + 0.0025, "FM1")
-plt.plot(markers_ref[1][0, 24, :], markers_ref[1][1, 24, :], "b+")
-plt.text(np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]) + 0.0025, "FM5")
-plt.plot(CoP_stance_3contacts[:, 0], CoP_stance_3contacts[:, 1], "m+")
-plt.plot(CoP_stance_3contacts[0, 0], CoP_stance_3contacts[0, 1], "b+")
-plt.plot(CoP_stance_3contacts[-1, 0], CoP_stance_3contacts[-1, 1], "r+")
-plt.show()
+M_CoP = Data_to_track.load_data_Moment_at_CoP(biorbd_model[0], T_stance, number_shooting_points)
+CoP = Data_to_track.load_data_CoP(biorbd_model[0], T_stance, number_shooting_points)
 
 # contact positions
-Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]), 0])
-Meta1 = np.array([np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]), 0])
-Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
+Heel_pos = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]), 0])
+Meta1_pos = np.array([np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]), 0])
+Meta5_pos = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
 
 # Problem parameters
 nb_q = biorbd_model[0].nbQ()
@@ -75,40 +62,19 @@ nb_tau = biorbd_model[0].nbGeneralizedTorque()
 nb_mus = biorbd_model[0].nbMuscleTotal()
 nb_contact = biorbd_model[0].nbContacts()
 
-# --- 3 contacts flatfoot ---
-# Fx_heel = (Heel[0]*grf_ref[1][1, :] - Meta5[1]*grf_ref[1][0, :] - M_ref[1][2, :])/(Heel[1] + Meta5[1])
-# Fy_heel = grf_ref[1][1, :]
-# Fz_heel = (M_ref[1][1, :] - (Meta1[0] - Meta5[0])*(M_ref[1][0, :]/(Meta5[1] - Meta1[1])) - Meta1[0]*grf_ref[1][2, :])\
-#           /(((Meta5[0] - Meta1[0])*(Heel[1] - Meta1[1])/(Meta5[1] - Meta1[1])) - Heel[0] -  Meta1[0])
-#
-# Fx_meta5 = grf_ref[1][0, :] - Fx_heel
-# Fz_meta5 = (M_ref[1][0, :] - (Heel[1] - Meta1[1])*Fz_heel)/(Meta5[1] - Meta1[1])
-#
-# Fz_meta1 = grf_ref[1][2, :] - Fz_meta5 - Fz_heel
-
-# rotation 90 deg
-rot = np.array([[np.cos(90), -np.sin(90), 0],
-                [np.sin(90), np.cos(90), 0],
-                [0, 0, 1]])
-M = np.zeros((3, number_shooting_points[1] + 1))
-F = np.zeros((3, number_shooting_points[1] + 1))
-for i in range(number_shooting_points[1] + 1):
-    M[:, i] = np.dot(rot,M_ref[1][:, i])
-    F[:, i] = np.dot(rot,grf_ref[1][:, i])
-F[0, :] = - F[0, :]
-
-A = np.array([[1, 0, 0, 0, 1, 0],
-     [0, 1, 0, 0, 0, 0],
-     [0, 0, 1, 1, 0, 1],
-     [0, -Heel[2], Heel[1], Meta1[1], 0, Meta5[1]],
-     [Heel[2], 0, -Heel[0], -Meta1[0], Meta5[2], -Meta5[0]],
-     [-Heel[1], Heel[0], 0, 0, -Meta5[1], 0]])
-det = np.linalg.det(A)
-
+# --- 3 contacts flatfoot - solution analytique ---
 sol = np.zeros((6, number_shooting_points[1]+1))
 for i in range(number_shooting_points[1] + 1):
-    sol[:, i] = np.linalg.solve(A, np.concatenate((grf_ref[1][:, i],M_ref[1][:, i])))
-    # sol[:, i] = np.linalg.solve(A, np.concatenate((F[:, i], M[:, i])))
+    Heel = CoP[1][:, i] - Heel_pos
+    Meta1 = CoP[1][:, i] - Meta1_pos
+    Meta5 = CoP[1][:, i] - Meta5_pos
+    A = np.array([[1, 0, 0, 0, 1, 0],
+                  [0, 1, 0, 0, 0, 0],
+                  [0, 0, 1, 1, 0, 1],
+                  [0, -Heel[2], Heel[1], Meta1[1], 0, Meta5[1]],
+                  [Heel[2], 0, -Heel[0], -Meta1[0], Meta5[2], -Meta5[0]],
+                  [-Heel[1], Heel[0], 0, 0, -Meta5[1], 0]])
+    sol[:, i] = np.linalg.solve(A, np.concatenate((grf_ref[1][:, i],M_CoP[1][:, i])))
 
 Fx_heel = sol[0, :]
 Fy_heel = sol[1, :]
@@ -140,28 +106,181 @@ axes[2].plot(Fz_meta1, "r")
 axes[2].plot(Fz_heel + Fz_meta1 + Fz_meta5, "m")
 axes[2].legend(("plateforme", "Heel", "Meta 5", "Meta 1", "sum"))
 
-mx = -Heel[2] * Fy_heel + Heel[1]*Fz_heel + Meta1[1]*Fz_meta1 + Meta5[1]*Fz_meta5
-my = Heel[2] * Fx_heel - Heel[0] * Fz_heel - Meta1[0]*Fz_meta1 + Meta5[2]*Fx_meta5 - Meta5[0] * Fz_meta5
-mz = (Heel[0] * Fy_heel - Heel[1] * Fx_heel - Meta5[1] * Fx_meta5)
+mx = np.zeros(number_shooting_points[1] + 1)
+my = np.zeros(number_shooting_points[1] + 1)
+mz = np.zeros(number_shooting_points[1] + 1)
+for i in range(number_shooting_points[1] + 1):
+    Heel = CoP[1][:, i] - Heel_pos
+    Meta1 = CoP[1][:, i] - Meta1_pos
+    Meta5 = CoP[1][:, i] - Meta5_pos
+    mx[i] = -Heel[2] * Fy_heel[i] + Heel[1]*Fz_heel[i] + Meta1[1]*Fz_meta1[i] + Meta5[1]*Fz_meta5[i]
+    my[i] = Heel[2] * Fx_heel[i] - Heel[0] * Fz_heel[i] - Meta1[0]*Fz_meta1[i] + Meta5[2]*Fx_meta5[i] - Meta5[0] * Fz_meta5[i]
+    mz[i] = (Heel[0] * Fy_heel[i] - Heel[1] * Fx_heel[i] - Meta5[1] * Fx_meta5[i])
 
 # Moments
 figure, axes = plt.subplots(1, 3)
 axes = axes.flatten()
 axes[0].set_title("moment in x")
-axes[0].plot(M_ref[1][0, :], "k--")
+axes[0].plot(M_CoP[1][0, :], "k--")
+axes[0].plot(mx, "r")
+axes[0].set_ylim([-1, 1])
+axes[0].legend(("plateforme", "simulation"))
+
+axes[1].set_title("moment in y")
+axes[1].plot(M_CoP[1][1, :], "k--")
+axes[1].plot(my, "r")
+axes[1].set_ylim([-1, 1])
+axes[1].legend(("plateforme", "simulation"))
+
+axes[2].set_title("moment in z")
+axes[2].plot(M_CoP[1][2, :], "k--")
+axes[2].plot(mz, "r")
+axes[2].legend(("plateforme", "simulation"))
+plt.show()
+
+# --- 3 contact points - optimisation ---
+x = np.linspace(-number_shooting_points[1], number_shooting_points[1], number_shooting_points[1] + 1, dtype=int)
+p_heel_sig = 1 / (1 + np.exp(-x))
+p = 0.5
+
+# Forces
+F_Heel = MX.sym("F_Heel", 3 * (number_shooting_points[1] + 1), 1) #xyz
+F_Meta1_3 = MX.sym("F_Meta5_3", 1 * (number_shooting_points[1] + 1), 1) #z
+F_Meta5_3 = MX.sym("F_Meta1_3", 2 * (number_shooting_points[1] + 1), 1) #xz
+
+objective = 0
+lbg = []
+ubg = []
+constraint = []
+
+for i in range(number_shooting_points[1] + 1):
+    # contact point position against CoP
+    Heel = CoP[1][:, i] - Heel_pos
+    Meta1 = CoP[1][:, i] - Meta1_pos
+    Meta5 = CoP[1][:, i] - Meta5_pos
+
+    # Aliases
+    fh = F_Heel[3 * i : 3 * (i + 1)]
+    fm1 = F_Meta1_3[i]
+    fm5 = F_Meta5_3[2 * i : 2 * (i + 1)]
+
+    # --- Torseur equilibre ---
+    # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
+    jf0 = (fm5[0] + fh[0]) - grf_ref[1][0, i]
+    jf1 = fh[1] - grf_ref[1][1, i]
+    jf2 = (fm1 + fm5[1] + fh[2]) - grf_ref[1][2, i]
+    objective += 100*(jf0*jf0 + jf1*jf1 + jf2*jf2)
+
+    # sum moments = 0 --> CP1xFp1 + CP2xFp2 = Mtrack
+    jm0 = (Heel[1]*fh[2] - Heel[2]*fh[1] + Meta1[1]*fm1 + Meta5[1]*fm5[1]) - M_CoP[1][0, i]
+    jm1 = (Heel[2]*fh[0] - Heel[0] * fh[2] - Meta1[0] * fm1 + Meta5[2]*fm5[0] - Meta5[0]*fm5[1]) - M_CoP[1][1, i]
+    jm2 = (Heel[0] * fh[1] - Heel[1] * fh[0] - Meta5[1] * fm5[0]) - M_CoP[1][2, i]
+    objective += 100*(jm0*jm0 + jm1*jm1 + jm2*jm2)
+
+    # --- Dispatch on different contact points ---
+    # # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
+    # jf = p_heel_sig[i] * fh[2] - ((1 - p_heel_sig[i]) * (p * fm1 + (1 - p) * fm5[1]))
+    # jff = p_heel_sig[i] * fh[0] - ((1 - p_heel_sig[i]) * fm5[0])
+    # objective += jf*jf + jff*jff
+
+    # --- Forces constraints ---
+    # positive vertical force
+    constraint += (fh[2], fm1, fm5[1])
+    lbg += [0] * 3
+    ubg += [5000] * 3
+
+    # # non slipping --> -0.4*Fz < Fx < 0.4*Fz
+    # constraint += ((-0.6 * fh[2] - fh[0]), (-0.6 * fm5[1] - fm5[0]))
+    # lbg += [-1000] * 2
+    # ubg += [0] * 2
+    #
+    # constraint += ((0.6 * fh[2] - fh[0]), (0.6 * fh[2] - fh[1]), (0.6 * fm5[1] - fm5[0]))
+    # lbg += [0] * 3
+    # ubg += [1000] * 3
+end_fh = F_Heel[-3:]
+objective += end_fh[0]*end_fh[0] + end_fh[2]*end_fh[2]
+
+init_fm5 = F_Meta5_3[:2]
+objective += F_Meta1_3[0]*F_Meta1_3[0] + init_fm5[0]*init_fm5[0] + init_fm5[1]*init_fm5[1]
+
+
+# x0 = np.zeros(6 * (number_shooting_points[1] + 1))
+# x0 = np.random.randint(low=-100, high=1000, size=6 * (number_shooting_points[1] + 1))
+x0 = np.concatenate((grf_ref[1][0, :]/2, grf_ref[1][1, :], grf_ref[1][2, :]/3, grf_ref[1][2, :]/3, grf_ref[1][0, :]/2, grf_ref[1][2, :]/3))
+
+w = [F_Heel, F_Meta1_3, F_Meta5_3]
+nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
+opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
+solver = nlpsol("solver", "ipopt", nlp, opts)
+res = solver(x0=x0, lbx=-5000, ubx=5000, lbg=lbg, ubg=ubg)
+
+FH = res["x"][: 3 * (number_shooting_points[1] + 1)]
+FM1 = res["x"][3 * (number_shooting_points[1] + 1) : 4 * (number_shooting_points[1] + 1)]
+FM5 = res["x"][4 * (number_shooting_points[1] + 1) :]
+
+force_heel = np.zeros((3, (number_shooting_points[1] + 1)))
+force_meta5_3 = np.zeros((2, (number_shooting_points[1] + 1)))
+
+Fx_heel = np.array(FH[0::3]).squeeze()
+Fy_heel = np.array(FH[1::3]).squeeze()
+Fz_heel = np.array(FH[2::3]).squeeze()
+Fz_meta1 = np.array(FM1).squeeze()
+Fx_meta5 = np.array(FM5[0::2]).squeeze()
+Fz_meta5 = np.array(FM5[1::2]).squeeze()
+
+# Forces
+figure, axes = plt.subplots(1, 3)
+axes = axes.flatten()
+axes[0].set_title("contact forces in x")
+axes[0].plot(grf_ref[1][0, :], "k--")
+axes[0].plot(Fx_heel, "g")
+axes[0].plot(Fx_meta5, "b")
+axes[0].plot(Fx_heel + Fx_meta5, "m")
+axes[0].legend(("plateforme", "Heel", "Meta 5", "sum"))
+
+axes[1].set_title("contact forces in y")
+axes[1].plot(grf_ref[1][1, :], "k--")
+axes[1].plot(Fy_heel, "g")
+axes[1].legend(("plateforme", "Heel"))
+
+axes[2].set_title("contact forces in z")
+axes[2].plot(grf_ref[1][2, :], "k--")
+axes[2].plot(Fz_heel, "g")
+axes[2].plot(Fz_meta5, "b")
+axes[2].plot(Fz_meta1, "r")
+axes[2].plot(Fz_heel + Fz_meta1 + Fz_meta5, "m")
+axes[2].legend(("plateforme", "Heel", "Meta 5", "Meta 1", "sum"))
+
+mx = np.zeros(number_shooting_points[1] + 1)
+my = np.zeros(number_shooting_points[1] + 1)
+mz = np.zeros(number_shooting_points[1] + 1)
+for i in range(number_shooting_points[1] + 1):
+    Heel = CoP[1][:, i] - Heel_pos
+    Meta1 = CoP[1][:, i] - Meta1_pos
+    Meta5 = CoP[1][:, i] - Meta5_pos
+    mx[i] = -Heel[2] * Fy_heel[i] + Heel[1]*Fz_heel[i] + Meta1[1]*Fz_meta1[i] + Meta5[1]*Fz_meta5[i]
+    my[i] = Heel[2] * Fx_heel[i] - Heel[0] * Fz_heel[i] - Meta1[0]*Fz_meta1[i] + Meta5[2]*Fx_meta5[i] - Meta5[0] * Fz_meta5[i]
+    mz[i] = (Heel[0] * Fy_heel[i] - Heel[1] * Fx_heel[i] - Meta5[1] * Fx_meta5[i])
+
+# Moments
+figure, axes = plt.subplots(1, 3)
+axes = axes.flatten()
+axes[0].set_title("moment in x")
+axes[0].plot(M_CoP[1][0, :], "k--")
 axes[0].plot(mx, "r")
 axes[0].legend(("plateforme", "simulation"))
 
 axes[1].set_title("moment in y")
-axes[1].plot(M_ref[1][1, :], "k--")
+axes[1].plot(M_CoP[1][1, :], "k--")
 axes[1].plot(my, "r")
 axes[1].legend(("plateforme", "simulation"))
 
 axes[2].set_title("moment in z")
-axes[2].plot(M_ref[1][2, :], "k--")
+axes[2].plot(M_CoP[1][2, :], "k--")
 axes[2].plot(mz, "r")
 axes[2].legend(("plateforme", "simulation"))
 plt.show()
+
 
 # --- 2 contacts forefoot ---
 p = 0.5  # repartition entre les 2 points
@@ -400,36 +519,36 @@ plt.show()
 #
 # G = Function('g', [F_HeelX, F_HeelY, F_HeelZ, F_Meta1Z, F_Meta5X, F_Meta5Z], g)
 
-# --- enchainement des phases ---
-F_heel = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
-F_meta1 = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
-F_meta5 = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
+# # --- enchainement des phases ---
+# F_heel = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
+# F_meta1 = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
+# F_meta5 = np.zeros((3, (number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2] + 1)))
+#
+# # phase 1 = heel strike : 1 point de contact talon
+# F_heel[:, :number_shooting_points[0] + 1] = grf_ref[0]
+#
+# # phase 2 = flatfoot : 3 points de contact
+# F_heel[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_heel
+# F_meta1[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_meta1_3
+# F_meta5[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_meta5_3
 
-# phase 1 = heel strike : 1 point de contact talon
-F_heel[:, :number_shooting_points[0] + 1] = grf_ref[0]
-
-# phase 2 = flatfoot : 3 points de contact
-F_heel[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_heel
-F_meta1[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_meta1_3
-F_meta5[:, number_shooting_points[0]: number_shooting_points[0] + number_shooting_points[1] + 1] = force_meta5_3
-
-# phase 3 = forefoot : 2 points de contact
-F_meta1[:, number_shooting_points[0] + number_shooting_points[1]:] = force_meta1
-F_meta5[:, number_shooting_points[0] + number_shooting_points[1]:] = force_meta5
-
-t1 = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
-t2 = t1[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)
-t3 = t2[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
-t = np.concatenate((t1[:-1], t2[:-1], t3))
-for i in range(3):
-    G = np.concatenate((grf_ref[0][i, :], grf_ref[1][i, 1:], grf_ref[2][i, 1:]))
-    plt.figure(f"contact forces {i + 1}")
-    plt.plot(t, G, "k")
-    plt.plot(t, F_heel[i, :], "g")
-    plt.plot(t, F_meta1[i, :], "r")
-    plt.plot(t, F_meta5[i, :], "b")
-    plt.plot([phase_time[0], phase_time[0]], [np.min(G), np.max(G)], color="k", linestyle="--", linewidth=1)
-    plt.plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]], [np.min(G), np.max(G)], color="k", linestyle="--", linewidth=1)
-    plt.grid(color="k", linestyle="--", linewidth=0.5)
-    plt.legend(("plateforme", "Heel", "Meta 1", "Meta 5"))
-plt.show()
+# # phase 3 = forefoot : 2 points de contact
+# F_meta1[:, number_shooting_points[0] + number_shooting_points[1]:] = force_meta1
+# F_meta5[:, number_shooting_points[0] + number_shooting_points[1]:] = force_meta5
+#
+# t1 = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
+# t2 = t1[-1] + np.linspace(0, phase_time[1], number_shooting_points[1] + 1)
+# t3 = t2[-1] + np.linspace(0, phase_time[2], number_shooting_points[2] + 1)
+# t = np.concatenate((t1[:-1], t2[:-1], t3))
+# for i in range(3):
+#     G = np.concatenate((grf_ref[0][i, :], grf_ref[1][i, 1:], grf_ref[2][i, 1:]))
+#     plt.figure(f"contact forces {i + 1}")
+#     plt.plot(t, G, "k")
+#     plt.plot(t, F_heel[i, :], "g")
+#     plt.plot(t, F_meta1[i, :], "r")
+#     plt.plot(t, F_meta5[i, :], "b")
+#     plt.plot([phase_time[0], phase_time[0]], [np.min(G), np.max(G)], color="k", linestyle="--", linewidth=1)
+#     plt.plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]], [np.min(G), np.max(G)], color="k", linestyle="--", linewidth=1)
+#     plt.grid(color="k", linestyle="--", linewidth=0.5)
+#     plt.legend(("plateforme", "Heel", "Meta 1", "Meta 5"))
+# plt.show()
