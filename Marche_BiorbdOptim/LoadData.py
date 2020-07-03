@@ -2,6 +2,7 @@ from ezc3d import c3d
 import numpy as np
 from scipy.interpolate import interp1d
 import scipy.io as sio
+from matplotlib import pyplot as plt
 
 
 class Data_to_track:
@@ -17,6 +18,7 @@ class Data_to_track:
         self.idx_heel_rise = 0
         self.idx_platform = self.Find_platform()
         self.multiple_contact = multiple_contact
+        self.nbPF = 0
 
     def Get_Event(self):
         # Find event from c3d file : heel strike (HS) and toe off (TO)
@@ -41,13 +43,10 @@ class Data_to_track:
         return int(start), int(stop_stance), int(stop)
 
     def Find_platform(self):
-        GRW = self.GetGroundReactionForces()
-        P = np.array(
-            [
-                sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 0]),
-                sum(GRW[int(self.idx_start) : int(self.idx_stop_stance) + 1, 2, 1]),
-            ]
-        )
+        GRF = self.GetForces()
+        P = np.zeros(self.nbPF)
+        for p in range(self.nbPF):
+            P[p] = (sum(GRF[p][2, int(self.idx_start) : int(self.idx_stop_stance) + 1]))
         idx_platform = np.where(P == P.max())[0][0]
         return idx_platform
 
@@ -138,38 +137,56 @@ class Data_to_track:
         T_2_contact = 1 / freq * (self.idx_heel_rise - self.idx_2_contacts + 1)
         T_Forefoot = 1 / freq * (self.idx_stop_stance - self.idx_heel_rise + 1)
         T_stance = [T_Heel, T_2_contact, T_Forefoot]
+
+        # plt.figure('foot position')
+        # plt.plot(Heel[2, :], 'g')
+        # plt.plot(Meta1[2, :], 'r')
+        # plt.plot(Meta5[2, :], 'b')
+        # plt.legend(['heel', 'meta1', 'meta5'])
+        # plt.title('foot markers position during stance phase')
+        # plt.ylabel('z position (mm)')
+        # plt.ylim([0, 0.05])
+        # plt.xlim([0, len(Heel[2, :])])
+        # plt.plot([0, len(Heel[2, :])], [0.023, 0.023], "k--", linewidth=0.7)
+        # plt.plot([np.max([idx_Meta5[0][0], idx_Meta1[0][0]]), np.max([idx_Meta5[0][0], idx_Meta1[0][0]])], [0, 0.05], "k--", linewidth=0.7)
+        # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0, 0.05], "k--", linewidth=0.7)
         return T_stance
 
     def GetForces(self):
-        measurements = c3d(self.file)
-        analog = measurements["data"]["analogs"]
-        labels_analog = measurements["parameters"]["ANALOG"]["LABELS"]["value"]
-        nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
-
-        F = np.zeros((len(analog[0, 0, :]), 3, nbPF))
-        for p in range(nbPF):
-            F[:, 0, p] = analog[0, labels_analog.index("Fx" + str(p + 1)), :].squeeze()  # Fx
-            F[:, 1, p] = analog[0, labels_analog.index("Fy" + str(p + 1)), :].squeeze()  # Fy
-            F[:, 2, p] = analog[0, labels_analog.index("Fz" + str(p + 1)), :].squeeze()  # Fz
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        self.nbPF = len(measurements["data"]["platform"])
+        F = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            force = platform["force"]
+            F.append(force)
         return F
 
     def GetMoment(self):
-        measurements = c3d(self.file)
-        analog = measurements["data"]["analogs"]
-        labels_analog = measurements["parameters"]["ANALOG"]["LABELS"]["value"]
-        nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
-
-        M = np.zeros((len(analog[0, 0, :]), 3, nbPF))
-        for p in range(nbPF):
-            M[:, 0, p] = analog[0, labels_analog.index("Mx" + str(p + 1)), :].squeeze() * 1e-3  # Fx
-            M[:, 1, p] = analog[0, labels_analog.index("My" + str(p + 1)), :].squeeze() * 1e-3  # Fy
-            M[:, 2, p] = analog[0, labels_analog.index("Mz" + str(p + 1)), :].squeeze() * 1e-3  # Fz
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        M = []
+        corners = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            moment = platform["moment"] * 1e-3
+            c = platform["corners"] * 1e-3
+            M.append(moment)
+            corners.append(c)
         return M
+
+    def GetMoment_at_CoP(self):
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        M_CoP = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            moment = platform["Tz"] * 1e-3
+            M_CoP.append(moment)
+        return M_CoP
 
     def load_data_Moment(self, biorbd_model, final_time, n_shooting_points):
         # GET MOMENT
         M_real = self.GetMoment()
-        M_real = M_real[:, :, self.idx_platform].T
+        M_real = M_real[self.idx_platform]
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
         M_ref = []
@@ -179,45 +196,73 @@ class Data_to_track:
             node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
             f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
             M = f_stance(node_t_stance)
-            M_ref.append(M[[1, 0, 2], :])
+            M_ref.append(M)
         return M_ref
 
+    def load_data_Moment_at_CoP(self, biorbd_model, final_time, n_shooting_points):
+        # GET MOMENT
+        M_real = self.GetMoment_at_CoP()
+        M_real = M_real[self.idx_platform]
+
+        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+        M_CoP = []
+        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+        for i in range(len(final_time)):
+            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+            f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+            M = f_stance(node_t_stance)
+            M_CoP.append(M)
+        return M_CoP
+
     def ComputeCoP(self):
-        measurements = c3d(self.file)
-        analog = measurements["data"]["analogs"]
-        nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
-        corners = measurements["parameters"]["FORCE_PLATFORM"]["CORNERS"]["value"] * 1e-3 # platform x corners x coord
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        CoP = []
+        corners = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            cop = platform["center_of_pressure"] * 1e-3
+            corner = platform["corners"] * 1e-3
+            CoP.append(cop)
+            corners.append(corner)
 
-        CoP1 = np.zeros(((len(analog[0, 0, :]), 3, nbPF)))
-        CoP = np.zeros(((len(analog[0, 0, :]), 3, nbPF)))
-
-        F = self.GetForces()
-        M = self.GetMoment()
-
-        for p in range(nbPF):
-            # Attention X et Y sont inversés sur la plaque !!!
-            CoP1[:, 0, p] = np.divide(M[:, 0, p], F[:, 2, p])  # Mx/Fz
-            CoP1[:, 1, p] = - np.divide(M[:, 1, p], F[:, 2, p])  # My/Fz
-            CoP1[:, :, p][np.isnan(CoP1[:, :, p])] = 0
-
-            # Center of the platform
-            for p in range(2):
-                CoP[:, 0, p] = corners[0, 2, p] + (corners[0, 1, p] - corners[0, 2, p]) / 2 + CoP1[:, 0, p]
-                CoP[:, 1, p] = (corners[1, 0, p] - corners[1, 1,p]) / 2 + CoP1[:, 1, p]
+        # plt.figure('CoP')
+        # markers = self.GetMarkers_Position()
+        # plt.plot(corners[0][0, :], corners[0][1, :], 'k+')
+        # plt.plot(corners[0][0, 2] + (corners[0][0, 1] - corners[0][0, 2]) / 2, (corners[0][1, 0] - corners[0][1, 1]) / 2, 'k+')
+        # plt.plot(CoP[0][0, self.idx_start: self.idx_2_contacts],
+        #          CoP[0][1, self.idx_start: self.idx_2_contacts], "g+")
+        # plt.plot(CoP[0][0, self.idx_2_contacts: self.idx_heel_rise],
+        #          CoP[0][1, self.idx_2_contacts: self.idx_heel_rise], "b+")
+        # plt.plot(CoP[0][0, self.idx_heel_rise: self.idx_stop_stance - 1],
+        #          CoP[0][1, self.idx_heel_rise: self.idx_stop_stance - 1], "r+")
+        #
+        # plt.plot(np.mean(markers[0, 19, self.idx_start:self.idx_heel_rise]), np.mean(markers[1, 19, self.idx_start:self.idx_heel_rise]), 'go')
+        # plt.plot(np.mean(markers[0, 20, self.idx_2_contacts:self.idx_stop_stance]),
+        #          np.mean(markers[1, 20, self.idx_2_contacts:self.idx_stop_stance]), 'ro')
+        # plt.plot(np.mean(markers[0, 25, self.idx_2_contacts:self.idx_stop_stance]),
+        #          np.mean(markers[1, 25, self.idx_2_contacts:self.idx_stop_stance]), 'bo')
+        #
+        # plt.title("CoP evolution during stance phase")
+        # plt.xlabel("x (m)")
+        # plt.ylabel("y (m)")
         return CoP
 
-    def GetGroundReactionForces(self):
-        measurements = c3d(self.file)
-        analog = measurements["data"]["analogs"]
-        labels_analog = measurements["parameters"]["ANALOG"]["LABELS"]["value"]
-        nbPF = measurements["parameters"]["FORCE_PLATFORM"]["USED"]["value"][0][0]
+    def load_data_CoP(self, biorbd_model, final_time, n_shooting_points):
+        # GET MOMENT
+        CoP_real = self.ComputeCoP()
+        CoP_real = CoP_real[self.idx_platform]
 
-        GRF = np.zeros((len(analog[0, 0, :]), 3, nbPF))
-        for p in range(nbPF):
-            GRF[:, 0, p] = analog[0, labels_analog.index("Fx" + str(p + 1)), :].squeeze()  # Fx
-            GRF[:, 1, p] = analog[0, labels_analog.index("Fy" + str(p + 1)), :].squeeze()  # Fy
-            GRF[:, 2, p] = -analog[0, labels_analog.index("Fz" + str(p + 1)), :].squeeze()  # Fz
-        return GRF
+        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+        CoP = []
+        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+        for i in range(len(final_time)):
+            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+            f_stance = interp1d(t_stance, CoP_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+            cop = f_stance(node_t_stance)
+            CoP.append(cop)
+        return CoP
 
     def load_data_markers(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         markers = self.GetMarkers_Position()
@@ -416,8 +461,8 @@ class Data_to_track:
         # Load c3d file and get the muscular excitation from emg
 
         # GET GROUND REACTION WRENCHES
-        GRW = self.GetGroundReactionForces()
-        GRF = GRW[:, :, self.idx_platform].T
+        GRF = self.GetForces()
+        GRF = GRF[self.idx_platform]
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
         if self.multiple_contact:
@@ -428,13 +473,13 @@ class Data_to_track:
                 node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
                 f_stance = interp1d(t_stance, GRF[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
                 G = f_stance(node_t_stance)
-                GRF_real.append(G[[1, 0, 2], :])
+                GRF_real.append(G)
         else:
             t_stance = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start) + 1)
             node_t_stance = np.linspace(0, final_time, n_shooting_points + 1)
             f_stance = interp1d(t_stance, GRF[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
             G = f_stance(node_t_stance)
-            GRF_real = G[[1, 0, 2], :]
+            GRF_real = G
         return GRF_real
 
     def load_muscularExcitation(self, emg_ref):
