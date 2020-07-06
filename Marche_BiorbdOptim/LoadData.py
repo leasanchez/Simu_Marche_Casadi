@@ -203,6 +203,7 @@ class Data_to_track:
         # GET MOMENT
         M_real = self.GetMoment_at_CoP()
         M_real = M_real[self.idx_platform]
+        M_real = np.nan_to_num(M_real)
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
         M_CoP = []
@@ -252,6 +253,7 @@ class Data_to_track:
         # GET MOMENT
         CoP_real = self.ComputeCoP()
         CoP_real = CoP_real[self.idx_platform]
+        CoP_real = np.nan_to_num(CoP_real)
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
         CoP = []
