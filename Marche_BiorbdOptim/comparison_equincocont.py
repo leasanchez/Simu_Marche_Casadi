@@ -104,7 +104,7 @@ list_subjects = os.listdir(str(Path(__file__).parent) + "/multiphase/RES")
 results = []
 
 for subject in list_subjects:
-    if (subject != "equincocont03") and (subject != "equincocont11"):
+    if (subject != "equincocont03"):
         dict = {}
         dict["name_subject"] = subject
 
@@ -240,13 +240,13 @@ for subject in list_subjects:
 
 
 # mean between subject
-R2_mean = R2_mean/(len(list_subjects) - 2)
-RMSE_mean = RMSE_mean/(len(list_subjects) - 2)
-pic_max_mean = pic_max_mean/(len(list_subjects) - 2)
-pic_min_mean = pic_min_mean/(len(list_subjects) - 2)
-Diff_marker = Diff_marker/(len(list_subjects) - 2)
-Diff_markers = Diff_markers/(len(list_subjects) - 2)
-params_mean = params_mean/(len(list_subjects) - 2)
+R2_mean = R2_mean/(len(list_subjects) - 1)
+RMSE_mean = RMSE_mean/(len(list_subjects) - 1)
+pic_max_mean = pic_max_mean/(len(list_subjects) - 1)
+pic_min_mean = pic_min_mean/(len(list_subjects) - 1)
+Diff_marker = Diff_marker/(len(list_subjects) - 1)
+Diff_markers = Diff_markers/(len(list_subjects) - 1)
+params_mean = params_mean/(len(list_subjects) - 1)
 
 # markers differences
 xmarker = np.arange(nb_markers)

@@ -83,8 +83,8 @@ def prepare_ocp(
     objective_functions = (
         (
             {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_q)},
-            {"type": Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[0].T},
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
+            {"type": Objective.Lagrange.TRACK_MUSCLES_CONTROL, "weight": 0.01, "data_to_track": excitation_ref[0].T},
+            {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 1000, "data_to_track": markers_ref[0]},
             {
                 "type": Objective.Lagrange.TRACK_STATE,
                 "weight": 100,
