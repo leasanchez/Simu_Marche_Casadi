@@ -324,6 +324,8 @@ for i in range(nb_mus):
         plot_control(axes[i], xaxis, dic["excitations"][i, :], color=color_mus[c], linestyle="--", linewidth=0.7)
         axes[i].plot(dic["activations"][i, :], color=color_mus[c], linestyle="-", linewidth=1)
         c += 1
+    e = np.concatenate((excitation_ref[0][i, :], excitation_ref[1][i, 1:]))
+    plot_control(axes[i], xaxis, e, color="k", linestyle="--", linewidth=0.7)
     axes[i].plot([number_shooting_points[0], number_shooting_points[0]], [0, 1], color="k", linestyle="--", linewidth=1)
     axes[i].set_ylim([0, 1])
     axes[i].set_xlim([0, np.sum(number_shooting_points) + 1])

@@ -23,6 +23,8 @@ from biorbd_optim import (
     Instant,
     ConstraintList,
     Constraint,
+    StateTransitionList,
+    StateTransition,
 )
 
 
@@ -172,6 +174,9 @@ def prepare_ocp(
             fiso_init=fiso_init,
        )
 
+    # State Transitions
+    state_transitions = StateTransitionList()
+    state_transitions.add(StateTransition.IMPACT, phase_pre_idx=1)
     # ------------- #
 
     return OptimalControlProgram(
