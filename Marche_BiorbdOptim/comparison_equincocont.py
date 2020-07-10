@@ -340,3 +340,22 @@ axes[5].set_ylabel("muscular activation")
 axes[10].set_ylabel("muscular activation")
 axes[15].set_ylabel("muscular activation")
 plt.show()
+
+# --- Contact forces --- #
+color_cf = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
+xaxis = np.linspace(0, np.sum(number_shooting_points) + 1,  np.sum(number_shooting_points) + 1, dtype=int)
+title_axis = ["x", "y", "z"]
+figure, axes = plt.subplots(1, 3)
+for i in range(3):
+    c = 0
+    for dic in results:
+        axes[i].plot(dic["contact_forces"][i, :], color=color_cf[c], linestyle="-", linewidth=1)
+        c += 1
+    axes[i].set_title("contact forces in " + title_axis[i])
+    axes[i].plot(grf_ref[i, :], color="k", linestyle="--", linewidth=1)
+    axes[i].grid(color="k", linestyle="--", linewidth=0.5)
+    axes[i].set_xlim([0, np.sum(number_shooting_points) + 1])
+    axes[i].plot([number_shooting_points[0], number_shooting_points[0]], [0, 1], color="k", linestyle="--", linewidth=1)
+axes[0].set_ylabel('Contact forces (N)')
+axes[1].set_xlabel('time (s)')
+plt.show()
