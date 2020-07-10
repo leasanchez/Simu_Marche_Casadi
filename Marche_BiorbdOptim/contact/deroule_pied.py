@@ -5,177 +5,103 @@ from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
-    Instant,
     OptimalControlProgram,
-    ProblemType,
-    Objective,
-    Constraint,
+    DynamicsTypeList,
+    DynamicsType,
+    BoundsList,
     Bounds,
     QAndQDotBounds,
+    InitialConditionsList,
     InitialConditions,
     ShowResult,
-    Data,
+    ObjectiveList,
+    Objective,
     InterpolationType,
-    PlotType,
+    Data,
+    ParametersList,
+    Instant,
+    ConstraintList,
+    Constraint,
+    StateTransitionList,
     StateTransition,
 )
 
 
-def get_dispatch_forefoot_contact_forces(grf_ref, M_ref, coord, nb_shooting):
-    p = 0.5  # repartition entre les 2 points
-    px = np.repeat(0.5, number_shooting_points[2] + 1)
-    px[:5] = np.linspace(0, 0.5, 5)
+def get_dispatch_forefoot_contact_forces(grf_ref, M_CoP, coord, CoP, nb_shooting):
+    grf_dispatch_ref = np.zeros((5, nb_shooting + 1))
+    Meta1_pos = coord[0]
+    Meta5_pos = coord[1]
 
-    F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
-    F_Meta5 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
+    F_Meta1 = MX.sym("F_Meta1", 2 * (number_shooting_points[2] + 1), 1)
+    F_Meta5 = MX.sym("F_Meta5", 3 * (number_shooting_points[2] + 1), 1)
 
     objective = 0
     lbg = []
     ubg = []
     constraint = []
-    for i in range(nb_shooting + 1):
+    for i in range(number_shooting_points[2] + 1):
         # Aliases
-        fm1 = F_Meta1[3 * i : 3 * (i + 1)]
-        fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
+        fm1 = F_Meta1[2 * i: 2 * (i + 1)]
+        fm5 = F_Meta5[3 * i: 3 * (i + 1)]
+        Meta1 = CoP[:, i] - Meta1_pos
+        Meta5 = CoP[:, i] - Meta5_pos
 
         # sum forces = 0 --> Fp1 + Fp2 = Ftrack
-        sf = fm1 + fm5
-        jf = sf - grf_ref[:, i]
-        objective += 100 * mtimes(jf.T, jf)
+        jf0 = (fm1[0] + fm5[0]) - grf_ref[0, i]
+        jf1 = fm5[1] - grf_ref[1, i]
+        jf2 = (fm1[1] + fm5[2]) - grf_ref[2, i]
+        objective += jf0 * jf0 + jf1 * jf1 + jf2 * jf2
 
-        # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5)
-        jm = sm - M_ref[:, i]
-        objective += 100 * mtimes(jm.T, jm)
+        # sum moments = 0
+        jm0 = (Meta1[1] * fm1[1] + Meta5[1] * fm5[2] - Meta5[2] * fm5[1])
+        jm1 = (Meta1[2] * fm1[0] - Meta1[0] * fm1[1] + Meta5[2] * fm5[0] - Meta5[0] * fm5[2])
+        jm2 = (Meta5[0] * fm5[1] - Meta1[1] * fm1[0] - Meta5[1] * fm5[0]) - M_CoP[2, i]
+        objective += jm0 * jm0 + jm1 * jm1 + jm2 * jm2
 
-        # use of p to dispatch forces --> p*Fp1 - (1-p)*Fp2 = 0
-        jf2 = p * fm1[2] - (1 - p) * fm5[2]
-        jf3 = px[i] * p * fm1[0] - (1 - px[i]) * (1 - p) * fm5[0]
-        jf4 = p * fm1[1] - (1 - p) * fm5[1]
-        objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf4, jf4)
+    x0 = np.concatenate(
+        (grf_ref[0, :] / 2, grf_ref[2, :] / 2, grf_ref[0, :] / 2, grf_ref[1, :], grf_ref[2, :] / 2))
 
-        # use of p to dispatch moments
-        jm2 = p * (mm1 + dot(coord[0], fm1)) - (1 - p) * (mm5 + dot(coord[1], fm5))
-        objective += mtimes(jm2.T, jm2)
-
-        # positive vertical force
-        constraint += (fm1[2], fm5[2])
-        lbg += [0] * 2
-        ubg += [1000] * 2
-
-        # non slipping --> -0.4*Fz < Fx < 0.4*Fz
-        constraint += ((-0.4 * fm1[2] - fm1[0]), (-0.4 * fm5[2] - fm5[0]))
-        lbg += [-1000] * 2
-        ubg += [0] * 2
-
-        constraint += ((0.4 * fm1[2] - fm1[0]), (0.4 * fm5[2] - fm5[0]))
-        lbg += [0] * 2
-        ubg += [1000] * 2
-
-    w = [F_Meta1, F_Meta5, M_Meta1, M_Meta5]
+    w = [F_Meta1, F_Meta5]
     nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
     opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
     solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(6 * 2 * (number_shooting_points[2] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
+    res = solver(x0=x0, lbx=-5000, ubx=5000, lbg=lbg, ubg=ubg)
 
-    FM1 = res["x"][: 3 * (nb_shooting + 1)]
-    FM5 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
+    FM1 = res["x"][: 2 * (number_shooting_points[2] + 1)]
+    FM5 = res["x"][2 * (number_shooting_points[2] + 1):]
 
-    grf_dispatch_ref = np.zeros((3 * 2, nb_shooting + 1))
-    for i in range(3):
-        grf_dispatch_ref[i, :] = np.array(FM1[i::3]).squeeze()
-        grf_dispatch_ref[i + 3, :] = np.array(FM5[i::3]).squeeze()
+    grf_dispatch_ref[0, :] = np.array(FM1[0::2]).squeeze()
+    grf_dispatch_ref[1, :] = np.array(FM1[1::2]).squeeze()
+    grf_dispatch_ref[2, :] = np.array(FM5[0::3]).squeeze()
+    grf_dispatch_ref[3, :] = np.array(FM5[1::3]).squeeze()
+    grf_dispatch_ref[4, :] = np.array(FM5[2::3]).squeeze()
     return grf_dispatch_ref
 
 
-def get_dispatch_contact_forces(grf_ref, M_ref, coord, nb_shooting):
-    p_heel = np.linspace(0, 1, nb_shooting + 1)
-    # p_heel = 1 - p_heel
-    p = 0.4
-    # Forces
-    F_Heel = MX.sym("F_Heel", 3 * (nb_shooting + 1), 1)
-    F_Meta1 = MX.sym("F_Meta1", 3 * (nb_shooting + 1), 1)
-    F_Meta5 = MX.sym("F_Meta5", 3 * (nb_shooting + 1), 1)
-    # Moments
-    M_Heel = MX.sym("M_Heel", 3 * (nb_shooting + 1), 1)
-    M_Meta1 = MX.sym("M_Meta1", 3 * (nb_shooting + 1), 1)
-    M_Meta5 = MX.sym("M_Meta5", 3 * (nb_shooting + 1), 1)
+def get_dispatch_flatfoot_contact_forces(grf_ref, M_CoP, coord, CoP, nb_shooting):
+    # init
+    grf_dispatch_ref = np.zeros((6, nb_shooting + 1))
+    Heel_pos = coord[0]
+    Meta1_pos = coord[1]
+    Meta5_pos = coord[2]
 
-    objective = 0
-    lbg = []
-    ubg = []
-    constraint = []
-    for i in range(nb_shooting + 1):
-        # Aliases
-        fh = F_Heel[3 * i : 3 * (i + 1)]
-        fm1 = F_Meta1[3 * i : 3 * (i + 1)]
-        fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-        mh = M_Heel[3 * i : 3 * (i + 1)]
-        mm1 = M_Meta1[3 * i : 3 * (i + 1)]
-        mm5 = M_Meta5[3 * i : 3 * (i + 1)]
-
-        # --- Torseur equilibre ---
-        # sum forces = 0 --> Fp1 + Fp2 + Fh = Ftrack
-        sf = fm1 + fm5 + fh
-        jf = sf - grf_ref[:, i]
-        objective += 100 * mtimes(jf.T, jf)
-        # sum moments = 0 --> Mp1_P1 + CP1xFp1 + Mp2_P2 + CP2xFp2 = Mtrack
-        sm = mm1 + dot(coord[0], fm1) + mm5 + dot(coord[1], fm5) + mh + dot(coord[2], fh)
-        jm = sm - M_ref[:, i]
-        objective += 100 * mtimes(jm.T, jm)
-
-        # --- Dispatch on different contact points ---
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jf2 = p_heel[i] * fh[2] - ((1 - p_heel[i]) * (p * fm1[2] + (1 - p) * fm5[2]))
-        jf3 = p_heel[i] * fh[0] - ((1 - p_heel[i]) * (1 * fm1[0] + 0 * fm5[0]))
-        jf32 = fm5[0]
-        jf4 = p_heel[i] * fh[1] - ((1 - p_heel[i]) * (p * fm1[1] + (1 - p) * fm5[1]))
-        objective += dot(jf2, jf2) + dot(jf3, jf3) + dot(jf32, jf32) + dot(jf4, jf4)
-        # use of p to dispatch forces --> p_heel*Fh - (1-p_heel)*Fm = 0
-        jm2 = p_heel[i] * (mh + dot(coord[2], fh)) - (
-            (1 - p_heel[i]) * (p * (mm1 + dot(coord[0], fm1)) + (1 - p) * (mm5 + dot(coord[1], fm5)))
-        )
-        objective += mtimes(jm2.T, jm2)
-
-        # --- Forces constraints ---
-        # positive vertical force
-        constraint += (fh[2], fm1[2], fm5[2])
-        lbg += [0] * 3
-        ubg += [1000] * 3
-        # non slipping --> -0.4*Fz < Fx < 0.4*Fz
-        constraint += ((-0.4 * fm1[2] - fm1[0]), (-0.4 * fm5[2] - fm5[0]))
-        lbg += [-1000] * 2
-        ubg += [0] * 2
-
-        constraint += ((0.4 * fm1[2] - fm1[0]), (0.4 * fm5[2] - fm5[0]))
-        lbg += [0] * 2
-        ubg += [1000] * 2
-
-    w = [F_Heel, F_Meta1, F_Meta5, M_Heel, M_Meta1, M_Meta5]
-    nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
-    opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
-    solver = nlpsol("solver", "ipopt", nlp, opts)
-    res = solver(x0=np.zeros(9 * 2 * (number_shooting_points[1] + 1)), lbx=-1000, ubx=1000, lbg=lbg, ubg=ubg)
-
-    FH = res["x"][: 3 * (nb_shooting + 1)]
-    FM1 = res["x"][3 * (nb_shooting + 1) : 6 * (nb_shooting + 1)]
-    FM5 = res["x"][6 * (nb_shooting + 1) : 9 * (nb_shooting + 1)]
-    grf_dispatch_ref = np.zeros((3 * 3, nb_shooting + 1))
-    for i in range(3):
-        grf_dispatch_ref[i, :] = np.array(FH[i::3]).squeeze()
-        grf_dispatch_ref[i + 3, :] = np.array(FM1[i::3]).squeeze()
-        grf_dispatch_ref[i + 6, :] = np.array(FM5[i::3]).squeeze()
+    for i in range(number_shooting_points[1] + 1):
+        Heel = CoP[:, i] - Heel_pos
+        Meta1 = CoP[:, i] - Meta1_pos
+        Meta5 = CoP[:, i] - Meta5_pos
+        A = np.array([[1, 0, 0, 0, 1, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, 1, 0, 1],
+                      [0, -Heel[2], Heel[1], Meta1[1], 0, Meta5[1]],
+                      [Heel[2], 0, -Heel[0], -Meta1[0], Meta5[2], -Meta5[0]],
+                      [-Heel[1], Heel[0], 0, 0, -Meta5[1], 0]])
+        grf_dispatch_ref[:, i] = np.linalg.solve(A, np.concatenate((grf_ref[:, i], M_CoP[:, i])))
     return grf_dispatch_ref
 
 
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
     force = nlp["contact_forces_func"](x[-1], u[-1], p)
-    # val = force - data_to_track[t[-1], :]
-    val = force
+    val = force - data_to_track[t[-1], :]
     return mtimes(val.T, val)
 
 
@@ -197,10 +123,11 @@ def modify_isometric_force(biorbd_model, value, fiso_init):
 
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref, fiso_init,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, grf_ref, q_ref, qdot_ref, fiso_init,
 ):
 
     # Problem parameters
+    nb_phases = len(biorbd_model)
     nb_q = biorbd_model[0].nbQ()
     nb_qdot = biorbd_model[0].nbQdot()
     nb_tau = biorbd_model[0].nbGeneralizedTorque()
@@ -210,148 +137,85 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 0, 1, 0.1
 
     # Add objective functions
-    objective_functions = (
-        (
-            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q), "data_to_track": q_ref[0].T},
-            {
-                "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.01,
-                "data_to_track": excitation_ref[0][:, :-1].T,
-            },
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[0]},
-            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.0005, "data_to_track": grf_ref[0].T},
-        ),
-        (
-            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q),"data_to_track": q_ref[1].T},
-            {
-                "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.01,
-                "data_to_track": excitation_ref[1][:, :-1].T,
-            },
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[1]},
-            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[1].T},
-        ),
-        (
-            {"type": Objective.Lagrange.MINIMIZE_TORQUE, "weight": 1, "controls_idx": range(6, nb_tau)},
-            {"type": Objective.Lagrange.TRACK_STATE, "weight": 100, "states_idx": range(6, nb_q),
-             "data_to_track": q_ref[2].T},
-            {
-                "type": Objective.Lagrange.TRACK_MUSCLES_CONTROL,
-                "weight": 0.01,
-                "data_to_track": excitation_ref[2][:, :-1].T,
-            },
-            # {"type": Objective.Lagrange.TRACK_MARKERS, "weight": 500, "data_to_track": markers_ref[2]},
-            # {"type": Objective.Lagrange.TRACK_CONTACT_FORCES, "weight": 0.00005, "data_to_track": grf_ref[2].T},
-            # {
-            #     "type": Objective.Mayer.CUSTOM,
-            #     "weight": 0.00005,
-            #     "function": get_last_contact_forces,
-            #     "data_to_track": grf_ref[2].T,
-            #     "instant": Instant.ALL,
-            # },
-        ),
-    )
+    objective_functions = ObjectiveList()
+    objective_functions.add(Objective.Mayer.CUSTOM, custom_function=get_last_contact_forces, instant=Instant.ALL, weight=0.00005, data_to_track=grf_ref[2].T, phase=2)
+    for p in range(nb_phases):
+        objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, controls_idx=range(6, nb_q), phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_CONTACT_FORCES, weight=0.00005, data_to_track=grf_ref[p].T, phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.001, data_to_track=excitation_ref[p][:, :-1].T, phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref[p], phase=p)
 
     # Dynamics
-    problem_type = (
-        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
-        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
-        {"type" :ProblemType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT},
-    )
+    dynamics = DynamicsTypeList()
+    for p in range(nb_phases):
+        dynamics.add(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=p)
 
     # Constraints
-    constraints = (
-        (
-            # {
-            #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
-            #     "direction": direction,
-            #     "instant": Instant.ALL,
-            #     "contact_force_idx": 2,
-            #     "boundary": 0,
-            # },
-                   ),
-        (
-           # {
-           #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
-           #     "direction": direction,
-           #     "instant": Instant.ALL,
-           #     "contact_force_idx": [2, 3, 5],
-           #     "boundary": 0,
-           # },
-        ),
-        (
-            # {
-            #     "type": Constraint.CONTACT_FORCE_INEQUALITY,
-            #     "direction": direction,
-            #     "instant": Instant.ALL,
-            #     "contact_force_idx": [2, 4],
-            #     "boundary": 0,
-            # },
-        )
-    )
+    constraints = ConstraintList()
+    constraints.add(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
 
     # State Transitions
-    state_transitions = ({"type": StateTransition.IMPACT, "phase_pre_idx": 0,},)
+    state_transitions = StateTransitionList()
+    state_transitions.add(StateTransition.IMPACT, phase_pre_idx=0)
 
     # Define the parameter to optimize
+    parameters = ParametersList()
     bound_length = Bounds(
-        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation_type=InterpolationType.CONSTANT
+        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation=InterpolationType.CONSTANT
     )
-    parameters = (
-        {
-            "name": "force_isometric",  # The name of the parameter
-            "function": modify_isometric_force,  # The function that modifies the biorbd model
-            "bounds": bound_length,  # The bounds
-            "initial_guess": InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
-            "size": nb_mus,  # The number of elements this particular parameter vector has
-            "fiso_init": fiso_init,
-        },
-    )
+    for p in range(nb_phases):
+        parameters.add(
+            parameter_name="force_isometric",  # The name of the parameter
+            function=modify_isometric_force,  # The function that modifies the biorbd model
+            initial_guess=InitialConditions(np.repeat(1, nb_mus)),  # The initial guess
+            bounds=bound_length,  # The bounds
+            size=nb_mus, # The number of elements this particular parameter vector has
+            fiso_init=fiso_init,
+       )
 
     # Path constraint
-    X_bounds = QAndQDotBounds(biorbd_model[0])
-    X_bounds.concatenate(Bounds([activation_min] * nb_mus, [activation_max] * nb_mus))
+    x_bounds = BoundsList()
+    u_bounds = BoundsList()
+    for p in range(nb_phases):
+        x_bounds.add(QAndQDotBounds(biorbd_model[p]))
+        x_bounds[p].concatenate(
+            Bounds([activation_min] * nb_mus, [activation_max] * nb_mus)
+        )
+        u_bounds.add([
+            [torque_min] * nb_tau + [activation_min] * nb_mus,
+            [torque_max] * nb_tau + [activation_max] * nb_mus,
+        ])
 
     # Initial guess
-    X_init = []
-    for n_p in range(len(biorbd_model)):
-        init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[n_p] + 1,))
-        init_x[:nb_q, :] = q_ref[n_p]
-        init_x[-nb_mus:, :] = excitation_ref[n_p]
-        XI = InitialConditions(init_x, interpolation_type=InterpolationType.EACH_FRAME)
-        X_init.append(XI)
+    x_init = InitialConditionsList()
+    for p in range(nb_phases):
+        init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting[p] + 1))
+        init_x[:nb_q, :] = q_ref[p]
+        init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref[p]
+        init_x[-nb_mus :, :] = excitation_ref[p]
+        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-    # Define control path constraint
-    U_bounds = Bounds(
-        min_bound=[torque_min] * nb_tau + [activation_min] * nb_mus,
-        max_bound=[torque_max] * nb_tau + [activation_max] * nb_mus,
-    )
-
-    # Initial guess
-    U_init = []
-    for n_p in range(len(biorbd_model)):
-        init_u = np.zeros((nb_tau + nb_mus, nb_shooting[n_p]))
-        init_u[1, :] = np.repeat(-500, nb_shooting[n_p])
-        init_u[-nb_mus:, :] = excitation_ref[n_p][:, :-1]
-        UI = InitialConditions(init_u, interpolation_type=InterpolationType.EACH_FRAME)
-        U_init.append(UI)
+    u_init = InitialConditionsList()
+    for p in range(nb_phases):
+        init_u = np.zeros((nb_tau + nb_mus, nb_shooting[p]))
+        init_u[-nb_mus:, :] = excitation_ref[p][:, :-1]
+        init_u[1, :] = np.repeat(-500, nb_shooting[p])
+        u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
     return OptimalControlProgram(
         biorbd_model,
-        problem_type,
+        dynamics,
         nb_shooting,
         final_time,
-        X_init,
-        U_init,
-        X_bounds=(X_bounds, X_bounds, X_bounds),
-        U_bounds=(U_bounds, U_bounds, U_bounds),
-        objective_functions=objective_functions,
-        constraints=constraints,
-        parameters=(parameters, parameters, parameters),
+        x_init,
+        u_init,
+        x_bounds,
+        u_bounds,
+        objective_functions,
+        constraints,
+        parameters=parameters,
         state_transitions=state_transitions,
     )
 
@@ -379,22 +243,23 @@ if __name__ == "__main__":
     M_ref = Data_to_track.load_data_Moment(biorbd_model[0], T_stance, number_shooting_points)
     markers_ref = Data_to_track.load_data_markers(biorbd_model[0], T_stance, number_shooting_points, "stance")
     q_ref = Data_to_track.load_q_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
+    qdot_ref = Data_to_track.load_qdot_kalman(biorbd_model[0], T_stance, number_shooting_points, "stance")
     emg_ref = Data_to_track.load_data_emg(biorbd_model[0], T_stance, number_shooting_points, "stance")
     excitation_ref = []
     for i in range(len(phase_time)):
         excitation_ref.append(Data_to_track.load_muscularExcitation(emg_ref[i]))
+    M_CoP = Data_to_track.load_data_Moment_at_CoP(biorbd_model[0], T_stance, number_shooting_points)
+    CoP = Data_to_track.load_data_CoP(biorbd_model[0], T_stance, number_shooting_points)
 
     Heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.04), np.mean(markers_ref[1][1, 19, :]), 0])
     Meta1 = np.array([np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]), 0])
-    Meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
-    grf_flatfoot_ref = get_dispatch_contact_forces(
-        grf_ref[1], M_ref[1], [Meta1, Meta5, Heel], number_shooting_points[1]
+    Meta5 = np.array([np.mean(markers_ref[1][0, 25, :]), np.mean(markers_ref[1][1, 24, :]), 0])
+    grf_flatfoot_ref = get_dispatch_flatfoot_contact_forces(
+        grf_ref[1], M_CoP[1], [Meta1, Meta5, Heel], CoP[1], number_shooting_points[1]
     )
-    grf_flatfoot_ref = grf_flatfoot_ref[[0, 1, 2, 3, 5, 8], :]
     grf_forefoot_ref = get_dispatch_forefoot_contact_forces(
-        grf_ref[2], M_ref[2], [Meta1, Meta5], number_shooting_points[2]
+        grf_ref[2], M_CoP[2], [Meta1, Meta5], CoP[2], number_shooting_points[2]
     )
-    grf_forefoot_ref = grf_forefoot_ref[[0, 2, 3, 5], :]
 
     # Get initial isometric forces
     fiso_init = []
@@ -411,6 +276,7 @@ if __name__ == "__main__":
         excitation_ref=excitation_ref,
         grf_ref=(grf_ref[0], grf_flatfoot_ref, grf_forefoot_ref),
         q_ref=q_ref,
+        qdot_ref=qdot_ref,
         fiso_init=fiso_init,
     )
 
@@ -418,10 +284,10 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     sol = ocp.solve(
         solver="ipopt",
-        options_ipopt={
+        solver_options={
             "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,
-            "ipopt.hessian_approximation": "limited-memory",
+            "ipopt.hessian_approximation": "exact",
             "ipopt.limited_memory_max_history": 50,
             "ipopt.linear_solver": "ma57",
         },
