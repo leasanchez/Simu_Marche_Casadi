@@ -358,7 +358,7 @@ contact    Meta_1_r
 endcontact
 contact    Meta_5_r 
 	parent    foot_marker_r
-	position    0.156485	-0.02	0.0638694
+	position    0.096359	-0.02	0.0638694
 	axis    xyz
 endcontact
 
