@@ -12,6 +12,15 @@ def plot_control(ax, t, x, color="k", linestyle="--", linewidth=0.7):
     for n in range(nbPoints - 1):
         ax.plot([t[n], t[n + 1], t[n + 1]], [x[n], x[n], x[n + 1]], color, linestyle, linewidth)
 
+def get_control_vector(t, x):
+    nbPoints = len(np.array(x))
+    t_control = np.array([t[0], t[1], t[1]])
+    x_control = np.array([x[0], x[1], x[1]])
+    for n in range(1, nbPoints - 1):
+        t_control = np.concatenate((t_control, np.array([t[n], t[n + 1], t[n + 1]])))
+        x_control = np.concatenate((x_control, np.array([x[n], x[n], x[n + 1]])))
+    return t_control, x_control
+
 def get_forces(biorbd_model, states, controls, parameters):
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
@@ -91,6 +100,9 @@ computeGRF = Function(
 ).expand()
 
 # init
+Q_ref_mean = np.zeros((nb_q, sum(number_shooting_points) + 1))
+excitation_ref_mean = np.zeros((nb_mus, sum(number_shooting_points) + 1))
+GRF_ref_mean = np.zeros((3, sum(number_shooting_points) + 1))
 R2_mean = np.zeros(nb_q)
 RMSE_mean = np.zeros(nb_q)
 pic_max_mean = np.zeros(nb_q)
@@ -151,8 +163,20 @@ for subject in list_subjects:
         # --- Generalized positions indicators --- #
         # init
         Q_ref = np.zeros((nb_q, np.sum(number_shooting_points) + 1))
+        E_ref = np.zeros((nb_mus, np.sum(number_shooting_points) + 1))
+        GRF_ref = np.zeros((3, np.sum(number_shooting_points) + 1))
         Q_ref[:, :number_shooting_points[0] + 1] = q_ref[0]
         Q_ref[:, number_shooting_points[0]:] = q_ref[1]
+        E_ref[:, :number_shooting_points[0] + 1] = excitation_ref[0]
+        E_ref[:, number_shooting_points[0]:] = excitation_ref[1]
+        GRF_ref[:, :number_shooting_points[0] + 1] = grf_ref
+
+        Q_ref_mean += Q_ref
+        excitation_ref_mean += E_ref
+        GRF_ref_mean += GRF_ref
+        dict["Q_ref"] = Q_ref
+        dict["E_ref"] = E_ref
+        dict["GRF_ref"] = GRF_ref
 
         # compute RMSE
         diff_q = np.sqrt((dict["q"] - Q_ref) * (dict["q"] - Q_ref))
@@ -242,6 +266,19 @@ for subject in list_subjects:
 # mean between subject
 R2_mean = R2_mean/(len(list_subjects) - 1)
 RMSE_mean = RMSE_mean/(len(list_subjects) - 1)
+Q_ref_mean = Q_ref_mean/(len(list_subjects) - 1)
+excitation_ref_mean = excitation_ref_mean/(len(list_subjects) - 1)
+GRF_ref_mean = GRF_ref_mean/(len(list_subjects) - 1)
+sum_E = np.zeros((nb_mus, sum(number_shooting_points) + 1))
+sum_Q = np.zeros((nb_q, sum(number_shooting_points) + 1))
+sum_GRF = np.zeros((3, sum(number_shooting_points) + 1))
+for dic in results:
+    sum_Q += np.sqrt((dic["Q_ref"] - Q_ref_mean) * (dic["Q_ref"] - Q_ref_mean))
+    sum_E += np.sqrt((dic["E_ref"] - excitation_ref_mean) * (dic["E_ref"] - excitation_ref_mean))
+    sum_GRF += np.sqrt((dic["GRF_ref"] - GRF_ref_mean) * (dic["GRF_ref"] - GRF_ref_mean))
+Q_ecart_type = sum_Q/(len(list_subjects) - 1)
+E_ecart_type = sum_E/(len(list_subjects) - 1)
+GRF_ecart_type = sum_GRF/(len(list_subjects) - 1)
 pic_max_mean = pic_max_mean/(len(list_subjects) - 1)
 pic_min_mean = pic_min_mean/(len(list_subjects) - 1)
 Diff_marker = Diff_marker/(len(list_subjects) - 1)
@@ -280,6 +317,7 @@ plt.title("Mean markers differences per subject")
 plt.show()
 
 # Plot Q
+xaxis = np.linspace(0, np.sum(number_shooting_points) + 1,  np.sum(number_shooting_points) + 1, dtype=int)
 figure, axes = plt.subplots(4, 3, sharex=True)
 axes = axes.flatten()
 for i in range(nb_q):
@@ -290,7 +328,12 @@ for i in range(nb_q):
             axes[i].plot(dic["q"][i, :], linestyle="-", linewidth=1)
 
     if (i > 2):
-        axes[i].plot(np.concatenate((dic["q_ref"][0][i, :]*180/np.pi, dic["q_ref"][1][i, 1:]*180/np.pi)), linestyle="--", color = "k", linewidth=1)
+        axes[i].plot(Q_ref_mean[i, :]* 180 / np.pi, linestyle="-", color="k", linewidth=1)
+        axes[i].fill_between(xaxis,
+                             Q_ref_mean[i, :]* 180 / np.pi - 2*Q_ecart_type[i, :]* 180 / np.pi,
+                             Q_ref_mean[i, :]* 180 / np.pi + 2*Q_ecart_type[i, :]* 180 / np.pi,
+                             facecolor = "black",
+                             alpha=0.2)
         axes[i].text(0, QRanges[i].min() * 180 / np.pi, f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('angle (degre)')
         axes[i].plot(
@@ -298,7 +341,12 @@ for i in range(nb_q):
             )
         axes[i].set_ylim([QRanges[i].min() * 180 / np.pi, QRanges[i].max() * 180 / np.pi])
     else:
-        axes[i].plot(np.concatenate((dic["q_ref"][0][i, :], dic["q_ref"][1][i, 1:])), linestyle="--", color="k", linewidth=1)
+        axes[i].plot(Q_ref_mean[i, :], linestyle="-", color="k", linewidth=1)
+        axes[i].fill_between(xaxis,
+                             Q_ref_mean[i, :] - 2*Q_ecart_type[i, :],
+                             Q_ref_mean[i, :] + 2*Q_ecart_type[i, :],
+                             facecolor = "black",
+                             alpha=0.2)
         axes[i].text(0, QRanges[i].min(), f"R2 : {np.round(R2_mean[i], 3)}")
         axes[i].set_ylabel('position (m)')
         axes[i].plot(
@@ -315,7 +363,6 @@ plt.show()
 
 # --- Muscle activation and excitation --- #
 color_mus = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
-xaxis = np.linspace(0, np.sum(number_shooting_points) + 1,  np.sum(number_shooting_points) + 1, dtype=int)
 figure, axes = plt.subplots(4, 5, sharex=True)
 axes = axes.flatten()
 for i in range(nb_mus):
@@ -324,8 +371,14 @@ for i in range(nb_mus):
         plot_control(axes[i], xaxis, dic["excitations"][i, :], color=color_mus[c], linestyle="--", linewidth=0.7)
         axes[i].plot(dic["activations"][i, :], color=color_mus[c], linestyle="-", linewidth=1)
         c += 1
-    e = np.concatenate((excitation_ref[0][i, :], excitation_ref[1][i, 1:]))
-    plot_control(axes[i], xaxis, e, color="k", linestyle="--", linewidth=0.7)
+    plot_control(axes[i], xaxis, excitation_ref_mean[i, :], color="k", linestyle="--", linewidth=0.7)
+    t_u1, x_u1 = get_control_vector(xaxis, excitation_ref_mean[i, :] - 2 * E_ecart_type[i, :])
+    t_u2, x_u2 = get_control_vector(xaxis, excitation_ref_mean[i, :] + 2 * E_ecart_type[i, :])
+    axes[i].fill_between(t_u1,
+                         x_u1,
+                         x_u2,
+                         facecolor="black",
+                         alpha=0.2)
     axes[i].plot([number_shooting_points[0], number_shooting_points[0]], [0, 1], color="k", linestyle="--", linewidth=1)
     axes[i].set_ylim([0, 1])
     axes[i].set_xlim([0, np.sum(number_shooting_points) + 1])
@@ -354,7 +407,12 @@ for i in range(3):
         axes[i].plot(dic["contact_forces"][i, :], color=color_cf[c], linestyle="-", linewidth=1)
         c += 1
     axes[i].set_title("contact forces in " + title_axis[i])
-    axes[i].plot(grf_ref[i, :], color="k", linestyle="--", linewidth=1)
+    axes[i].plot(GRF_ref_mean[i, :], linestyle="-", color="k", linewidth=1)
+    axes[i].fill_between(xaxis,
+                         GRF_ref_mean[i, :] - 2 * GRF_ecart_type[i, :],
+                         GRF_ref_mean[i, :] + 2 * GRF_ecart_type[i, :],
+                         facecolor="black",
+                         alpha=0.2)
     axes[i].grid(color="k", linestyle="--", linewidth=0.5)
     axes[i].set_xlim([0, np.sum(number_shooting_points) + 1])
     axes[i].plot([number_shooting_points[0], number_shooting_points[0]], [0, 1], color="k", linestyle="--", linewidth=1)
