@@ -183,27 +183,41 @@ plt.plot(M_CoP[2][0, :], 'k--')
 plt.plot(Mx, 'm')
 plt.show()
 
-plt.figure()
-plt.plot(Meta1_cop[1, :], "r--")
-plt.plot(Meta1_cop[0, :], "r-")
-plt.plot(Meta5_cop[1, :], "b--")
-plt.plot(Meta5_cop[0, :], "b-")
-plt.plot(Meta1_cop[1, :]/Meta5_cop[1, :], "g--")
-plt.plot(Meta1_cop[0, :]/Meta5_cop[0, :], "m-")
-plt.show()
+# --- 2 contacts forefoot - get position ---
+pos_Meta1 = MX.sym("pos_Meta1", 2, 1)
+pos_Meta5 = MX.sym("pos_Meta5", 2, 1)
+objective = 0
+lbg = []
+ubg = []
+constraint = []
+for i in range(number_shooting_points[2] + 1):
+    # Aliases
+    Meta1 = CoP[2][:-1, i] - pos_Meta1
+    Meta5 = CoP[2][:-1, i] - pos_Meta5
+
+    # sum moments = 0
+    jm0 = (Meta1[1]*Fz_meta1_solx[i] + Meta5[1]*fm5[2])
+    jm1 = (- Meta1[0]*fm1[1] - Meta5[0]*fm5[2])
+    jm2 = (Meta5[0]*fm5[1] - Meta1[1]*fm1[0] - Meta5[1]*fm5[0]) - M_CoP[2][2, i]
+    objective += jm0*jm0 + jm1*jm1 + jm2*jm2
+
+x0_pos = [Meta1_pos[0], Meta1_pos[1], Meta5_pos[0], Meta5_pos[1]]
+
+w = [pos_Meta1, pos_Meta5]
+nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
+opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
+solver = nlpsol("solver", "ipopt", nlp, opts)
+res = solver(x0=x0_pos, lbx=-5000, ubx=5000, lbg=lbg, ubg=ubg)
+
+M1 = res["x"][:2]
+M5 = res["x"][2:]
 
 # --- 2 contacts forefoot - optimisation ---
 F_Meta1 = MX.sym("F_Meta1", 2 * (number_shooting_points[2] + 1), 1)
 F_Meta5 = MX.sym("F_Meta5", 3 * (number_shooting_points[2] + 1), 1)
+pos_Meta1 = MX.sym("pos_Meta1", 2, 1)
+pos_Meta5 = MX.sym("pos_Meta5", 2, 1)
 CoP[2][:, -1] = CoP[2][:, -2]
-
-plt.figure()
-plt.plot(CoP[2][0, :], CoP[2][1, :], 'k+')
-plt.plot(Meta1_pos[0], Meta1_pos[1], 'ro')
-plt.plot(Meta5_pos[0], Meta5_pos[1], 'bo')
-plt.plot(np.mean(markers_ref[2][0, 24, :]), np.mean(markers_ref[2][1, 24, :]), 'bo', alpha=0.5)
-plt.axis("equal")
-plt.show()
 
 objective = 0
 lbg = []
@@ -213,8 +227,8 @@ for i in range(number_shooting_points[2] + 1):
     # Aliases
     fm1 = F_Meta1[2 * i : 2 * (i + 1)]
     fm5 = F_Meta5[3 * i : 3 * (i + 1)]
-    Meta1 = Meta1_cop[:, i]
-    Meta5 = Meta5_cop[:, i]
+    Meta1 = CoP[2][:-1, i] - pos_Meta1
+    Meta5 = CoP[2][:-1, i] - pos_Meta5
 
     # sum forces = 0 --> Fp1 + Fp2 = Ftrack
     jf0 = (fm1[0] + fm5[0]) - grf_ref[2][0, i]
@@ -223,41 +237,40 @@ for i in range(number_shooting_points[2] + 1):
     objective += jf0*jf0 + jf1*jf1 + jf2*jf2
 
     # sum moments = 0
-    jm0 = (Meta1[1]*fm1[1] + Meta5[1]*fm5[2] - Meta5[2]*fm5[1])
-    jm1 = (Meta1[2]*fm1[0] - Meta1[0]*fm1[1] + Meta5[2]*fm5[0] - Meta5[0]*fm5[2])
+    jm0 = (Meta1[1]*fm1[1] + Meta5[1]*fm5[2])
+    jm1 = (- Meta1[0]*fm1[1] - Meta5[0]*fm5[2])
     jm2 = (Meta5[0]*fm5[1] - Meta1[1]*fm1[0] - Meta5[1]*fm5[0]) - M_CoP[2][2, i]
     objective += jm0*jm0 + jm1*jm1 + jm2*jm2
 
-    # # positive vertical force
-    # constraint += (fm1[1], fm5[2])
-    # lbg += [0] * 2
-    # ubg += [1000] * 2
+x0_pos = [Meta1_pos[0], Meta1_pos[1], Meta5_pos[0], Meta5_pos[1]]
+x0 = np.concatenate((grf_ref[2][0, :]/2, grf_ref[2][2, :]/2, grf_ref[2][0, :]/2, grf_ref[2][1, :], grf_ref[2][2, :]/2, x0_pos))
 
-    # # non slipping --> -0.4*Fz < Fx < 0.4*Fz
-    # constraint += ((-0.4 * fm1[1] - fm1[0]), (-0.4 * fm5[2] - fm5[0]))
-    # lbg += [-1000] * 2
-    # ubg += [0] * 2
-    #
-    # constraint += ((0.4 * fm1[1] - fm1[0]), (0.4 * fm5[2] - fm5[0]))
-    # lbg += [0] * 2
-    # ubg += [1000] * 2
-
-x0 = np.concatenate((grf_ref[2][0, :]/2, grf_ref[2][2, :]/2, grf_ref[2][0, :]/2, grf_ref[2][1, :], grf_ref[2][2, :]/2))
-
-w = [F_Meta1, F_Meta5]
+w = [F_Meta1, F_Meta5, pos_Meta1, pos_Meta5]
 nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
 opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 res = solver(x0=x0, lbx=-5000, ubx=5000, lbg=lbg, ubg=ubg)
 
 FM1 = res["x"][: 2 * (number_shooting_points[2] + 1)]
-FM5 = res["x"][2 * (number_shooting_points[2] + 1) :]
+FM5 = res["x"][2 * (number_shooting_points[2] + 1) : 5 * (number_shooting_points[2] + 1)]
+M1 = res["x"][5 * (number_shooting_points[2] + 1): 5 * (number_shooting_points[2] + 1) + 2]
+M5 = res["x"][5 * (number_shooting_points[2] + 1) + 2:]
 
 Fx_meta1 = np.array(FM1[0::2]).squeeze()
 Fz_meta1 = np.array(FM1[1::2]).squeeze()
 Fx_meta5 = np.array(FM5[0::3]).squeeze()
 Fy_meta5 = np.array(FM5[1::3]).squeeze()
 Fz_meta5 = np.array(FM5[2::3]).squeeze()
+
+# Position contact points
+plt.figure()
+plt.plot(CoP[2][0, :], CoP[2][1, :], 'k+')
+plt.plot(Meta1_pos[0], Meta1_pos[1], 'ro')
+plt.plot(np.array(M1[0]), np.array(M1[1]), 'mo')
+plt.plot(np.array(M5[0]), np.array(M5[1]), 'go')
+plt.plot(Meta5_pos[0], Meta5_pos[1], 'bo')
+plt.axis("equal")
+plt.show()
 
 # Forces
 figure, axes = plt.subplots(1, 3)

@@ -189,14 +189,20 @@ class Data_to_track:
         M_real = M_real[self.idx_platform]
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        M_ref = []
-        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-        for i in range(len(final_time)):
-            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-            f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-            M = f_stance(node_t_stance)
-            M_ref.append(M)
+        if self.multiple_contact:
+            M_ref = []
+            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+            for i in range(len(final_time)):
+                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+                M = f_stance(node_t_stance)
+                M_ref.append(M)
+        else:
+            t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
+            node_t = np.linspace(0, final_time, n_shooting_points + 1)
+            f = interp1d(t, M_real[:, self.idx_start: (self.idx_stop_stance + 1)], kind="cubic")
+            M_ref = f(node_t)
         return M_ref
 
     def load_data_Moment_at_CoP(self, biorbd_model, final_time, n_shooting_points):
@@ -206,14 +212,20 @@ class Data_to_track:
         M_real = np.nan_to_num(M_real)
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        M_CoP = []
-        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-        for i in range(len(final_time)):
-            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-            f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-            M = f_stance(node_t_stance)
-            M_CoP.append(M)
+        if self.multiple_contact:
+            M_CoP = []
+            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+            for i in range(len(final_time)):
+                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+                M = f_stance(node_t_stance)
+                M_CoP.append(M)
+        else:
+            t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
+            node_t = np.linspace(0, final_time, n_shooting_points + 1)
+            f = interp1d(t, M_real[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
+            M_CoP = f(node_t)
         return M_CoP
 
     def ComputeCoP(self):
@@ -256,14 +268,20 @@ class Data_to_track:
         CoP_real = np.nan_to_num(CoP_real)
 
         # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        CoP = []
-        idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-        for i in range(len(final_time)):
-            t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-            node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-            f_stance = interp1d(t_stance, CoP_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-            cop = f_stance(node_t_stance)
-            CoP.append(cop)
+        if self.multiple_contact:
+            CoP = []
+            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
+            for i in range(len(final_time)):
+                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
+                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f_stance = interp1d(t_stance, CoP_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
+                cop = f_stance(node_t_stance)
+                CoP.append(cop)
+        else:
+            t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
+            node_t = np.linspace(0, final_time, n_shooting_points + 1)
+            f = interp1d(t, CoP_real[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
+            CoP = f(node_t)
         return CoP
 
     def load_data_markers(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
