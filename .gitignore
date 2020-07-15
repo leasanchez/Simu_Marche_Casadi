@@ -11,3 +11,9 @@ DonneesMouvements/
 Marche_BiorbdOptim/stance/.ogv
 
 sandbox/
+
+*.vtp
+
+ModelesS2M/Open_Sim/Meshfiles/
+
+*.xlsx
