@@ -19,12 +19,13 @@ from biorbd_optim import (
     Objective,
     InterpolationType,
     Data,
-    ParametersList,
+    ParameterList,
     Instant,
     ConstraintList,
     Constraint,
     StateTransitionList,
     StateTransition,
+    Solver,
 )
 
 
@@ -104,9 +105,6 @@ def prepare_ocp(
     constraints = ConstraintList()
     constraints.add(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
 
-    # Impact
-    # state_transitions = ({"type": StateTransition.IMPACT, "phase_pre_idx": 1,})
-
     # Path constraint
     x_bounds = BoundsList()
     for p in range(nb_phases):
@@ -160,7 +158,7 @@ def prepare_ocp(
         u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
-    parameters = ParametersList()
+    parameters = ParameterList()
     bound_length = Bounds(
         min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation=InterpolationType.CONSTANT
     )
@@ -190,6 +188,7 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         parameters=parameters,
+        state_transitions=state_transitions,
     )
 
 
@@ -200,7 +199,6 @@ if __name__ == "__main__":
         biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod"),
         biorbd.Model("../../ModelesS2M/Marche_saine/ANsWER_Rleg_6dof_17muscle_0contact_deGroote_3d.bioMod"),
     )
-    model_q = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact.bioMod")
 
     # Problem parameters
     number_shooting_points = [25, 25]
@@ -212,7 +210,7 @@ if __name__ == "__main__":
     emg_ref = []
     excitation_ref = []  # init
 
-    Data_to_track = Data_to_track("equincocont11", multiple_contact=False)
+    Data_to_track = Data_to_track("equincocont01", multiple_contact=False)
     [T, T_stance, T_swing] = Data_to_track.GetTime()
     phase_time = [T_stance, T_swing]
 
@@ -257,7 +255,7 @@ if __name__ == "__main__":
     # --- Solve the program --- #
     tic = time()
     sol = ocp.solve(
-        solver="ipopt",
+        solver=Solver.IPOPT,
         solver_options={
             "ipopt.tol": 1e-2,
             "ipopt.max_iter": 5000,
@@ -286,8 +284,6 @@ if __name__ == "__main__":
     np.save("./RES/equincocont11/q_dot", q_dot)
     np.save("./RES/equincocont11/q", q)
     np.save("./RES/equincocont11/params", params)
-
-    ocp.save(sol, "marche_gait_equin_excitation")
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)

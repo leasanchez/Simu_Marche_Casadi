@@ -6,21 +6,21 @@ from Marche_BiorbdOptim.LoadData import Data_to_track
 
 from biorbd_optim import (
     OptimalControlProgram,
-    DynamicsTypeList,
+    DynamicsTypeOption,
     DynamicsType,
     BoundsList,
     Bounds,
     QAndQDotBounds,
-    InitialConditionsList,
+    InitialConditionsOption,
     InitialConditions,
     ShowResult,
     ObjectiveList,
     Objective,
     InterpolationType,
     Data,
-    ParametersList,
+    ParameterList,
     Instant,
-    ConstraintList,
+    ConstraintOption,
     Constraint,
     PlotType,
 )
@@ -70,12 +70,10 @@ def prepare_ocp(
     objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref, phase=0)
 
     # Dynamics
-    dynamics = DynamicsTypeList()
-    dynamics.add(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=0)
+    dynamics = DynamicsTypeOption(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=0)
 
     # Constraints
-    constraints = ConstraintList()
-    constraints.add(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
+    constraints = ConstraintOption(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
 
     # Path constraint
     x_bounds = BoundsList()
@@ -91,21 +89,19 @@ def prepare_ocp(
         ])
 
     # Initial guess
-    x_init = InitialConditionsList()
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
     init_x[:nb_q, :] = q_ref
     init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref
     init_x[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref
-    x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+    x_init = InitialConditionsOption(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-    u_init = InitialConditionsList()
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
     init_u[1, :] = np.repeat(-500, n_shooting_points)
     init_u[-biorbd_model.nbMuscleTotal():, :] = excitation_ref[:, :-1]
-    u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
+    u_init = InitialConditionsOption(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
-    parameters = ParametersList()
+    parameters = ParameterList()
     bound_length = Bounds(
         min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation=InterpolationType.CONSTANT
     )
