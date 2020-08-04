@@ -1,8 +1,7 @@
 import numpy as np
-from casadi import dot
 import biorbd
 from time import time
-from Marche_BiorbdOptim.LoadData import Data_to_track
+from .Load_OpemSim_data import get_q, get_grf
 
 from biorbd_optim import (
     OptimalControlProgram,
@@ -23,7 +22,7 @@ from biorbd_optim import (
 
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, excitation_ref, q_ref, qdot_ref, nb_threads,
+    biorbd_model, final_time, nb_shooting, q_ref, qdot_ref, grf_ref, nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -43,6 +42,17 @@ def prepare_ocp(
     dynamics = DynamicsTypeList()
     dynamics.add(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN, phase=0)
 
+    # Constraints
+    x = np.array(
+        [0, 0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.0472, 1.22173, 1.39626, 1.5708, 1.74533, 1.91986,
+         2.0944])
+    constraints = ()
+
+    # External forces
+    external_forces = np.zeros((6, 2, nb_shooting)) # 1 torseur par jambe
+    external_forces[:, 0, :] = grf_ref[:6, :]  # right leg
+    external_forces[:, 1, :] = grf_ref[6:, :]  # left leg
+
     # Path constraint
     x_bounds = BoundsList()
     x_bounds.add(QAndQDotBounds(biorbd_model))
@@ -61,13 +71,13 @@ def prepare_ocp(
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
     init_x[:nb_q, :] = q_ref
     init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref
-    init_x[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref
+    init_x[-nb_mus :, :] = np.zeros((nb_mus, nb_shooting + 1)) + 0.1
     x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
     u_init = InitialConditionsList()
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
-    init_u[1, :] = np.repeat(-500, n_shooting_points)
-    init_u[-biorbd_model.nbMuscleTotal():, :] = excitation_ref[:, :-1]
+    init_u[1, :] = np.repeat(-500, nb_shooting)
+    init_u[-biorbd_model.nbMuscleTotal():, :] = np.zeros((nb_mus, nb_shooting)) + 0.1
     u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # ------------- #
@@ -82,51 +92,32 @@ def prepare_ocp(
         x_bounds,
         u_bounds,
         objective_functions,
-        constraints=(),
+        constraints=constraints,
         nb_threads=nb_threads,
+        external_forces=external_forces,
     )
 
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d.bioMod")
-    n_shooting_points = 25
-    Gaitphase = "stance"
+    biorbd_model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test_no_muscle_fext.bioMod")
+    t_init = 0.81
+    t_end = 1.65
+    final_time = t_end - t_init
+    nb_shooting = 50
 
-    # Generate data from file
-    Data_to_track = Data_to_track(name_subject="normal01")
-    [T, T_stance, T_swing] = Data_to_track.GetTime()
-    final_time = T_stance
-
-    Q_ref = np.zeros((biorbd_model.nbQ(), 51))
-    Q_ref[:, :26] = Data_to_track.load_q_kalman(biorbd_model, T_stance, n_shooting_points, "stance")
-    Q_ref[:, 25:] = Data_to_track.load_q_kalman(biorbd_model, T_stance, n_shooting_points, "swing")
-
-    Qdot_ref = np.zeros((biorbd_model.nbQ(), 51))
-    Qdot_ref[:, :26] = Data_to_track.load_qdot_kalman(biorbd_model, T_stance, n_shooting_points, "stance")
-    Qdot_ref[:, 25:] = Data_to_track.load_qdot_kalman(biorbd_model, T_stance, n_shooting_points, "swing")
-
-    EMG_ref = np.zeros((biorbd_model.nbMuscleTotal(), 51))
-    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "stance")  # get emg
-    EMG_ref[:, :26] = Data_to_track.load_muscularExcitation(emg_ref)
-    emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "swing")  # get emg
-    EMG_ref[:, 25:] = Data_to_track.load_muscularExcitation(emg_ref)
-
-    # Get initial isometric forces
-    fiso_init = []
-    n_muscle = 0
-    for nGrp in range(biorbd_model.nbMuscleGroups()):
-        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
+    # Generate data from file OpenSim
+    [Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, biorbd_model.nbQ(), nb_shooting)
+    GRF_ref = get_grf(t_init, t_end, final_time, nb_shooting)
 
     # Track these data
     ocp = prepare_ocp(
         biorbd_model,
-        final_time=T,
-        nb_shooting=50,
-        excitation_ref=EMG_ref,
+        final_time=final_time,
+        nb_shooting=nb_shooting,
         q_ref=Q_ref,
         qdot_ref=Qdot_ref,
+        grf_ref=GRF_ref,
         nb_threads=4,
     )
 
