@@ -165,27 +165,11 @@ def get_grf(t_init, t_end, final_time, nb_shooting):
             g+=1
     return grf
 
-# problems parameters
-t_init = 0.81
-t_end = 1.65
-final_time = t_end - t_init
-nb_shooting = 50
-
-model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test_no_muscle_fext.bioMod")
-[Q, Qdot, Qddot] = get_q(t_init, t_end, final_time, model.nbQ(), nb_shooting)
-GRF = get_grf(t_init, t_end, final_time, nb_shooting)
-
-symbolic_q = MX.sym("q", model.nbQ(), 1)
-symbolic_qdot = MX.sym("qdot", model.nbQ(), 1)
-symbolic_qddot = MX.sym("qddot", model.nbQ(), 1)
-symbolic_fext = MX.sym("fext", 6*2, 1)
-IV=Function(
-    "InverseDynamics",
-    [symbolic_q, symbolic_qdot, symbolic_qddot],
-    [model.InverseDynamics(symbolic_q, symbolic_qdot, symbolic_qddot, symbolic_fext).to_mx()],
-    ["q", "qdot", "qddot", "fext"],
-    ["tau"],
-    ).expand()
-tau = IV(Q, Qdot, Qddot, GRF)
+# model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test.bioMod")
+# t_init = 0.81
+# t_end = 1.65
+# final_time = t_end - t_init
+# nb_shooting = 50
+# [Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, model.nbQ(), nb_shooting)
 # b = BiorbdViz(loaded_model=model)
-# b.load_movement(q)
+# b.load_movement(Q_ref)

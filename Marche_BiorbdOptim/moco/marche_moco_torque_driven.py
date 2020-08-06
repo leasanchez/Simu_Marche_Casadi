@@ -1,9 +1,10 @@
 import numpy as np
 import biorbd
 from time import time
-from casadi import vertcat, MX, Function, interp1d
+from casadi import vertcat, MX, Function, interp1d, interpolant
+from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.moco.Load_OpemSim_data import get_q, get_grf
-from Marche_BiorbdOptim.moco.constraints_dof import Constraints
+import Marche_BiorbdOptim.moco.constraints_dof as Constraints
 
 from biorbd_optim import (
     OptimalControlProgram,
@@ -22,20 +23,9 @@ from biorbd_optim import (
     Solver,
     ConstraintList,
     Instant,
+    Simulate,
 )
 
-
-def tibia_r_Ty(ocp, nlp, t, x, u, p, x_interpol, q_ref_idx, q_target_idx):
-    y = np.array([0, 0.000479, 0.000835, 0.001086, 0.001251, 0.001346, 0.001391, 0.001403, 0.0014, 0.0014, 0.001421,
-                  0.001481, 0.001599])
-    nb_q = nlp["nbQ"]
-    # f = interp1d(y, q[q_ref_idx], x_interpol)
-    val = []
-    for v in x:
-        q = v[:nb_q]
-        f = interp1d(x_interpol, y)
-        val = vertcat(val, q[q_target_idx] - 0.95799999999999996 * f(q[q_ref_idx]))
-    return val
 
 def prepare_ocp(
     biorbd_model, final_time, nb_shooting, q_ref, qdot_ref, grf_ref, nb_threads,
@@ -61,12 +51,32 @@ def prepare_ocp(
         [0, 0.174533, 0.349066, 0.523599, 0.698132, 0.872665, 1.0472, 1.22173, 1.39626, 1.5708, 1.74533, 1.91986,
          2.0944])
     constraints = ConstraintList()
-    constraints.add(tibia_r_Ty, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=9)
+    # -- tibia_r --
+    constraints.add(Constraints.tibia_r_Ty, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=9)
+    constraints.add(Constraints.tibia_r_Tz, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=10)
+    constraints.add(Constraints.tibia_r_Rz, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=12)
+    constraints.add(Constraints.tibia_r_Ry, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=13)
 
-    # # External forces
-    # external_forces = np.zeros((6, 2, nb_shooting)) # 1 torseur par jambe
-    # external_forces[:, 0, :] = grf_ref[:6, :]  # right leg
-    # external_forces[:, 1, :] = grf_ref[6:, :]  # left leg
+    # -- patella_r --
+    constraints.add(Constraints.patella_r_Tx, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=14)
+    constraints.add(Constraints.patella_r_Ty, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=15)
+    constraints.add(Constraints.patella_r_Rz, instant=Instant.ALL, x_interpol=x, q_ref_idx=11, q_target_idx=16)
+
+    # -- tibia_l --
+    constraints.add(Constraints.tibia_l_Ty, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=21)
+    constraints.add(Constraints.tibia_l_Tz, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=22)
+    constraints.add(Constraints.tibia_l_Rz, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=24)
+    constraints.add(Constraints.tibia_l_Ry, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=25)
+
+    # -- patella_l --
+    constraints.add(Constraints.patella_l_Tx, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=26)
+    constraints.add(Constraints.patella_l_Ty, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=27)
+    constraints.add(Constraints.patella_l_Rz, instant=Instant.ALL, x_interpol=x, q_ref_idx=23, q_target_idx=28)
+
+    # External forces
+    external_forces = [np.zeros((6, 2, nb_shooting))] # 1 torseur par jambe
+    external_forces[0][:6, 0, :] = grf_ref[:6, :-1]  # right leg
+    external_forces[0][:6, 1, :] = grf_ref[6:, :-1]  # left leg
 
     # Path constraint
     x_bounds = BoundsList()
@@ -87,7 +97,6 @@ def prepare_ocp(
 
     u_init = InitialConditionsList()
     init_u = np.zeros((nb_tau, nb_shooting))
-    init_u[1, :] = np.repeat(-500, nb_shooting)
     u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # ------------- #
@@ -103,17 +112,22 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         constraints=constraints,
-        nb_threads=nb_threads,
+        external_forces=external_forces,
     )
 
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test_no_muscle.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test.bioMod")
     t_init = 0.81
     t_end = 1.65
     final_time = t_end - t_init
     nb_shooting = 50
+
+    # model parameters
+    nb_q = biorbd_model.nbQ()
+    nb_qdot = biorbd_model.nbQdot()
+    nb_tau = biorbd_model.nbGeneralizedTorque()
 
     # Generate data from file OpenSim
     [Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, biorbd_model.nbQ(), nb_shooting)
@@ -129,6 +143,13 @@ if __name__ == "__main__":
         grf_ref=GRF_ref,
         nb_threads=4,
     )
+
+    U_init_sim = InitialConditionsList()
+    U_init_sim.add([0]*nb_tau, interpolation=InterpolationType.CONSTANT)
+    sim = Simulate.from_controls_and_initial_states(ocp, ocp.original_values["X_init"][0], U_init_sim[0], single_shoot=True)
+    states_sim, controls_sim = Data.get_data(ocp, sim["x"])
+    ShowResult(ocp, sim).graphs()
+    ShowResult(ocp, sim).animate()
 
     # --- Solve the program --- #
     tic = time()
