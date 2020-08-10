@@ -67,10 +67,10 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, controls_idx=range(6, nb_q), phase=0)
-    objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, data_to_track=excitation_ref.T, phase=0)
+    # objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, controls_idx=range(6, nb_q), phase=0)
+    # objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, data_to_track=excitation_ref.T, phase=0)
     # objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref, phase=0)
-    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=500, states_idx=range(nb_q), data_to_track=q_ref.T, phase=0)
+    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=100, states_idx=range(nb_q), data_to_track=q_ref.T, phase=0)
 
     # Dynamics
     dynamics = DynamicsTypeOption(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN, phase=0)
@@ -140,7 +140,7 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         constraints,
-        nb_threads=nb_threads,
+        # nb_threads=nb_threads,
         external_forces=external_forces,
     )
 
@@ -217,7 +217,7 @@ if __name__ == "__main__":
         q_ref=q_ref,
         qdot_ref=qdot_ref,
         Fext=grf_ref,
-        Mext=Mext_2,
+        Mext=Mext,
         fiso_init=fiso_init,
         nb_threads=1,
     )
@@ -265,4 +265,5 @@ if __name__ == "__main__":
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
+    ShowResult(ocp, sol).graphs()
 

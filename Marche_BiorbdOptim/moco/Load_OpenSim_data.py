@@ -148,22 +148,54 @@ def get_grf(t_init, t_end, final_time, nb_shooting):
     idx_init_grf = np.where(df[:, 0]==t_init)[0][0]
     idx_end_grf = np.where(df[:, 0]==t_end)[0][0] # index for mvt
 
-    data_grf = []
-    data_grf.append(df[idx_init_grf: idx_end_grf + 1, 1:4].T)
-    data_grf.append(df[idx_init_grf: idx_end_grf + 1, 7:10].T)
-    data_grf.append(df[idx_init_grf: idx_end_grf + 1, 10:13].T)
-    data_grf.append(df[idx_init_grf: idx_end_grf + 1, 16:19].T) # get data
+    Force_grf = []
+    Moment_grf = []
+    Force_grf.append(df[idx_init_grf: idx_end_grf + 1, 1:4].T)
+    Moment_grf.append(df[idx_init_grf: idx_end_grf + 1, 7:10].T)
+    Force_grf.append(df[idx_init_grf: idx_end_grf + 1, 10:13].T)
+    Moment_grf.append(df[idx_init_grf: idx_end_grf + 1, 16:19].T) # get data
 
     grf = np.zeros((6*2, nb_shooting+1)) # interpolate data
     t = np.linspace(0, final_time, len(df[idx_init_grf:idx_end_grf + 1, 0])) # time vector for data
     node_t = np.linspace(0, final_time, nb_shooting + 1) # time vector for simulation
-    g = 0
-    for data in data_grf:
+    Force = []
+    Moment = []
+    for i in range(len(Force_grf)):
+        force = Force_grf[i]
+        moment = Moment_grf[i]
+        f = np.zeros((3, nb_shooting + 1))
+        m = np.zeros((3, nb_shooting + 1))
+        for i in range(force.shape[0]):
+            ff = interpolate.interp1d(t, force[i], kind="cubic")
+            fm = interpolate.interp1d(t, moment[i], kind="cubic")
+            f[i] = ff(node_t)
+            m[i] = fm(node_t)
+        Force.append(f)
+        Moment.append(m)
+    return Force, Moment
+
+def get_position(t_init, t_end, final_time, nb_shooting):
+    # --- get reaction forces ---
+    df =pd.read_excel("grf_walk_test.xlsx")
+    df = np.array(df) # read file
+
+    idx_init_grf = np.where(df[:, 0]==t_init)[0][0]
+    idx_end_grf = np.where(df[:, 0]==t_end)[0][0] # index for mvt
+
+    position_grf = []
+    position_grf.append(df[idx_init_grf: idx_end_grf + 1, 4:7].T)
+    position_grf.append(df[idx_init_grf: idx_end_grf + 1, 13:16].T) # get data
+
+    position = []
+    t = np.linspace(0, final_time, len(df[idx_init_grf:idx_end_grf + 1, 0])) # time vector for data
+    node_t = np.linspace(0, final_time, nb_shooting + 1) # time vector for simulation
+    for data in position_grf:
+        pos = np.zeros((3, nb_shooting + 1))  # interpolate data
         for i in range(data.shape[0]):
             f = interpolate.interp1d(t, data[i], kind="cubic")
-            grf[g] = f(node_t)
-            g+=1
-    return grf
+            pos[i] = f(node_t)
+        position.append(pos)
+    return position
 
 # model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test.bioMod")
 # t_init = 0.81
@@ -171,5 +203,11 @@ def get_grf(t_init, t_end, final_time, nb_shooting):
 # final_time = t_end - t_init
 # nb_shooting = 50
 # [Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, model.nbQ(), nb_shooting)
+# position = get_position(t_init, t_end, final_time, nb_shooting)
+# [Force, Moment] = get_grf(t_init, t_end, final_time, nb_shooting)
+# plt.figure()
+# plt.plot(position[0][0, :], position[0][2, :], 'b+')
+# plt.plot(position[1][0, :], position[1][2, :], 'r+')
+
 # b = BiorbdViz(loaded_model=model)
 # b.load_movement(Q_ref)

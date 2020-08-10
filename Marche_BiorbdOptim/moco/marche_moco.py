@@ -1,7 +1,7 @@
 import numpy as np
 import biorbd
 from time import time
-from .Load_OpemSim_data import get_q, get_grf
+from .Load_OpenSim_data import get_q, get_grf
 
 from biorbd_optim import (
     OptimalControlProgram,

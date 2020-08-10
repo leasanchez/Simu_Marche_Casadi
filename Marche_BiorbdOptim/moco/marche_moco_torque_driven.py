@@ -1,9 +1,11 @@
 import numpy as np
 import biorbd
 from time import time
+from BiorbdViz import BiorbdViz
 from casadi import vertcat, MX, Function, interp1d, interpolant
 from matplotlib import pyplot as plt
-from Marche_BiorbdOptim.moco.Load_OpemSim_data import get_q, get_grf
+from mpl_toolkits import mplot3d
+from Marche_BiorbdOptim.moco.Load_OpenSim_data import get_q, get_grf, get_position
 import Marche_BiorbdOptim.moco.constraints_dof as Constraints
 
 from biorbd_optim import (
@@ -28,7 +30,7 @@ from biorbd_optim import (
 
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, q_ref, qdot_ref, grf_ref, nb_threads,
+    biorbd_model, final_time, nb_shooting, q_ref, qdot_ref, grf_ref, moment_ref, nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -40,7 +42,7 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = ObjectiveList()
     objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, phase=0)
-    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=100, states_idx=range(nb_q), data_to_track=q_ref, phase=0)
+    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=100, states_idx=range(nb_q), data_to_track=q_ref.T, phase=0)
 
     # Dynamics
     dynamics = DynamicsTypeList()
@@ -75,8 +77,9 @@ def prepare_ocp(
 
     # External forces
     external_forces = [np.zeros((6, 2, nb_shooting))] # 1 torseur par jambe
-    external_forces[0][:6, 0, :] = grf_ref[:6, :-1]  # right leg
-    external_forces[0][:6, 1, :] = grf_ref[6:, :-1]  # left leg
+    for i in range(len(grf_ref)):
+        external_forces[0][:3, i, :] = grf_ref[i][:, :-1]
+        external_forces[0][3:, i, :] = moment_ref[i][:, :-1]
 
     # Path constraint
     x_bounds = BoundsList()
@@ -128,11 +131,71 @@ if __name__ == "__main__":
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
     nb_tau = biorbd_model.nbGeneralizedTorque()
+    nb_markers = biorbd_model.nbMarkers()
+    node_t = np.linspace(0, final_time, nb_shooting + 1)
 
     # Generate data from file OpenSim
     [Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, biorbd_model.nbQ(), nb_shooting)
-    GRF_ref = get_grf(t_init, t_end, final_time, nb_shooting)
+    [Force_ref, Moment_ref] = get_grf(t_init, t_end, final_time, nb_shooting)
+    position = get_position(t_init, t_end, final_time, nb_shooting)
 
+    symbolic_q = MX.sym("x", nb_q, 1)
+    markers_func=Function(
+        "ForwardKin",
+        [symbolic_q],
+        [biorbd_model.markers(symbolic_q)],
+        ["q"],
+        ["marker_pos"],
+        ).expand()
+
+    markers_pos = np.zeros((3, nb_markers, nb_shooting + 1))
+    for i in range(nb_shooting + 1):
+        markers_pos[:, :, i]=markers_func(Q_ref[:, i])
+
+    # b = BiorbdViz(loaded_model=biorbd_model)
+    # b.load_movement(Q_ref)
+
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    ax.scatter3D(position[0][0, :], position[0][1, :], position[0][2, :], color='blue')
+    ax.scatter3D(position[1][0, :], position[1][1, :], position[1][2, :], color='red')
+    ax.scatter3D(markers_pos[0, 0, :], markers_pos[1, 0, :], markers_pos[2, 0, :], color='green')
+    ax.scatter3D(markers_pos[0, 1, :], markers_pos[1, 1, :], markers_pos[2, 1, :], color='magenta')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    Mext = []
+    for leg in range(len(Force_ref)):
+        pos = position[leg]
+        force = Force_ref[leg]
+        moment = Moment_ref[leg]
+        marker = markers_pos[:, leg, :]
+        M = np.zeros((3, nb_shooting + 1))
+        for i in range(nb_shooting + 1):
+            p = pos[:, i] - marker[:, i]
+            M[:, i]=np.cross(p, force[:, i]) + moment[:, i]
+        Mext.append(M)
+
+    figure, axes = plt.subplots(1, 3)
+    axes[0].plot(node_t, Force_ref[0].T)
+    axes[0].set_title('Forces right')
+    axes[1].plot(node_t, Moment_ref[0].T)
+    axes[1].set_title('Moments init right')
+    axes[2].plot(node_t, Mext[0].T)
+    axes[2].set_title('Moments ankle right')
+    plt.legend(['x', 'y', 'z'])
+
+    figure, axes = plt.subplots(1, 3)
+    axes[0].plot(node_t, Force_ref[1].T)
+    axes[0].set_title('Forces left')
+    axes[1].plot(node_t, Moment_ref[1].T)
+    axes[1].set_title('Moments init left')
+    axes[2].plot(node_t, Mext[1].T)
+    axes[2].set_title('Moments ankle left')
+    plt.legend(['x', 'y', 'z'])
+
+    plt.show()
     # Track these data
     ocp = prepare_ocp(
         biorbd_model,
@@ -140,16 +203,17 @@ if __name__ == "__main__":
         nb_shooting=nb_shooting,
         q_ref=Q_ref,
         qdot_ref=Qdot_ref,
-        grf_ref=GRF_ref,
-        nb_threads=4,
+        grf_ref=Force_ref,
+        moment_ref=Mext,
+        nb_threads=1,
     )
 
-    U_init_sim = InitialConditionsList()
-    U_init_sim.add([0]*nb_tau, interpolation=InterpolationType.CONSTANT)
-    sim = Simulate.from_controls_and_initial_states(ocp, ocp.original_values["X_init"][0], U_init_sim[0], single_shoot=True)
-    states_sim, controls_sim = Data.get_data(ocp, sim["x"])
-    ShowResult(ocp, sim).graphs()
-    ShowResult(ocp, sim).animate()
+    # U_init_sim = InitialConditionsList()
+    # U_init_sim.add([0]*nb_tau, interpolation=InterpolationType.CONSTANT)
+    # sim = Simulate.from_controls_and_initial_states(ocp, ocp.original_values["X_init"][0], U_init_sim[0], single_shoot=True)
+    # states_sim, controls_sim = Data.get_data(ocp, sim["x"])
+    # ShowResult(ocp, sim).graphs()
+    # ShowResult(ocp, sim).animate()
 
     # --- Solve the program --- #
     tic = time()

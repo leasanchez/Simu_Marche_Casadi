@@ -126,6 +126,12 @@ gravity 0 -9.8 0
                -1.78634	0.00113686
 	externalforceindex 0
     endsegment
+	// ---- Markers
+	marker	CoM_r //0
+		parent	talus_r_offset
+		position	0   0    0
+		technical	1
+	endmarker
     // Segment
     segment talus_r
         parent talus_r_offset 
@@ -281,6 +287,12 @@ gravity 0 -9.8 0
                -1.78634	0.00113686
 	externalforceindex 1
     endsegment
+	// ---- Markers
+	marker	CoM_l //1
+		parent	talus_l_offset
+		position	0   0    0
+		technical	1
+	endmarker
     // Segment
     segment talus_l
         parent talus_l_offset 

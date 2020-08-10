@@ -3,7 +3,7 @@ from casadi import dot, Function, vertcat, MX
 from matplotlib import pyplot as plt
 import biorbd
 from time import time
-from Marche_BiorbdOptim.moco.Load_OpemSim_data import get_q, get_grf
+from Marche_BiorbdOptim.moco.Load_OpenSim_data import get_q, get_grf
 import Marche_BiorbdOptim.moco.constraints_dof as Constraints
 
 from biorbd_optim import (
