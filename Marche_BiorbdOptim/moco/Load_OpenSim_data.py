@@ -7,7 +7,7 @@ import biorbd
 from matplotlib import pyplot as plt
 
 
-def get_q(t_init, t_end, final_time, nb_q, nb_shooting):
+def get_state_tracked(t_init, t_end, final_time, nb_q, nb_shooting):
     # --- get q ---
     df =pd.read_excel("muscle_driven_state_tracking_tracked_states.xlsx")
     df = np.array(df)
@@ -326,8 +326,40 @@ def get_control_from_solution(t_init, t_end, final_time, nb_q, nb_shooting):
     for e in range(nb_mus):
         fe = interpolate.interp1d(t, excitation_sol[:, e], kind="cubic")
         Excitation[e, :] = fe(node_t)
-
     return Tau, Excitation
+
+def get_tau_from_inverse_dynamics(t_init, t_end, final_time, nb_q, nb_shooting, Qddot):
+    # --- get control ---
+    df =pd.read_excel("inverse_dynamics.xlsx") # solution file
+    df = np.array(df)
+    idx_init_q = np.where(df[:, 0]==t_init)[0][0] # init time idx
+    idx_end_q = np.where(df[:, 0]==t_end)[0][0]  # end time idx
+
+    tau_iv = df[idx_init_q:idx_end_q + 1, 1:19] # get residual torque
+
+    tau = np.zeros((nb_q, tau_iv.shape[0]))
+    tau[:6, :] = tau_iv[:, :6].T # pelvis translation + rotation
+    tau[6:9, :] = tau_iv[:, 6:9].T  # hip r
+    tau[11, :] = tau_iv[:, 12]  # knee r
+    tau[17, :] = tau_iv[:, 16]  # ankle r
+    tau[18:21, :] = tau_iv[:, 9:12].T  # hip l
+    tau[23, :] = -tau_iv[:, 14]  # knee l
+    tau[29, :] = tau_iv[:, 17]  # ankle l
+
+    t = np.array(df[idx_init_q:idx_end_q + 1, 0], dtype=float) - t_init
+    node_t = np.linspace(0, final_time, nb_shooting + 1)
+    Tau = np.zeros((nb_q, nb_shooting + 1))
+
+    for i in range(nb_q): # interpolate data
+        ftau = interpolate.interp1d(t, tau[i, :], kind="cubic")
+        Tau[i, :] = ftau(node_t)
+
+    Tau[9:11, :] = Qddot[9:11, :]
+    Tau[12:17, :] = Qddot[12:17, :]
+    Tau[21:23, :] = Qddot[21:23, :]
+    Tau[24:29, :] = Qddot[24:29, :]
+
+    return Tau
 
 def get_grf(t_init, t_end, final_time, nb_shooting):
     # --- get reaction forces ---
@@ -386,16 +418,16 @@ def get_position(t_init, t_end, final_time, nb_shooting):
         position.append(pos)
     return position
 
-model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test.bioMod")
-t_init = 0.81
-t_end = 1.65
-final_time = t_end - t_init
-nb_shooting = 50
-[Q_ref, Qdot_ref, Qddot_ref] = get_q(t_init, t_end, final_time, model.nbQ(), nb_shooting)
-[Q_sol, Qdot_sol, Activation_sol] = get_state_from_solution(t_init, t_end, final_time, model.nbQ(), nb_shooting)
-[Tau_sol, Excitation_sol] = get_control_from_solution(t_init, t_end, final_time, model.nbQ(), nb_shooting)
-position = get_position(t_init, t_end, final_time, nb_shooting)
-[Force, Moment] = get_grf(t_init, t_end, final_time, nb_shooting)
-
-b = BiorbdViz(loaded_model=model)
-b.load_movement(Q_ref)
+# model = biorbd.Model("../../ModelesS2M/Open_Sim/subject_walk_armless_test.bioMod")
+# t_init = 0.81
+# t_end = 1.65
+# final_time = t_end - t_init
+# nb_shooting = 50
+# [Q_ref, Qdot_ref, Qddot_ref] = get_state_tracked(t_init, t_end, final_time, model.nbQ(), nb_shooting)
+# [Q_sol, Qdot_sol, Activation_sol] = get_state_from_solution(t_init, t_end, final_time, model.nbQ(), nb_shooting)
+# [Tau_sol, Excitation_sol] = get_control_from_solution(t_init, t_end, final_time, model.nbQ(), nb_shooting)
+# position = get_position(t_init, t_end, final_time, nb_shooting)
+# [Force, Moment] = get_grf(t_init, t_end, final_time, nb_shooting)
+#
+# b = BiorbdViz(loaded_model=model)
+# b.load_movement(Q_ref)
