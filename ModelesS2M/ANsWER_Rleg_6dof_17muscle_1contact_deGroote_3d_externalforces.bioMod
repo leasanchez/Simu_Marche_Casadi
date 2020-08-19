@@ -112,7 +112,7 @@ segment femur_r
 	rotations	xyz
         rangesQ    -pi/9  pi/9 
                    -pi/9  pi/9 
-                   -pi/9  pi/4
+                   -pi/4  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -263,8 +263,8 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/9 
-		-pi/6 pi/9
+    	rangesQ -pi/6 pi/6 
+		-pi/6 pi/6
     	rangesQdot -5.2360 5.2360
 		   -5.2360 5.2360  
 	mass	0.042104
@@ -278,7 +278,11 @@ segment talus_r
 	externalforceindex 0
 endsegment
 // ---- Markers
-// no marker
+marker	CoM //19
+	parent	talus_r
+	position	0.0054828	0.0022928	0
+	technical	1
+endmarker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_r segment
@@ -301,13 +305,6 @@ segment foot_r
 	mesh    0.0054278      0              0
 	mesh    0.200778       0              0
 endsegment
-// ---- Markers
-marker	CoM //19
-	parent	foot_r
-	position	0.10155	  0.015551    0
-	technical	1
-endmarker
-
 
 
 // --------------------------------------------------------------------------------------------------------
