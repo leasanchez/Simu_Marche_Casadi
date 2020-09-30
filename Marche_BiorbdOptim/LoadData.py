@@ -6,19 +6,30 @@ from matplotlib import pyplot as plt
 
 
 class Data_to_track:
-    def __init__(self, name_subject, multiple_contact=False):
+    def __init__(self, name_subject, model, multiple_contact=False, two_leg=False):
         PROJET = "/home/leasanchez/programmation/Simu_Marche_Casadi/"
         self.name_subject = name_subject
         self.file = PROJET + "DonneesMouvement/" + name_subject + "_out.c3d"
         self.kalman_file = PROJET + "DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
-        self.Q_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_q_KalmanFilter.txt"
-        self.Qdot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qdot_KalmanFilter.txt"
-        self.idx_start, self.idx_stop_stance, self.idx_stop = self.Get_Event()
-        self.idx_2_contacts = 0
-        self.idx_heel_rise = 0
-        self.idx_platform = self.Find_platform()
+        self.two_leg = two_leg
         self.multiple_contact = multiple_contact
-        self.nbPF = 0
+        self.start_leg, self.idx_start, self.idx_stop_stance, self.idx_stop = self.Get_Event()
+        self.idx_platform = self.Find_platform()
+        if self.two_leg:
+            self.Q_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_q_KalmanFilter_2legs.txt"
+            self.Qdot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qdot_KalmanFilter_2legs.txt"
+            self.Qddot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qddot_KalmanFilter_2legs.txt"
+        else:
+            self.Q_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_q_KalmanFilter.txt"
+            self.Qdot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qdot_KalmanFilter.txt"
+            self.Qddot_KalmanFilter_file = PROJET + "DonneesMouvement/" + name_subject + "_qddot_KalmanFilter.txt"
+        self.model = model
+        self.nb_marker = model.nbMarkers()
+        self.nb_q = model.nbQ()
+        self.nb_mus = model.nbMuscleTotal()
+
+
+
 
     def Get_Event(self):
         # Find event from c3d file : heel strike (HS) and toe off (TO)
