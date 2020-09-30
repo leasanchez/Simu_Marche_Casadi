@@ -90,13 +90,170 @@ class Data_to_track:
         measurements = c3d(self.file)
         freq = measurements["parameters"]["ANALOG"]["RATE"]["value"][0]
 
-        T = 1 / freq * (self.idx_stop - self.idx_start + 1)
-        T_stance = 1 / freq * (self.idx_stop_stance - self.idx_start + 1)
-        T_swing = 1 / freq * (self.idx_stop - self.idx_stop_stance + 1)
+        if self.two_leg:
+            # always start with the rigth leg
+            T_stance = [1 / freq * (self.idx_stop_stance[0] - self.idx_start[0] + 1),
+                        1 / freq * (self.idx_stop_stance[1] - self.idx_start[1] + 1)]
+            T_swing = [1 / freq * (self.idx_stop[0] - self.idx_stop_stance[0] + 1),
+                       1 / freq * (self.idx_stop[1] - self.idx_stop_stance[1] + 1)]
+        else:
+            T_stance = 1 / freq * (self.idx_stop_stance - self.idx_start + 1)
+            T_swing = 1 / freq * (self.idx_stop - self.idx_stop_stance + 1)
 
         if self.multiple_contact:
-            T_stance = self.GetTime_stance()
-        return T, T_stance, T_swing
+            phase_time = self.GetPhaseTime()
+        else:
+            phase_time = [T_stance, T_swing]
+            self.idx = [self.idx_start, self.idx_stop_stance, self.idx_stop]
+        return phase_time
+
+    def GetCycleTime(self):
+        measurements = c3d(self.file)
+        freq = measurements["parameters"]["ANALOG"]["RATE"]["value"][0]
+
+        if self.two_leg:
+            T = round(1 / freq * (max(self.idx_stop_stance) - min(self.idx_start) + 1), 3)
+        else:
+            T = 1 / freq * (self.idx_stop - self.idx_start + 1)
+        return T
+
+
+    def GetPhaseTime(self):
+        """
+        Get the different times that divides the stance phase :
+        1. heel strike -> 1 contact at the heel
+        2. flat foot -> 2 contacts to the ground
+        3. forefoot -> heel rise hence 1 contact forefoot
+        """
+        measurements = c3d(self.file)
+        freq = measurements["parameters"]["ANALOG"]["RATE"]["value"][0]
+        seuil = 0.04
+
+        # get markers position
+        markers = self.GetMarkers_Position()
+        COP = self.ComputeCoP()
+        if self.two_leg:
+            self.idx_heel_rise=[]
+            self.idx_2_contacts=[]
+            for leg in range(2): #still starting from the right stance
+                Heel = markers[:, 19 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
+                Meta1 = markers[:, 20 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
+                Meta5 = markers[:, 24 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
+
+                # plt.figure()
+                # plt.plot(COP[leg][0, :], COP[leg][1, :], 'k+')
+                # plt.plot(Heel[0, :], Heel[1, :], 'o')
+                # plt.plot(Meta1[0, :], Meta1[1, :], 'o')
+                # plt.plot(Meta5[0, :], Meta5[1, :], 'o')
+                # plt.legend(['COP', 'Heel', 'Meta1', 'Meta5'])
+                # plt.xlabel('x (m)')
+                # plt.ylabel('y (m)')
+                # plt.axis('equal')
+
+                idx_heel = np.where(Heel[2, :] > seuil) # Heel rise -- z > 0.02
+                self.idx_heel_rise.append(self.idx_start[leg] + int(idx_heel[0][0]))
+
+                idx_Meta1 = np.where(Meta1[2, :] < seuil)
+                idx_Meta5 = np.where(Meta5[2, :] < seuil) # forefoot -- z < 0.02
+                self.idx_2_contacts.append(self.idx_start[leg] + np.max([idx_Meta5[0][0], idx_Meta1[0][0]]))
+
+            Meta1= markers[:, 20, min(self.idx_stop): max(self.idx_stop_stance)]
+            idx_Meta1_otherleg = np.where(Meta1[2, :] < seuil)  # forefoot -- z < 0.02
+            self.idx_2_contacts_otherleg= min(self.idx_stop) + int(idx_Meta1_otherleg[0][0])
+
+            phase_time = [1 / freq * (min(self.idx_heel_rise) - min(self.idx_start) + 1), # flatfoot R
+                          1 / freq * (max(self.idx_start) - min(self.idx_heel_rise) + 1), # forefoot R
+                          1 / freq * (max(self.idx_2_contacts) - max(self.idx_start) + 1), # contact heel L + forefoot R
+                          1 / freq * (min(self.idx_stop_stance) - max(self.idx_2_contacts) + 1), # flatfoot L + forefoot R
+                          1 / freq * (max(self.idx_heel_rise) - min(self.idx_stop_stance) + 1), # flatfoot L
+                          1 / freq * (min(self.idx_stop) - max(self.idx_heel_rise) + 1), # forefoot L
+                          1 / freq * (self.idx_2_contacts_otherleg - min(self.idx_stop) + 1),# contact heel R + forefoot L
+                          1 / freq * (max(self.idx_stop_stance) - self.idx_2_contacts_otherleg + 1)] # flatfoot L + forefoot R
+            self.idx = [min(self.idx_start),
+                        min(self.idx_heel_rise),
+                        max(self.idx_start),
+                        max(self.idx_2_contacts),
+                        min(self.idx_stop_stance),
+                        max(self.idx_heel_rise),
+                        min(self.idx_stop),
+                        self.idx_2_contacts_otherleg,
+                        max(self.idx_stop_stance)]
+
+
+            # Heel_R = markers[:, 19, :]
+            # Meta1_R = markers[:, 20, :]
+            # Meta5_R = markers[:, 24, :]
+            # Heel_L = markers[:, 41, :]
+            # Meta1_L = markers[:, 42, :]
+            # Meta5_L = markers[:, 46, :]
+            #
+            # plt.figure('foot position')
+            # plt.plot(Heel_R[2, :])
+            # plt.plot(Meta1_R[2, :])
+            # plt.plot(Meta5_R[2, :])
+            # plt.plot(Heel_L[2, :])
+            # plt.plot(Meta1_L[2, :])
+            # plt.plot(Meta5_L[2, :])
+            # plt.legend(['heel_R', 'meta1_R', 'meta5_R', 'heel_L', 'meta1_L', 'meta5_L'])
+            # plt.plot([0, len(Heel_R[2, :])], [seuil, seuil], "k--", linewidth=0.7)
+            #
+            # plt.plot([min(self.idx_start), min(self.idx_start)], [0, 0.1], "k--", linewidth=0.7) # start -- LTO + contact orteils droits
+            # plt.text(min(self.idx_start) - 3, -0.005, 'LTO')
+            # plt.plot([max(self.idx_start), max(self.idx_start)], [0, 0.1], "k--", linewidth=0.7) # heel strike L
+            # plt.text(max(self.idx_start)- 3, -0.005, 'LHS')
+            # plt.plot([min(self.idx_heel_rise), min(self.idx_heel_rise)], [0, 0.1], "k--", linewidth=0.7) # heel rise R
+            # plt.text(min(self.idx_heel_rise)- 3, -0.005, 'RHR')
+            # plt.plot([max(self.idx_2_contacts), max(self.idx_2_contacts)], [0, 0.1], "k--", linewidth=0.7) # toes on L
+            # plt.text(max(self.idx_2_contacts)- 3, -0.005, 'LTON')
+            # plt.plot([min(self.idx_stop_stance), min(self.idx_stop_stance)], [0, 0.1], "k--", linewidth=0.7)  # RTO -- stop stance
+            # plt.text(min(self.idx_stop_stance)- 3, -0.005, 'RTO')
+            # plt.plot([min(self.idx_stop), min(self.idx_stop)], [0, 0.1], "k--", linewidth=0.7)  # heel strike R -- stop
+            # plt.text(min(self.idx_stop)- 3, -0.005, 'RHS')
+            # plt.plot([max(self.idx_heel_rise), max(self.idx_heel_rise)], [0, 0.1], "k--", linewidth=0.7)  # heel rise L
+            # plt.text(max(self.idx_heel_rise)- 3, -0.005, 'LHR')
+            # plt.plot([self.idx_2_contacts_otherleg, self.idx_2_contacts_otherleg], [0, 0.1], "k--", linewidth=0.7)  # toes on R ???
+            # plt.text(self.idx_2_contacts_otherleg - 3, -0.005, 'RTON')
+            # plt.plot([max(self.idx_stop_stance), max(self.idx_stop_stance)], [0, 0.1], "k--", linewidth=0.7)  # LTO
+            # plt.text(max(self.idx_stop_stance)- 3, -0.005, 'LTO')
+            # plt.title('foot markers position during stance phase')
+            # plt.ylabel('z position (mm)')
+
+        else:
+            Heel = markers[:, 19, self.idx_start: self.idx_stop_stance]
+            Meta1 = markers[:, 20, self.idx_start: self.idx_stop_stance]
+            Meta5 = markers[:, 24, self.idx_start: self.idx_stop_stance]
+
+            # Heel rise
+            idx_heel = np.where(Heel[2, :] > seuil)
+            self.idx_heel_rise = self.idx_start + int(idx_heel[0][0])
+
+            # forefoot
+            idx_Meta1 = np.where(Meta1[2, :] < seuil)
+            idx_Meta5 = np.where(Meta5[2, :] < seuil)
+            self.idx_2_contacts = self.idx_start + np.max([idx_Meta5[0][0], idx_Meta1[0][0]])
+
+            phase_time = [1 / freq * (self.idx_2_contacts - self.idx_start + 1),
+                          1 / freq * (self.idx_heel_rise - self.idx_2_contacts + 1),
+                          1 / freq * (self.idx_stop_stance - self.idx_heel_rise + 1),
+                          1 / freq * (self.idx_stop - self.idx_stop_stance + 1)]
+            self.idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance, self.idx_stop]
+
+
+            # plt.figure('foot position')
+            # plt.plot(Heel[2, :], 'g')
+            # plt.plot(Meta1[2, :], 'r')
+            # plt.plot(Meta5[2, :], 'b')
+            # plt.legend(['heel', 'meta1', 'meta5'])
+            # plt.title('foot markers position during stance phase')
+            # plt.ylabel('z position (mm)')
+            # plt.ylim([0, 0.05])
+            # plt.xlim([0, len(Heel[2, :])])
+            # plt.plot([0, len(Heel[2, :])], [0.023, 0.023], "k--", linewidth=0.7)
+            # plt.plot([np.max([idx_Meta5[0][0], idx_Meta1[0][0]]), np.max([idx_Meta5[0][0], idx_Meta1[0][0]])], [0, 0.05], "k--", linewidth=0.7)
+            # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0, 0.05], "k--", linewidth=0.7)
+        return phase_time
+
+
 
     def GetMarkers_Position(self):
      # LOAD C3D FILE
@@ -168,49 +325,6 @@ class Data_to_track:
      return markers
 
 
-    def GetTime_stance(self):
-        """
-        Get the different times that divides the stance phase :
-        1. heel strike -> 1 contact at the heel
-        2. flat foot -> 2 contacts to the ground
-        3. forefoot -> heel rise hence 1 contact forefoot
-        """
-        measurements = c3d(self.file)
-        freq = measurements["parameters"]["ANALOG"]["RATE"]["value"][0]
-
-        # get markers position
-        markers = self.GetMarkers_Position()
-        Heel = markers[:, 19, self.idx_start : self.idx_stop_stance]
-        Meta1 = markers[:, 20, self.idx_start : self.idx_stop_stance]
-        Meta5 = markers[:, 24, self.idx_start : self.idx_stop_stance]
-
-        # Heel rise -- z > 0.02
-        idx_heel = np.where(Heel[2, :] > 0.023)
-        self.idx_heel_rise = self.idx_start + int(idx_heel[0][0])
-
-        # forefoot -- z < 0.02
-        idx_Meta1 = np.where(Meta1[2, :] < 0.023)
-        idx_Meta5 = np.where(Meta5[2, :] < 0.023)
-        self.idx_2_contacts = self.idx_start + np.max([idx_Meta5[0][0], idx_Meta1[0][0]])
-
-        T_Heel = 1 / freq * (self.idx_2_contacts - self.idx_start + 1)
-        T_2_contact = 1 / freq * (self.idx_heel_rise - self.idx_2_contacts + 1)
-        T_Forefoot = 1 / freq * (self.idx_stop_stance - self.idx_heel_rise + 1)
-        T_stance = [T_Heel, T_2_contact, T_Forefoot]
-
-        # plt.figure('foot position')
-        # plt.plot(Heel[2, :], 'g')
-        # plt.plot(Meta1[2, :], 'r')
-        # plt.plot(Meta5[2, :], 'b')
-        # plt.legend(['heel', 'meta1', 'meta5'])
-        # plt.title('foot markers position during stance phase')
-        # plt.ylabel('z position (mm)')
-        # plt.ylim([0, 0.05])
-        # plt.xlim([0, len(Heel[2, :])])
-        # plt.plot([0, len(Heel[2, :])], [0.023, 0.023], "k--", linewidth=0.7)
-        # plt.plot([np.max([idx_Meta5[0][0], idx_Meta1[0][0]]), np.max([idx_Meta5[0][0], idx_Meta1[0][0]])], [0, 0.05], "k--", linewidth=0.7)
-        # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0, 0.05], "k--", linewidth=0.7)
-        return T_stance
 
     def GetForces(self):
         measurements = c3d(self.file, extract_forceplat_data=True)
