@@ -537,29 +537,45 @@ class Data_to_track:
 
         return emg_ref
 
-    def load_data_GRF(self, biorbd_model, final_time, n_shooting_points):
-        # Load c3d file and get the muscular excitation from emg
-
+    def load_data_GRF(self, n_shooting_points):
         # GET GROUND REACTION WRENCHES
         GRF = self.GetForces()
-        GRF = GRF[self.idx_platform]
 
-        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        if self.multiple_contact:
+        if self.two_leg:
+            final_time = self.GetTime()
             GRF_real = []
-            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-            for i in range(len(final_time)):
-                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                f_stance = interp1d(t_stance, GRF[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                G = f_stance(node_t_stance)
-                GRF_real.append(G)
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    # ! forces from the rigth AND left foot !
+                    # the forces will be extracted according to the phases idx
+                    # for each phase, there will be 2 vectors for the R AND L
+                    # if there is no contact, then GRF values = 0
+                    # check which leg starts first and which plateforms corresponds to which !
+
+                    f1 = interp1d(t, GRF[0][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    G1=f1(node_t)
+                    f2 = interp1d(t, GRF[1][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    G2=f2(node_t)
+                    GRF_real.append((G1, G2))
         else:
-            t_stance = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start) + 1)
-            node_t_stance = np.linspace(0, final_time, n_shooting_points + 1)
-            f_stance = interp1d(t_stance, GRF[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-            G = f_stance(node_t_stance)
-            GRF_real = G
+            # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+            GRF = GRF[self.idx_platform] # only rigth leg
+            final_time = self.GetTime()
+            GRF_real = []
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    f = interp1d(t, GRF[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    GRF_real.append(f(node_t))
         return GRF_real
 
     def load_muscularExcitation(self, emg_ref):
