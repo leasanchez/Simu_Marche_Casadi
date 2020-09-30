@@ -458,32 +458,20 @@ class Data_to_track:
             CoP = f(node_t)
         return CoP
 
-    def load_data_markers(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+    def load_data_markers(self, n_shooting_points):
         markers = self.GetMarkers_Position()
+        markers_ref = []
 
-        # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR THE SWING PHASE
-        if GaitPhase == "stance":
-            if self.multiple_contact:
-                markers_ref = []
-                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-                for i in range(len(final_time)):
-                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, markers[:, :, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                    markers_ref.append(f_stance(node_t_stance))
-            else:
-                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-                node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, markers[:, :, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-                markers_ref = f(node_t)
-
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance + 1))
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, markers[:, :, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
-            markers_ref = f(node_t)
+        # INTERPOLATE AND GET REAL POSITION FOR SHOOTING POINT FOR PHASES
+        final_time = self.GetTime()
+        if len(n_shooting_points)<len(final_time):
+            raise RuntimeError(f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
         else:
-            raise RuntimeError("Gaitphase doesn't exist")
+            for i in range(len(final_time)):
+                t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f = interp1d(t, markers[:, :, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                markers_ref.append(f(node_t))
         return markers_ref
 
     def load_q_kalman(self, n_shooting_points):
