@@ -18,12 +18,13 @@ from biorbd_optim import (
     Objective,
     InterpolationType,
     Data,
-    ParametersList,
+    ParameterList,
     Instant,
     ConstraintList,
     Constraint,
     StateTransitionList,
     StateTransition,
+    Solver,
 )
 
 
@@ -166,12 +167,12 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Mayer.CUSTOM, custom_function=get_last_contact_forces, instant=Instant.ALL, weight=0.00005, data_to_track=grf_ref[1].T, phase=1)
+    # objective_functions.add(Objective.Mayer.CUSTOM, custom_function=get_last_contact_forces, instant=Instant.ALL, weight=0.00005, data_to_track=grf_ref[1].T, phase=1)
     for p in range(nb_phases):
         objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, controls_idx=range(6, nb_q), phase=p)
-        objective_functions.add(Objective.Lagrange.TRACK_CONTACT_FORCES, weight=0.00005, data_to_track=grf_ref[p].T, phase=p)
-        objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.001, data_to_track=excitation_ref[p][:, :-1].T, phase=p)
-        objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref[0], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_CONTACT_FORCES, weight=0.00005, target=grf_ref[p], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.001, trget=excitation_ref[p][:, :-1], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, target=markers_ref[0], phase=p)
 
     # Dynamics
     dynamics = DynamicsTypeList()
@@ -180,14 +181,14 @@ def prepare_ocp(
 
     # Constraints
     constraints = ConstraintList()
-    constraints.add(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
+    # constraints.add(Constraint.CUSTOM, custom_function=get_muscles_first_node, instant=Instant.START)
 
     # State Transitions
     state_transitions = StateTransitionList()
     state_transitions.add(StateTransition.IMPACT, phase_pre_idx=0)
 
     # Define the parameter to optimize
-    parameters = ParametersList()
+    parameters = ParameterList()
     bound_length = Bounds(
         min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation=InterpolationType.CONSTANT
     )
@@ -308,7 +309,7 @@ if __name__ == "__main__":
 
     # --- Solve the program --- #
     sol = ocp.solve(
-        solver="ipopt",
+        solver=Solver.IPOPT,
         solver_options={
             "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,

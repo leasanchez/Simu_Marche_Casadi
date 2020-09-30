@@ -283,7 +283,7 @@ if __name__ == "__main__":
     # ocp.add_plot("q", lambda x, u: q_ref[1], PlotType.STEP, axes_idx=[0, 1, 5, 8, 9, 11])
     # --- Solve the program --- #
     sol = ocp.solve(
-        solver="ipopt",
+        solver=Solver.IPOPT,
         solver_options={
             "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,
