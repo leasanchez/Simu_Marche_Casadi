@@ -2,6 +2,7 @@ import numpy as np
 from casadi import dot, Function, MX
 import biorbd
 from time import time
+from BiorbdViz import BiorbdViz
 from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 from Marche_BiorbdOptim.LoadData import Data_to_track
@@ -24,11 +25,29 @@ from biorbd_optim import (
     Instant,
     ConstraintList,
     Constraint,
-    PlotType,
     Solver,
     Simulate,
     InitialConditionsOption,
 )
+
+def compute_tau_from_muscles(model, states, controls):
+    muscles_states = biorbd.VecBiorbdMuscleState(model.nbMuscleTotal())
+    muscles_excitation = controls[model.nbQ():]
+    muscles_activations = states[model.nbQ() + model.nbQdot():]
+
+    for k in range(model.nbMuscleTotal()):
+        muscles_states[k].setExcitation(muscles_excitation[k])
+        muscles_states[k].setActivation(muscles_activations[k])
+
+    muscles_tau = model.muscularJointTorque(muscles_states, states[:model.nbQ()], states[model.nbQ():model.nbQ() + model.nbQdot()]).to_mx()
+    tau = muscles_tau + controls[:model.nbQ()]
+    return tau
+
+def inverse_dynamics(model, Q, Qdot, Qddot, Fext):
+    sv = biorbd.VecBiorbdSpatialVector()
+    sv.append(biorbd.SpatialVector(Fext))
+    tau = model.InverseDynamics(Q, Qdot, Qddot, sv).to_mx()
+    return tau
 
 
 def get_last_contact_forces(ocp, nlp, t, x, u, p, data_to_track=()):
@@ -53,9 +72,14 @@ def modify_isometric_force(biorbd_model, value, fiso_init):
             )
             n_muscle += 1
 
+def forward_dynamique(model, q, qdot, tau, fext):
+    sv = biorbd.VecBiorbdSpatialVector()
+    sv.append(biorbd.SpatialVector(fext))
+    qddot=model.ForwardDynamics(q, qdot, tau, sv).to_mx()
+    return qddot
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, q_ref, qdot_ref, Fext, Mext, fiso_init, nb_threads,
+    biorbd_model, final_time, nb_shooting, markers_ref, excitation_ref, q_ref, qdot_ref, Fext, Mext, fiso_init, nb_threads
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -68,10 +92,10 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=100, controls_idx=range(6, nb_q), phase=0)
+    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1, controls_idx=range(6, nb_q), phase=0)
     # objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.01, target=excitation_ref, phase=0)
-    # objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref, phase=0)
-    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=500, states_idx=range(nb_q), target=q_ref, phase=0)
+    # objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, markers_idx=26, data_to_track=cop_pos, phase=0)
+    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=100, states_idx=range(nb_q), target=q_ref, phase=0)
 
     # Dynamics
     dynamics = DynamicsTypeOption(DynamicsType.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN, phase=0)
@@ -96,18 +120,15 @@ def prepare_ocp(
     # Initial guess
     x_init = InitialConditionsList()
     init_x = np.zeros((nb_q + nb_qdot + nb_mus, nb_shooting + 1))
-    # init_x[:nb_q, :] = q_ref
-    # init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref
-    # init_x[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref
-    init_x[:nb_q, :] = np.load("./RES/external_forces/q.npy")
-    init_x[nb_q:nb_q + 12, :] = np.load("./RES/external_forces/q_dot.npy")
-    init_x[-biorbd_model.nbMuscleTotal():, :] = np.load("./RES/external_forces/excitations.npy")
+    init_x[:nb_q, :] = q_ref
+    init_x[nb_q:(nb_q + nb_qdot), :] = qdot_ref
+    init_x[-biorbd_model.nbMuscleTotal() :, :] = excitation_ref
     x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
     u_init = InitialConditionsList()
     init_u = np.zeros((nb_tau + nb_mus, nb_shooting))
-    init_u[:nb_q, :] = np.load("./RES/external_forces/tau.npy")[:, :-1]
-    init_u[-biorbd_model.nbMuscleTotal():, :] = np.load("./RES/external_forces/activations.npy")[:, :-1]
+    init_u[1, :] = np.zeros(nb_shooting) + 500
+    init_u[-biorbd_model.nbMuscleTotal():, :] = excitation_ref[:, :-1]
     u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # Define the parameter to optimize
@@ -145,14 +166,14 @@ def prepare_ocp(
         objective_functions,
         constraints,
         nb_threads=nb_threads,
-        external_forces=external_forces,
-        parameters=parameters,
+        # external_forces=external_forces,
+        # parameters=parameters,
     )
 
 
 if __name__ == "__main__":
     # Define the problem
-    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_Rleg_6dof_17muscle_1contact_deGroote_3d_externalforces.bioMod")
+    biorbd_model = biorbd.Model("../../ModelesS2M/ANsWER_externalforces_simple.bioMod")
     n_shooting_points = 25
     Gaitphase = "stance"
 
@@ -174,6 +195,7 @@ if __name__ == "__main__":
     )  # get markers position
     q_ref = Data_to_track.load_q_kalman(biorbd_model, T_stance, n_shooting_points, "stance")  # get q from kalman
     qdot_ref = Data_to_track.load_qdot_kalman(biorbd_model, T_stance, n_shooting_points, "stance")
+    qddot_ref = Data_to_track.load_qddot_kalman(biorbd_model, T_stance, n_shooting_points, "stance")
     emg_ref = Data_to_track.load_data_emg(biorbd_model, T_stance, n_shooting_points, "stance")  # get emg
     excitation_ref = Data_to_track.load_muscularExcitation(emg_ref)
     CoP = Data_to_track.load_data_CoP(biorbd_model, T_stance, n_shooting_points)
@@ -193,6 +215,11 @@ if __name__ == "__main__":
     for i in range(n_shooting_points + 1):
         markers_pos[:, :, i]=markers_func(q_ref[:, i])
 
+    Mext = np.zeros((3, n_shooting_points + 1))
+    for i in range(n_shooting_points):
+        pos = CoP[:, i] - markers_pos[:, 19, i]
+        Mext[:, i]=np.cross(pos, grf_ref[:, i]) + M_CoP[:, i]
+
     fig = plt.figure()
     ax = plt.axes(projection="3d")
     ax.scatter3D(CoP[0, :], CoP[1, :], CoP[2, :], color='red')
@@ -201,10 +228,23 @@ if __name__ == "__main__":
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
-    Mext = np.zeros((3, n_shooting_points + 1))
-    for i in range(n_shooting_points):
-        pos = CoP[:, i] - markers_pos[:, 19, i]
-        Mext[:, i]=np.cross(pos, grf_ref[:, i]) + M_CoP[:, i]
+    plt.figure("Forces")
+    plt.plot(grf_ref.T)
+    plt.xlabel("shooting points")
+    plt.ylabel("force (N)")
+    plt.title("Forces")
+    plt.legend(["x", "y", "z"])
+
+    plt.figure("Moments")
+    plt.plot(Mext.T)
+    plt.xlabel("shooting points")
+    plt.ylabel("moments (Nm)")
+    plt.title("Moments")
+    plt.legend(["x", "y", "z"])
+    plt.show()
+
+    # b = BiorbdViz(loaded_model=biorbd_model)
+    # b.load_movement(q_ref)
 
     # Get initial isometric forces
     fiso_init = []
@@ -212,6 +252,55 @@ if __name__ == "__main__":
     for nGrp in range(biorbd_model.nbMuscleGroups()):
         for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
             fiso_init.append(biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
+    #
+    # symbolic_states = MX.sym("x", nb_q + nb_q + nb_mus, 1)
+    # symbolic_controls = MX.sym("u", nb_tau + nb_mus, 1)
+    # muscles_torque_func = Function(
+    #     "muscles_torque",
+    #     [symbolic_states, symbolic_controls],
+    #     [compute_tau_from_muscles(biorbd_model, symbolic_states, symbolic_controls)],
+    #     ["x", "u"],
+    #     ["tau"],
+    # ).expand()
+    #
+    # Tau = np.zeros((nb_tau, n_shooting_points + 1))
+    # for k in range(n_shooting_points + 1):
+    #     state=np.concatenate([q_ref[:, k], qdot_ref[:, k], excitation_ref[:, k]])
+    #     control=np.concatenate([np.zeros(nb_tau), excitation_ref[:, k]])
+    #     Tau[:, k] = np.array(muscles_torque_func(state, control)).squeeze()
+    #
+    # q_name = []
+    # for s in range(biorbd_model.nbSegment()):
+    #     seg_name = biorbd_model.segment(s).name().to_string()
+    #     for d in range(biorbd_model.segment(s).nbDof()):
+    #         dof_name = biorbd_model.segment(s).nameDof(d).to_string()
+    #         q_name.append(seg_name + "_" + dof_name)
+    #
+    # figure, axes = plt.subplots(5, 6)
+    # axes = axes.flatten()
+    # for i in range(nb_tau):
+    #     axes[i].plot(Tau[i, :], color="tab:red")
+    #     axes[i].set_title("Tau " + q_name[i])
+    # plt.show()
+
+    # Inverse dynamics
+    symbolic_q = MX.sym("q", nb_q, 1)
+    symbolic_dq = MX.sym("dq", nb_q, 1)
+    symbolic_ddq = MX.sym("ddq", nb_q, 1)
+    symbolic_fext = MX.sym("fext", 6, 1)
+    inverse_dynamics_func=Function(
+        "InverseDynamics",
+        [symbolic_q, symbolic_dq, symbolic_ddq, symbolic_fext],
+        [inverse_dynamics(biorbd_model, symbolic_q, symbolic_dq, symbolic_ddq, symbolic_fext)],
+        ["q", "dq", "ddq", "fext"],
+        ["tau"],
+        ).expand()
+
+    tau_iv = np.zeros((nb_q, n_shooting_points + 1))
+    for i in range(n_shooting_points + 1):
+        Fext = np.concatenate((Mext[:, i], grf_ref[:, i]))
+        tau_iv[:, i]=inverse_dynamics_func(q_ref[:, i], qdot_ref[:, i], qddot_ref[:, i], Fext)
+
 
     # Track these data
     ocp = prepare_ocp(
@@ -223,10 +312,15 @@ if __name__ == "__main__":
         q_ref=q_ref,
         qdot_ref=qdot_ref,
         Fext=grf_ref,
-        Mext=Mext,
+        Mext=M_CoP,
         fiso_init=fiso_init,
         nb_threads=4,
     )
+
+    sim = Simulate.from_controls_and_initial_states(ocp, ocp.original_values["X_init"][0], ocp.original_values["U_init"][0], single_shoot=True)
+    states_sim, controls_sim = Data.get_data(ocp, sim["x"])
+    ShowResult(ocp, sim).graphs()
+    ShowResult(ocp, sim).animate()
 
     # --- Solve the program --- #
     tic = time()

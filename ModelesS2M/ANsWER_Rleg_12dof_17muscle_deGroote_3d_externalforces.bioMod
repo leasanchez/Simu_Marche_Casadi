@@ -75,6 +75,13 @@ segment pelvis
 	mesh     0               0              0
 	mesh    -0.083804       -0.09161        0.082232
 endsegment
+
+//marker	CoM_pelvis //0
+//	parent	pelvis
+//	position	-0.093546	-0.028679	0
+//	anatomical	1
+//endmarker
+
 // ---- Markers
 marker	L_IAS //0
 	parent	pelvis
@@ -125,6 +132,13 @@ segment femur_r
 	mesh    0        0              0
 	mesh    0       -0.3627         0
 endsegment
+
+//marker	CoM_femur //5
+//	parent	femur_r
+//	position	0	-0.14785	0
+//	anatomical	1
+//endmarker
+
 // ---- Markers
 marker	R_FTC //4
 	parent	femur_r
@@ -175,8 +189,8 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/2 0.0873
-    rangesQdot -7 7
+    	rangesQ -pi/2 0.0873
+    	rangesQdot -7 7
 	mass	3.0385
 	inertia
 		0.027795	0	0
@@ -186,6 +200,13 @@ segment tibia_r
 	mesh    0        0              0
 	mesh    0       -0.42392        0
 endsegment
+
+//marker	CoM_tibia //13
+//	parent	tibia_r
+//	position	0	-0.17087	0
+//	anatomical	1
+//endmarker
+
 // ---- Markers
 marker	R_FAX //11
 	parent	tibia_r
@@ -275,10 +296,9 @@ segment talus_r
 	com	0.0054828	0.0022928	0
 	mesh    0               0               0
 	mesh   -0.048617       -0.041819        0.0078952
-	externalforceindex 0
 endsegment
-// ---- Markers
-marker	CoM //19
+
+marker	COM_talus //19
 	parent	talus_r
 	position	0.0054828	0.0022928	0
 	technical	1
@@ -305,6 +325,11 @@ segment foot_r
 	mesh    0.0054278      0              0
 	mesh    0.200778       0              0
 endsegment
+//marker	COM_foot //23
+//	parent	foot_r
+//	position	0.10155	0.015551	0
+//	technical	1
+//endmarker
 
 
 // --------------------------------------------------------------------------------------------------------
@@ -328,39 +353,73 @@ segment foot_marker_r
 endsegment
 
 // ---- Markers
-marker	R_FCC //20
+marker	R_FCC //24
 	parent	foot_marker_r
 	position	0.0054278	0.00177226	0.00220395
 	technical	1
 endmarker
-marker	R_FM1 //21
+marker	R_FM1 //25
 	parent	foot_marker_r
 	position	0.19973	-0.00594403	-0.0323195
 	technical	1
 endmarker
-marker	R_FMP1 //22
+marker	R_FMP1 //26
 	parent	foot_marker_r
 	position	0.144628	0.00808546	-0.030874
 	technical	1
 endmarker
-marker	R_FM2  //23
+marker	R_FM2  //27
 	parent	foot_marker_r
 	position	0.200778	-0.00525585	0.0127656
 	technical	1
 endmarker
-marker	R_FMP2 //24
+marker	R_FMP2 //28
 	parent	foot_marker_r
 	position	0.135043	0.0244291	0.00583628
 	technical	1
 endmarker
-marker	R_FM5 //25
+marker	R_FM5 //29
 	parent	foot_marker_r
 	position	0.156485	-0.00712829	0.0638694
 	technical	1
 endmarker
-marker	R_FMP5 //26
+marker	R_FMP5 //30
 	parent	foot_marker_r
 	position	0.096359	0.00353103	0.0532144
+	technical	1
+endmarker
+
+// --------------------------------------------------------------------------------------------------------
+// Informations about cop_r segment
+// --------------------------------------------------------------------------------------------------------
+// ---- Segment
+segment cop_r
+	parent foot_r
+    RTinMatrix	1
+	RT
+		1	0	0	 0.10155
+		0	1	0	 0.015551
+		0	0	1	-0.0299687
+		0	0	0	 1
+	translations	xyz
+        rangesQ    -5  5
+                   -5  5
+                   -5  5
+        rangesQdot -10   10
+                   -10   10  
+                   -10   10
+	mass	0
+	inertia
+		0	0	0
+		0	0	0
+		0	0	0
+	com	0	0	0 
+	externalforceindex 0
+endsegment
+
+marker	R_COP //30
+	parent	cop_r
+	position	0	0	0
 	technical	1
 endmarker
 
@@ -384,7 +443,11 @@ segment toes_r
 	com	0.030604	-0.0025919	-0.010467
 endsegment
 // ---- Markers
-// no marker
+//marker	COM_toes //31
+//	parent	toes_r
+//	position	0.030604	-0.0025919	-0.010467
+//	technical	1
+//endmarker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about muscle groups

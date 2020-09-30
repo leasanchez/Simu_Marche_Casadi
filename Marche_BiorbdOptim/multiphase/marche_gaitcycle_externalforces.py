@@ -67,8 +67,8 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=0.1, controls_idx=range(6, nb_q), phase=0)
-    objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, target=excitation_ref, phase=0)
+    # objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=0.1, controls_idx=range(6, nb_q), phase=0)
+    # objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, target=excitation_ref, phase=0)
     # objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, data_to_track=markers_ref, phase=0)
     objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=500, states_idx=range(nb_q), target=q_ref, phase=0)
 
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     Mext = np.zeros((3, sum(number_shooting_points)))
     Fext = np.zeros((3, sum(number_shooting_points)))
     for i in range(number_shooting_points[0]):
-        pos = CoP[:, i] - markers_pos[:, 19, i]
+        pos = CoP[:, i] - markers_pos[:, 0, i]
         Mext[:, i]=np.cross(pos, grf_ref[:, i]) + M_CoP[:, i]
         Fext[:, i]=grf_ref[:, i]
 
@@ -225,13 +225,6 @@ if __name__ == "__main__":
         fiso_init=fiso_init,
         nb_threads=4,
     )
-
-    # U_init_sim = InitialConditionsList()
-    # U_init_sim.add([0]*nb_tau + [0]*nb_mus, interpolation=InterpolationType.CONSTANT)
-    # sim = Simulate.from_controls_and_initial_states(ocp, ocp.original_values["X_init"][0], U_init_sim[0], single_shoot=True)
-    # states_sim, controls_sim = Data.get_data(ocp, sim["x"])
-    # ShowResult(ocp, sim).graphs()
-    # ShowResult(ocp, sim).animate()
 
     # --- Solve the program --- #
     tic = time()
