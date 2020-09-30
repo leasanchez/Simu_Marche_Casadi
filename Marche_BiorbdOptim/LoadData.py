@@ -30,7 +30,6 @@ class Data_to_track:
 
 
 
-
     def Get_Event(self):
         # Find event from c3d file : heel strike (HS) and toe off (TO)
         # Determine the indexes of the beginning and end of each phases
@@ -73,16 +72,58 @@ class Data_to_track:
             start_leg = 'R'
         return start_leg, start, stop_stance, stop
 
-        start = round(RHS[0] * freq) + 1
-        stop_stance = round(RTO * freq) + 1
-        stop = round(RHS[1] * freq) + 1
-        return int(start), int(stop_stance), int(stop)
+    def GetForces(self):
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        self.nbPF = len(measurements["data"]["platform"])
+        F = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            force = platform["force"]
+            F.append(force)
+        return F
+
+    def GetMoment(self):
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        M = []
+        corners = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            moment = platform["moment"] * 1e-3
+            c = platform["corners"] * 1e-3
+            M.append(moment)
+            corners.append(c)
+        return M
+
+    def ComputeCoP(self):
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        CoP = []
+        corners = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            cop = platform["center_of_pressure"] * 1e-3
+            corner = platform["corners"] * 1e-3
+            CoP.append(cop)
+            corners.append(corner)
+        return CoP
+
+    def GetMoment_at_CoP(self):
+        measurements = c3d(self.file, extract_forceplat_data=True)
+        M_CoP = []
+        for p in range(self.nbPF):
+            platform = measurements["data"]["platform"][p]
+            moment = platform["Tz"] * 1e-3
+            M_CoP.append(moment)
+        return M_CoP
 
     def Find_platform(self):
+        # find the plateforme for the RIGTH foot
         GRF = self.GetForces()
         P = np.zeros(self.nbPF)
         for p in range(self.nbPF):
-            P[p] = (sum(GRF[p][2, int(self.idx_start) : int(self.idx_stop_stance) + 1]))
+            if self.two_leg:
+                P[p] = (sum(GRF[p][2, int(self.idx_start[0]): int(self.idx_stop_stance[0]) + 1]))
+            else:
+                P[p] = (sum(GRF[p][2, int(self.idx_start) : int(self.idx_stop_stance) + 1]))
         idx_platform = np.where(P == P.max())[0][0]
         return idx_platform
 
@@ -253,8 +294,6 @@ class Data_to_track:
             # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0, 0.05], "k--", linewidth=0.7)
         return phase_time
 
-
-
     def GetMarkers_Position(self):
      # LOAD C3D FILE
      measurements = c3d(self.file)
@@ -325,38 +364,6 @@ class Data_to_track:
      return markers
 
 
-
-    def GetForces(self):
-        measurements = c3d(self.file, extract_forceplat_data=True)
-        self.nbPF = len(measurements["data"]["platform"])
-        F = []
-        for p in range(self.nbPF):
-            platform = measurements["data"]["platform"][p]
-            force = platform["force"]
-            F.append(force)
-        return F
-
-    def GetMoment(self):
-        measurements = c3d(self.file, extract_forceplat_data=True)
-        M = []
-        corners = []
-        for p in range(self.nbPF):
-            platform = measurements["data"]["platform"][p]
-            moment = platform["moment"] * 1e-3
-            c = platform["corners"] * 1e-3
-            M.append(moment)
-            corners.append(c)
-        return M
-
-    def GetMoment_at_CoP(self):
-        measurements = c3d(self.file, extract_forceplat_data=True)
-        M_CoP = []
-        for p in range(self.nbPF):
-            platform = measurements["data"]["platform"][p]
-            moment = platform["Tz"] * 1e-3
-            M_CoP.append(moment)
-        return M_CoP
-
     def load_data_Moment(self, biorbd_model, final_time, n_shooting_points):
         # GET MOMENT
         M_real = self.GetMoment()
@@ -402,38 +409,6 @@ class Data_to_track:
             M_CoP = f(node_t)
         return M_CoP
 
-    def ComputeCoP(self):
-        measurements = c3d(self.file, extract_forceplat_data=True)
-        CoP = []
-        corners = []
-        for p in range(self.nbPF):
-            platform = measurements["data"]["platform"][p]
-            cop = platform["center_of_pressure"] * 1e-3
-            corner = platform["corners"] * 1e-3
-            CoP.append(cop)
-            corners.append(corner)
-
-        # plt.figure('CoP')
-        # markers = self.GetMarkers_Position()
-        # plt.plot(corners[0][0, :], corners[0][1, :], 'k+')
-        # plt.plot(corners[0][0, 2] + (corners[0][0, 1] - corners[0][0, 2]) / 2, (corners[0][1, 0] - corners[0][1, 1]) / 2, 'k+')
-        # plt.plot(CoP[0][0, self.idx_start: self.idx_2_contacts],
-        #          CoP[0][1, self.idx_start: self.idx_2_contacts], "g+")
-        # plt.plot(CoP[0][0, self.idx_2_contacts: self.idx_heel_rise],
-        #          CoP[0][1, self.idx_2_contacts: self.idx_heel_rise], "b+")
-        # plt.plot(CoP[0][0, self.idx_heel_rise: self.idx_stop_stance - 1],
-        #          CoP[0][1, self.idx_heel_rise: self.idx_stop_stance - 1], "r+")
-        #
-        # plt.plot(np.mean(markers[0, 19, self.idx_start:self.idx_heel_rise]), np.mean(markers[1, 19, self.idx_start:self.idx_heel_rise]), 'go')
-        # plt.plot(np.mean(markers[0, 20, self.idx_2_contacts:self.idx_stop_stance]),
-        #          np.mean(markers[1, 20, self.idx_2_contacts:self.idx_stop_stance]), 'ro')
-        # plt.plot(np.mean(markers[0, 25, self.idx_2_contacts:self.idx_stop_stance]),
-        #          np.mean(markers[1, 25, self.idx_2_contacts:self.idx_stop_stance]), 'bo')
-        #
-        # plt.title("CoP evolution during stance phase")
-        # plt.xlabel("x (m)")
-        # plt.ylabel("y (m)")
-        return CoP
 
     def load_data_CoP(self, biorbd_model, final_time, n_shooting_points):
         # GET MOMENT
@@ -569,9 +544,8 @@ class Data_to_track:
             raise RuntimeError("Gaitphase doesn't exist")
         return q_ref
 
-    def load_data_emg(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+    def load_data_emg(self, final_time, n_shooting_points, GaitPhase):
         # Load c3d file and get the muscular excitation from emg
-        nbMuscle = biorbd_model.nbMuscleTotal()
 
         # LOAD C3D FILE
         measurements = c3d(self.file)
@@ -582,7 +556,7 @@ class Data_to_track:
         [start, stop_stance, stop] = self.Get_Event()
 
         # GET THE MUSCULAR EXCITATION FROM EMG (NOT ALL MUSCLES)
-        EMG = np.zeros(((nbMuscle - 7), len(points[0, 0, :])))
+        EMG = np.zeros(((self.nbMuscle - 7), len(points[0, 0, :])))
 
         EMG[9, :] = points[0, labels_points.index("R_Tibialis_Anterior"), :].squeeze()  # R_Tibialis_Anterior
         EMG[8, :] = points[0, labels_points.index("R_Soleus"), :].squeeze()  # R_Soleus
