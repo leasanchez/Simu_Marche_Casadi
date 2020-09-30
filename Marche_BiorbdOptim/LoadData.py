@@ -99,16 +99,13 @@ class Data_to_track:
         return T, T_stance, T_swing
 
     def GetMarkers_Position(self):
-     # Load c3d file and get the muscular excitation from emg
-     nbMarker = 26
-
      # LOAD C3D FILE
      measurements = c3d(self.file)
      points = measurements["data"]["points"]
      labels_markers = measurements["parameters"]["POINT"]["LABELS"]["value"]
 
      # GET THE MARKERS POSITION (X, Y, Z) AT EACH POINT
-     markers = np.zeros((3, nbMarker, len(points[0, 0, :])))
+     markers = np.zeros((3, self.nb_marker, len(points[0, 0, :])))
 
      # pelvis markers
      markers[:, 0, :] = points[:3, labels_markers.index("L_IAS"), :] * 1e-3  # L_IAS
@@ -141,6 +138,33 @@ class Data_to_track:
      markers[:, 24, :] = points[:3, labels_markers.index("R_FM5"), :] * 1e-3  # R_FM5
      markers[:, 25, :] = points[:3, labels_markers.index("R_FMP5"), :] * 1e-3  # R_FMP5
 
+     if self.two_leg:
+         # --- Left Leg ---
+         # femur L markers
+         markers[:, 26, :] = points[:3, labels_markers.index("L_FTC"), :] * 1e-3  # L_FTC
+         markers[:, 27, :] = points[:3, labels_markers.index("L_Thigh_Top"), :] * 1e-3  # L_Thigh_Top
+         markers[:, 28, :] = points[:3, labels_markers.index("L_Thigh_Down"), :] * 1e-3  # L_Thigh_Down
+         markers[:, 29, :] = points[:3, labels_markers.index("L_Thigh_Front"), :] * 1e-3  # L_Thigh_Front
+         markers[:, 30, :] = points[:3, labels_markers.index("L_Thigh_Back"), :] * 1e-3  # L_Thigh_Back
+         markers[:, 31, :] = points[:3, labels_markers.index("L_FLE"), :] * 1e-3  # L_FLE
+         markers[:, 32, :] = points[:3, labels_markers.index("L_FME"), :] * 1e-3  # L_FME
+         #  tibia L markers
+         markers[:, 33, :] = points[:3, labels_markers.index("L_FAX"), :] * 1e-3  # L_FAX
+         markers[:, 34, :] = points[:3, labels_markers.index("L_TTC"), :] * 1e-3  # L_TTC
+         markers[:, 35, :] = points[:3, labels_markers.index("L_Shank_Top"), :] * 1e-3  # L_Shank_Top
+         markers[:, 36, :] = points[:3, labels_markers.index("L_Shank_Down"), :] * 1e-3  # L_Shank_Down
+         markers[:, 37, :] = points[:3, labels_markers.index("L_Shank_Front"), :] * 1e-3  # L_Shank_Front
+         markers[:, 38, :] = points[:3, labels_markers.index("L_Shank_Tibia"), :] * 1e-3  # L_Shank_Tibia
+         markers[:, 39, :] = points[:3, labels_markers.index("L_FAL"), :] * 1e-3  # L_FAL
+         markers[:, 40, :] = points[:3, labels_markers.index("L_TAM"), :] * 1e-3  # L_TAM
+         #  foot L markers
+         markers[:, 41, :] = points[:3, labels_markers.index("L_FCC"), :] * 1e-3  # L_FCC
+         markers[:, 42, :] = points[:3, labels_markers.index("L_FM1"), :] * 1e-3  # L_FM1
+         markers[:, 43, :] = points[:3, labels_markers.index("L_FMP1"), :] * 1e-3  # L_FMP1
+         markers[:, 44, :] = points[:3, labels_markers.index("L_FM2"), :] * 1e-3  # L_FM2
+         markers[:, 45, :] = points[:3, labels_markers.index("L_FMP2"), :] * 1e-3  # L_FMP2
+         markers[:, 46, :] = points[:3, labels_markers.index("L_FM5"), :] * 1e-3  # L_FM5
+         markers[:, 47, :] = points[:3, labels_markers.index("L_FMP5"), :] * 1e-3  # L_FMP5
      return markers
 
 
