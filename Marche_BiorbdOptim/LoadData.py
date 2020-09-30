@@ -372,69 +372,68 @@ class Data_to_track:
             raise RuntimeError("Gaitphase doesn't exist")
         return markers_ref
 
-    def load_q_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+    def load_q_kalman(self, n_shooting_points):
         Q = np.loadtxt(self.Q_KalmanFilter_file)
-        nb_q = biorbd_model.nbQ()
-        nb_frame = int(len(Q) / nb_q)
-        q_init = np.zeros((nb_q, nb_frame))
+        nb_frame = int(len(Q) / self.nb_q)
+        q_init = np.zeros((self.nb_q, nb_frame))
         for n in range(nb_frame):
-            q_init[:, n] = Q[n * nb_q : n * nb_q + nb_q]
+            q_init[:, n] = Q[n * self.nb_q : n * self.nb_q + self.nb_q]
 
+        final_time = self.GetTime()
+        q_ref = []
         # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
-        if GaitPhase == "stance":
-            if self.multiple_contact:
-                q_ref = []
-                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-                for i in range(len(final_time)):
-                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, q_init[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                    q_ref.append(f_stance(node_t_stance))
-            else:
-                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-                node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, q_init[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-                q_ref = f(node_t)
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, q_init[:, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
-            q_ref = f(node_t)
+        if len(n_shooting_points)<len(final_time):
+            raise RuntimeError(f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
         else:
-            raise RuntimeError("Gaitphase doesn't exist")
+            for i in range(len(final_time)):
+                t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f = interp1d(t, q_init[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                q_ref.append(f(node_t))
         return q_ref
 
-    def load_qdot_kalman(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
+
+    def load_qdot_kalman(self, n_shooting_points):
         Q = np.loadtxt(self.Qdot_KalmanFilter_file)
-        nb_q = biorbd_model.nbQ()
-        nb_frame = int(len(Q) / nb_q)
-        qdot_init = np.zeros((nb_q, nb_frame))
+        nb_frame = int(len(Q) / self.nb_q)
+        qdot_init = np.zeros((self.nb_q, nb_frame))
         for n in range(nb_frame):
-            qdot_init[:, n] = Q[n * nb_q : n * nb_q + nb_q]
+            qdot_init[:, n] = Q[n * self.nb_q  : n * self.nb_q  + self.nb_q ]
 
         # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
-        if GaitPhase == "stance":
-            if self.multiple_contact:
-                qdot_ref = []
-                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-                for i in range(len(final_time)):
-                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, qdot_init[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                    qdot_ref.append(f_stance(node_t_stance))
-            else:
-                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-                node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, qdot_init[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-                qdot_ref = f(node_t)
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, qdot_init[:, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
-            qdot_ref = f(node_t)
+        final_time = self.GetTime()
+        qdot_ref = []
+        if len(n_shooting_points)<len(final_time):
+            raise RuntimeError(f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
         else:
-            raise RuntimeError("Gaitphase doesn't exist")
+            for i in range(len(final_time)):
+                t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f = interp1d(t, qdot_init[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                qdot_ref.append(f(node_t))
         return qdot_ref
+
+
+    def load_qddot_kalman(self, n_shooting_points):
+        Qddot = np.loadtxt(self.Qddot_KalmanFilter_file)
+        nb_frame = int(len(Qddot) / self.nb_q)
+        qddot_init = np.zeros((self.nb_q, nb_frame))
+        for n in range(nb_frame):
+            qddot_init[:, n] = Qddot[n * self.nb_q : n * self.nb_q + self.nb_q]
+
+        # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
+        final_time = self.GetTime()
+        qddot_ref = []
+        if len(n_shooting_points)<len(final_time):
+            raise RuntimeError(f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+        else:
+            for i in range(len(final_time)):
+                t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f = interp1d(t, qddot_init[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                qddot_ref.append(f(node_t))
+        return qddot_ref
+
 
     def load_data_q(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
         # Create initial vector for joint position (nbNoeuds x nbQ)
