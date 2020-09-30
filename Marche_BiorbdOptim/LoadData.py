@@ -41,12 +41,37 @@ class Data_to_track:
         freq = measurements["parameters"]["POINT"]["RATE"]["value"][0]
         get_indexes = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
 
-        RHS = time[get_indexes("RHS", labels_time)]
-        RTO = time[get_indexes("RTO", labels_time)]
-        if len(RTO) > 1:
-            RTO = max(RTO)
+        if self.two_leg:
+            RHS = time[get_indexes("RHS", labels_time)]
+            LHS = time[get_indexes("LHS", labels_time)]
+            RTO = time[get_indexes("RTO", labels_time)]
+            LTO = time[get_indexes("LTO", labels_time)]
+
+            if RHS[0]>LHS[0]:
+                start_leg = 'L'
+                # always start by the rigth leg
+                start = [int(round(RHS[0] * freq) + 1), int(round(min(RTO) * freq) + 1)] # debute au moment ou les orteils de la jambe 2 quitte le sol
+                stop_stance = [int(round(max(RTO) * freq) + 1), int(round(max(LTO) * freq) + 1)]
+                stop = [int(round(RHS[1] * freq) + 1), int(round(LHS[1] * freq) + 1)]
+            else:
+                start_leg = 'R'
+                # always start by the rigth leg
+                start = [int(round(min(LTO) * freq) + 1), int(round(LHS[0] * freq) + 1)]
+                stop_stance = [int(round(max(RTO) * freq) + 1), int(round(max(LTO) * freq) + 1)]
+                stop = [int(round(RHS[1] * freq) + 1), int(round(LHS[1] * freq) + 1)]
+
         else:
-            RTO = RTO[0]
+            RHS = time[get_indexes("RHS", labels_time)]
+            RTO = time[get_indexes("RTO", labels_time)]
+            if len(RTO) > 1:
+                RTO = max(RTO)
+            else:
+                RTO = RTO[0]
+            start = int(round(RHS[0] * freq) + 1)
+            stop_stance = int(round(RTO * freq) + 1)
+            stop = int(round(RHS[1] * freq) + 1)
+            start_leg = 'R'
+        return start_leg, start, stop_stance, stop
 
         start = round(RHS[0] * freq) + 1
         stop_stance = round(RTO * freq) + 1
