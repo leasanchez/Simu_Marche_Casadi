@@ -365,12 +365,12 @@ contact    c_heel_r //FCC decale
 endcontact
 contact    Meta_1_r //FM1
 	parent    foot_marker_r
-	position    0.19973	   -0.02	-0.0323195
+	position    0.144628	   -0.02	-0.0323195
 	axis    z
 endcontact
 contact    Meta_5_r //FM5
 	parent    foot_marker_r
-	position   0.096359	-0.02	0.0638694
+	position   0.156485	-0.02	0.0638694
 	axis    xz
 endcontact
 
