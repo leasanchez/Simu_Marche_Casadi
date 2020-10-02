@@ -432,52 +432,90 @@ class Data_to_track:
             M_ref = f(node_t)
         return M_ref
 
-    def load_data_Moment_at_CoP(self, biorbd_model, final_time, n_shooting_points):
+    def load_data_Moment_at_CoP(self, n_shooting_points):
         # GET MOMENT
         M_real = self.GetMoment_at_CoP()
-        M_real = M_real[self.idx_platform]
-        M_real = np.nan_to_num(M_real)
 
-        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        if self.multiple_contact:
+        # INTERPOLATE AND GET COP POSITION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+        if self.two_leg:
+            final_time = self.GetTime()
             M_CoP = []
-            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-            for i in range(len(final_time)):
-                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                f_stance = interp1d(t_stance, M_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                M = f_stance(node_t_stance)
-                M_CoP.append(M)
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    # ! Moment at CoP from the rigth AND left foot !
+                    # the forces will be extracted according to the phases idx
+                    # for each phase, there will be 2 vectors for the R AND L
+                    # if there is no contact, then GRF values = 0
+                    # check which leg starts first and which plateforms corresponds to which !
+                    M_real[self.idx_platform] = np.nan_to_num(M_real[self.idx_platform]) #R
+                    M_real[(self.idx_platform - 1)**2] = np.nan_to_num(M_real[(self.idx_platform - 1)**2]) #L (other plateforme)
+
+                    f1 = interp1d(t, M_real[self.idx_platform][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    f2 = interp1d(t, M_real[(self.idx_platform - 1)**2][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    M_CoP.append((f1(node_t), f2(node_t)))
         else:
-            t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, M_real[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-            M_CoP = f(node_t)
+            M_real = M_real[self.idx_platform]
+            M_real = np.nan_to_num(M_real)
+            final_time = self.GetTime()
+            M_CoP = []
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    f = interp1d(t, M_real[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    M_CoP.append(f(node_t))
         return M_CoP
 
 
-    def load_data_CoP(self, biorbd_model, final_time, n_shooting_points):
-        # GET MOMENT
-        CoP_real = self.ComputeCoP()
-        CoP_real = CoP_real[self.idx_platform]
-        CoP_real = np.nan_to_num(CoP_real)
+    def load_data_CoP(self, n_shooting_points):
+        # GET CENTER OF PRESSURE POSITION
+        CoP = self.ComputeCoP()
 
-        # INTERPOLATE AND GET REAL FORCES FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        if self.multiple_contact:
-            CoP = []
-            idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-            for i in range(len(final_time)):
-                t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                f_stance = interp1d(t_stance, CoP_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                cop = f_stance(node_t_stance)
-                CoP.append(cop)
+        # INTERPOLATE AND GET COP POSITION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
+        if self.two_leg:
+            final_time = self.GetTime()
+            CoP_real = []
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    # ! CoP from the rigth AND left foot !
+                    # the forces will be extracted according to the phases idx
+                    # for each phase, there will be 2 vectors for the R AND L
+                    # if there is no contact, then GRF values = 0
+                    # check which leg starts first and which plateforms corresponds to which !
+                    CoP[self.idx_platform] = np.nan_to_num(CoP[self.idx_platform]) #R
+                    CoP[(self.idx_platform - 1)**2] = np.nan_to_num(CoP[(self.idx_platform - 1)**2]) #L (other plateforme)
+
+                    f1 = interp1d(t, CoP[self.idx_platform][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    f2 = interp1d(t, CoP[(self.idx_platform - 1)**2][:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    CoP_real.append((f1(node_t), f2(node_t)))
         else:
-            t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, CoP_real[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-            CoP = f(node_t)
-        return CoP
+            CoP = CoP[self.idx_platform]
+            CoP = np.nan_to_num(CoP)
+            final_time = self.GetTime()
+            CoP_real = []
+            if len(n_shooting_points) < len(final_time):
+                raise RuntimeError(
+                    f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
+            else:
+                for i in range(len(final_time)):
+                    t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                    node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                    f = interp1d(t, CoP[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                    CoP_real.append(f(node_t))
+        return CoP_real
 
     def load_data_markers(self, n_shooting_points):
         markers = self.GetMarkers_Position()
