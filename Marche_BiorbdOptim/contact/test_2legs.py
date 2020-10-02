@@ -161,6 +161,7 @@ biorbd_model = (
 nb_q = model.nbQ()
 nb_qdot = model.nbQdot()
 nb_tau = model.nbGeneralizedTorque()
+nb_phases_init = len(biorbd_model)
 
 # Generate data from file
 Data_to_track = Data_to_track("normal02", model=model, multiple_contact=True, two_leg=True)
@@ -174,14 +175,24 @@ qdot_ref = Data_to_track.load_qdot_kalman(number_shooting_points) # get joint ve
 qddot_ref = Data_to_track.load_qdot_kalman(number_shooting_points) # get joint accelerations
 grf_ref = Data_to_track.load_data_GRF(number_shooting_points)  # get ground reaction forces
 
+q_simu = np.zeros((nb_q, sum(number_shooting_points) + 1))
+n_shoot = 0
+for p in range(nb_phases_init):
+    q_simu[:, n_shoot:n_shoot + number_shooting_points[p] + 1] = q_ref[p]
+    n_shoot += number_shooting_points[p]
+
+b = BiorbdViz.BiorbdViz(loaded_model=model)
+b.load_movement(q_simu)
+b.exec()
+
 ocp = prepare_ocp(
-    biorbd_model=(biorbd_model[0], biorbd_model[1], biorbd_model[2]),
-    final_time=(phase_time[0], phase_time[1], phase_time[2]),
-    nb_shooting=(number_shooting_points[0], number_shooting_points[1], number_shooting_points[2]),
-    markers_ref=(markers_ref[0], markers_ref[1], markers_ref[2]),
-    grf_ref=(grf_ref[0], grf_ref[1], grf_ref[2]),
-    q_ref=(q_ref[0], q_ref[1], q_ref[2]),
-    qdot_ref=(qdot_ref[0], qdot_ref[1], qdot_ref[2]),
+    biorbd_model=(biorbd_model[0], biorbd_model[1]),
+    final_time=(phase_time[0], phase_time[1]),
+    nb_shooting=(number_shooting_points[0], number_shooting_points[1]),
+    markers_ref=(markers_ref[0], markers_ref[1]),
+    grf_ref=(grf_ref[0], grf_ref[1]),
+    q_ref=(q_ref[0], q_ref[1]),
+    qdot_ref=(qdot_ref[0], qdot_ref[1]),
     nb_threads=1,
 )
 
@@ -206,6 +217,10 @@ q, q_dot, tau = (
     controls["tau"],
 )
 
+np.save("./RES/2leg/3phases/tau", tau)
+np.save("./RES/2leg/3phases/q_dot", q_dot)
+np.save("./RES/2leg/3phases/q", q)
+
 # --- Time vector --- #
 nb_phases = len(ocp.nlp)
 t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
@@ -227,52 +242,46 @@ for i in range(nb_q):
     q_plot = q_ref[0][i, :]
     for p in range(1, nb_phases):
         q_plot = np.concatenate([q_plot[:-1], q_ref[p][i, :]])
-    axes[i].plot(t, q_plot, 'k--')
+    axes[i].plot(t, q_plot, 'b--')
+    axes[i].plot([phase_time[0], phase_time[0]], [np.min(q_plot), np.max(q_plot)], 'k--')
+    axes[i].text(phase_time[0] - 0.02, np.min(q_plot), 'LHS')
+    axes[i].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]], [np.min(q_plot), np.max(q_plot)], 'k--')
+    axes[i].text(phase_time[0] + phase_time[1] - 0.02, np.min(q_plot), 'RHR')
     axes[i].set_title(q_name[i])
+plt.legend(['simulated', 'reference'])
 
 # --- plot grf ---
 nb_shooting = number_shooting_points[0] + number_shooting_points[1] + number_shooting_points[2]
-forces_sim = np.zeros((3*3 + 3*3, nb_shooting + 1))
-for n in range(number_shooting_points[0] + 1):
-    forces_sim[[0, 1, 2, 5, 6, 8], n:n+1] = ocp.nlp[0]['contact_forces_func'](np.concatenate([q[:, n], q_dot[:, n]]), tau[:, n], 0)
-n_f= number_shooting_points[0]
-for n in range(number_shooting_points[1] + 1):
-    forces_sim[[0, 1, 2, 5, 6, 8, 9, 10, 11], n_f + n:n_f + n + 1] = ocp.nlp[1]['contact_forces_func'](
-        np.concatenate([q[:, n_f + n], q_dot[:, n_f + n]]),
-        tau[:, n_f + n],
-        0)
+labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                 'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                 'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                 'Heel_l_X', 'Heel_l_Y', 'Heel_l_Z',
+                 'Meta_1_l_X', 'Meta_1_l_Y', 'Meta_1_l_Z',
+                 'Meta_5_l_X', 'Meta_5_l_Y', 'Meta_5_l_Z'
+                 ]
+forces = {}
+for label in labels_forces:
+    forces[label] = np.zeros(nb_shooting + 1)
+
+n_shoot = 0
+for p in range(nb_phases):
+    cn = biorbd_model[p].contactNames()
+    for n in range(number_shooting_points[p] + 1):
+        forces_sim = ocp.nlp[p]['contact_forces_func'](np.concatenate([q[:, n_shoot + n], q_dot[:, n_shoot + n]]), tau[:, n_shoot + n], 0)
+        for i, c in enumerate(cn):
+            if c.to_string() in forces:
+                forces[c.to_string()][n_shoot + n] = forces_sim[i]
+    n_shoot= number_shooting_points[p]
 
 figure, axes = plt.subplots(6, 3)
 axes = axes.flatten()
-coord_label = ['x', 'y', "z"]
-contact_point_label = ['Heel', 'Meta1', "Meta5"]
-for c in range(3):
-    for coord in range(3):
-        title = (contact_point_label[c] + "_"+coord_label[coord] + "R")
-        axes[3*c + coord].plot(t, forces_sim[3*c + coord, :])
-        axes[3*c + coord].plot([phase_time[0], phase_time[0]],
-                               [np.min(forces_sim[3*c + coord, :]),
-                                np.max(forces_sim[3*c + coord, :])],
-                               'k--')
-        axes[3 * c + coord].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]],
-                                 [np.min(forces_sim[3 * c + coord, :]),
-                                  np.max(forces_sim[3 * c + coord, :])],
-                                 'k--')
-        axes[3*c + coord].set_title(title)
-
-for c in range(3):
-    for coord in range(3):
-        title = (contact_point_label[c] + "_"+coord_label[coord] + "L")
-        axes[3*c + coord + 9].plot(t, forces_sim[3*c + coord, :])
-        axes[3*c + coord + 9].plot([phase_time[0], phase_time[0]],
-                               [np.min(forces_sim[3*c + coord, :]),
-                                np.max(forces_sim[3*c + coord, :])],
-                               'k--')
-        axes[3 * c + coord + 9].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]],
-                                 [np.min(forces_sim[3 * c + coord, :]),
-                                  np.max(forces_sim[3 * c + coord, :])],
-                                 'k--')
-        axes[3*c + coord + 9].set_title(title)
+for i, f in enumerate(forces):
+    axes[i].plot(t, forces[f], 'r-')
+    axes[i].set_title(f)
+    pt = phase_time[0]
+    for p in range(nb_phases):
+        axes[i].plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
+        pt+=phase_time[p+1]
 
 figure, axes = plt.subplots(2, 3)
 axes = axes.flatten()
@@ -292,30 +301,21 @@ for p in range(1, nb_phases):
 
 FR = [force_plot_x_R, force_plot_y_R, force_plot_z_R]
 FL = [force_plot_x_L, force_plot_y_L, force_plot_z_L]
+coord_label = ['X', 'Y', 'Z']
 for i in range(3):
-    axes[i].plot(t, forces_sim[i, :] + forces_sim[i+3, :] + forces_sim[i+6, :], 'r-')
-    axes[i].plot(t, FR[i], 'k--')
-    axes[i].plot([phase_time[0], phase_time[0]],
-                             [np.min(forces_sim[i, :] + forces_sim[i+3, :] + forces_sim[i+6, :]),
-                              np.max(forces_sim[i, :] + forces_sim[i+3, :] + forces_sim[i+6, :])],
-                             'k--')
-    axes[i].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]],
-                             [np.min(forces_sim[i, :] + forces_sim[i+3, :] + forces_sim[i+6, :]),
-                              np.max(forces_sim[i, :] + forces_sim[i+3, :] + forces_sim[i+6, :])],
-                             'k--')
+    axes[i].plot(t, forces[f"Heel_r_{coord_label[i]}"] + forces[f"Meta_1_r_{coord_label[i]}"] + forces[f"Meta_5_r_{coord_label[i]}"], 'r-')
+    axes[i].plot(t, FR[i], 'b--')
     axes[i].set_title("Forces in " + coord_label[i] + " R")
 
-    axes[i + 3].plot(t, forces_sim[i + 9, :] + forces_sim[i + 12, :] + forces_sim[i + 15, :], 'r-')
+    axes[i + 3].plot(t, forces[f"Heel_l_{coord_label[i]}"] + forces[f"Meta_1_l_{coord_label[i]}"] + forces[f"Meta_5_l_{coord_label[i]}"], 'r-')
     axes[i + 3].plot(t, FL[i], 'k--')
-    axes[i + 3].plot([phase_time[0], phase_time[0]],
-                             [np.min(forces_sim[i + 9, :] + forces_sim[i + 12, :] + forces_sim[i + 15, :]),
-                              np.max(forces_sim[i + 9, :] + forces_sim[i + 12, :] + forces_sim[i + 15, :])],
-                             'k--')
-    axes[i + 3].plot([phase_time[0] + phase_time[1], phase_time[0] + phase_time[1]],
-                             [np.min(forces_sim[i + 9, :] + forces_sim[i + 12, :] + forces_sim[i + 15, :]),
-                              np.max(forces_sim[i + 9, :] + forces_sim[i + 12, :] + forces_sim[i + 15, :])],
-                             'k--')
     axes[i + 3].set_title("Forces in " + coord_label[i] + " L")
+
+    pt = phase_time[0]
+    for p in range(nb_phases):
+        axes[i].plot([pt, pt], [np.min(FR[i]), np.max(FR[i])], 'k--')
+        axes[i + 3].plot([pt, pt], [np.min(FL[i]), np.max(FL[i])], 'k--')
+        pt+=phase_time[p+1]
 
 
 # --- Show results --- #
