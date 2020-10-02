@@ -261,7 +261,7 @@ class Data_to_track:
 
         else:
             Heel = markers[:, 19, self.idx_start: self.idx_stop_stance]
-            Meta1 = markers[:, 20, self.idx_start: self.idx_stop_stance]
+            Meta1 = markers[:, 21, self.idx_start: self.idx_stop_stance]
             Meta5 = markers[:, 24, self.idx_start: self.idx_stop_stance]
 
             # Heel rise
@@ -279,6 +279,15 @@ class Data_to_track:
                           1 / freq * (self.idx_stop - self.idx_stop_stance + 1)]
             self.idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance, self.idx_stop]
 
+            # plt.figure()
+            # plt.plot(COP[0][0, :], COP[0][1, :], 'k+')
+            # plt.plot(Heel[0, :], Heel[1, :], 'o')
+            # plt.plot(Meta1[0, :], Meta1[1, :], 'o')
+            # plt.plot(Meta5[0, :], Meta5[1, :], 'o')
+            # plt.legend(['COP', 'Heel', 'Meta1', 'Meta5'])
+            # plt.xlabel('x (m)')
+            # plt.ylabel('y (m)')
+            # plt.axis('equal')
 
             # plt.figure('foot position')
             # plt.plot(Heel[2, :], 'g')
@@ -286,12 +295,49 @@ class Data_to_track:
             # plt.plot(Meta5[2, :], 'b')
             # plt.legend(['heel', 'meta1', 'meta5'])
             # plt.title('foot markers position during stance phase')
-            # plt.ylabel('z position (mm)')
-            # plt.ylim([0, 0.05])
+            # plt.ylabel('z position (m)')
+            # plt.ylim([0, 0.08])
             # plt.xlim([0, len(Heel[2, :])])
-            # plt.plot([0, len(Heel[2, :])], [0.023, 0.023], "k--", linewidth=0.7)
-            # plt.plot([np.max([idx_Meta5[0][0], idx_Meta1[0][0]]), np.max([idx_Meta5[0][0], idx_Meta1[0][0]])], [0, 0.05], "k--", linewidth=0.7)
-            # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0, 0.05], "k--", linewidth=0.7)
+            # plt.plot([0, len(Heel[2, :])], [seuil, seuil], "k--", linewidth=0.7)
+            # plt.plot([np.max([idx_Meta5[0][0], idx_Meta1[0][0]]), np.max([idx_Meta5[0][0], idx_Meta1[0][0]])], [0.01, 0.05], "k--", linewidth=0.7)
+            # plt.text(np.max([idx_Meta5[0][0], idx_Meta1[0][0]]) - 3, 0.005, 'RTON')
+            # plt.plot([idx_heel[0][0], idx_heel[0][0]], [0.01, 0.05], "k--", linewidth=0.7)
+            # plt.text(idx_heel[0][0] - 3, 0.005, 'RHR')
+
+            # plt.figure('foot position')
+            # plt.plot(markers[2, 19, :], 'g')
+            # plt.plot(markers[2, 21, :], 'r')
+            # plt.plot(markers[2, 24, :], 'b')
+            # plt.legend(['heel', 'meta1', 'meta5'])
+            # plt.title('foot markers position for the rigth leg')
+            # plt.ylabel('z position (m)')
+            # # plt.ylim([0, 0.08])
+            # plt.xlim([0, len(markers[2, 19, :])])
+            # plt.plot([0, len(markers[2, 19, :])], [seuil, seuil], "k--", linewidth=0.7)
+            # plt.plot([self.idx_start, self.idx_start], [0.01, 0.1], "k--", linewidth=0.7)
+            # plt.text(self.idx_start - 3, 0.005, 'RHS')
+            # plt.plot([self.idx_2_contacts, self.idx_2_contacts], [0.01, 0.1], "k--", linewidth=0.7)
+            # plt.text(self.idx_2_contacts - 3, 0.005, 'RTON')
+            # plt.plot([self.idx_heel_rise, self.idx_heel_rise], [0.01, 0.1], "k--", linewidth=0.7)
+            # plt.text(self.idx_heel_rise - 3, 0.005, 'RHR')
+            # plt.plot([self.idx_stop_stance, self.idx_stop_stance], [0.01, 0.1], "k--", linewidth=0.7)
+            # plt.text(self.idx_stop_stance - 3, 0.005, 'RTOFF')
+            # plt.plot([self.idx_stop, self.idx_stop], [0.01, 0.1], "k--", linewidth=0.7)
+            # plt.text(self.idx_stop - 3, 0.005, 'RHS')
+
+            # GRF = self.GetForces()
+            # GRF = GRF[self.idx_platform]
+            # plt.figure()
+            # plt.plot(GRF.T)
+            # plt.plot([self.idx_start, self.idx_start], [-150, 850], "k--", linewidth=0.7)
+            # plt.text(self.idx_start - 3, -175, 'RHS')
+            # plt.plot([self.idx_stop_stance, self.idx_stop_stance], [-150, 850], "k--", linewidth=0.7)
+            # plt.text(self.idx_stop_stance - 3, -175, 'RTOFF')
+            # plt.plot([self.idx_2_contacts, self.idx_2_contacts], [-150, 850], "k--", linewidth=0.7)
+            # plt.text(self.idx_2_contacts - 3, -175, 'RTON')
+            # plt.plot([self.idx_heel_rise, self.idx_heel_rise], [-150, 850], "k--", linewidth=0.7)
+            # plt.text(self.idx_heel_rise - 3, -175, 'RHR')
+
         return phase_time
 
     def GetMarkers_Position(self):
