@@ -374,12 +374,12 @@ contact    Heel_r //FCC decale
 endcontact
 contact    Meta_1_r //FM1
 	parent    foot_marker_r
-	position  0.19973       -0.02	-0.0323195
+	position  0.144628	-0.02	-0.030874
 	axis    z
 endcontact
 contact    Meta_5_r //FM5
 	parent    foot_marker_r
-	position   0.096359	-0.02	 0.0638694
+	position   0.156485	-0.02	 0.0638694
 	axis    xz
 endcontact
 
@@ -669,14 +669,14 @@ marker	L_FMP5
 endmarker
 
 // ---- Contact
-contact    Meta_1_l //FM1
+contact    Meta_1_l //FMP1
 	parent    foot_marker_l
-	position  0.19973       -0.02	  0.0323195
+	position  0.144628	-0.02	0.030874
 	axis    xz
 endcontact
 contact    Meta_5_l //FM5
 	parent    foot_marker_l
-	position   0.096359	-0.02	 -0.0638694
+	position   0.156485	-0.02	 -0.0638694
 	axis    xyz
 endcontact
 
