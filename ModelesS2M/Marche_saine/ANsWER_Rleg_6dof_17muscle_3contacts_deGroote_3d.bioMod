@@ -358,7 +358,7 @@ marker	R_FMP5
 	technical	1
 endmarker
 // ---- Contact
-contact    c_heel_r //FCC decale
+contact    Heel_r //FCC decale
 	parent    foot_marker_r
 	position    0.0094278	-0.02	0.00220395
 	axis    xyz
