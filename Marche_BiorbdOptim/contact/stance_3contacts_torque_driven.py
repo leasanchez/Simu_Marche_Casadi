@@ -4,14 +4,14 @@ import biorbd
 from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
 
-from biorbd_optim import (
+from bioptim import (
     OptimalControlProgram,
     DynamicsTypeList,
     DynamicsType,
     BoundsList,
     Bounds,
     QAndQDotBounds,
-    InitialConditionsList,
+    InitialGuessList,
     InitialConditions,
     ShowResult,
     ObjectiveList,
@@ -230,8 +230,8 @@ def prepare_ocp(
         ])
 
     # Initial guess
-    x_init = InitialConditionsList()
-    u_init = InitialConditionsList()
+    x_init = InitialGuessList()
+    u_init = InitialGuessList()
     n_shoot=0
     for p in range(nb_phases):
         init_x = np.zeros((nb_q + nb_qdot, nb_shooting[p] + 1))
