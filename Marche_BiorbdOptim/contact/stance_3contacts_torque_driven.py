@@ -26,13 +26,17 @@ from biorbd_optim import (
     Solver,
 )
 
-# --- fcn contact talon ---
-def get_last_contact_forces_contact_talon(ocp, nlp, t, x, u, p, grf):
-    force = nlp["contact_forces_func"](x[-1], u[-1], p)
-    val = grf[0, t[-1]] - (force[0])
-    val = vertcat(val, grf[1, t[-1]] - force[1])
-    val = vertcat(val, grf[2, t[-1]] - (force[2]))
-    return dot(val, val)
+# --- force nul at last point ---
+def get_last_contact_force_nul(ocp, nlp, t, x, u, p, contact_name):
+    force = nlp.contact_forces_func(x[-1], u[-1], p)
+    if contact_name == 'all':
+        val = force
+    else:
+        cn = nlp.model.contactNames()
+        for i, c in enumerate(cn):
+            if c.to_string() == contact_name:
+                val = force[i]
+    return val
 
 def track_sum_contact_forces_contact_talon(ocp, nlp, t, x, u, p, grf, target=()):
     ns = nlp["ns"]
@@ -51,12 +55,6 @@ def get_last_contact_forces_flatfoot(ocp, nlp, t, x, u, p, grf):
     val = vertcat(val, grf[1, t[-1]] - force[1])
     val = vertcat(val, grf[2, t[-1]] - (force[2] + force[3] + force[5]))
     val = vertcat(val, force[2])
-    val = vertcat(val, force[0]) # minimise contact talon ?
-    return dot(val, val)
-
-def get_last_contact_forces_talon_flatfoot(ocp, nlp, t, x, u, p):
-    force = nlp["contact_forces_func"](x[-1], u[-1], p)
-    val = force[2]
     val = vertcat(val, force[0]) # minimise contact talon ?
     return dot(val, val)
 
@@ -93,10 +91,6 @@ def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     return val
 
 # --- fcn forefoot ---
-def get_last_contact_forces_forefoot(ocp, nlp, t, x, u, p):
-    force = nlp["contact_forces_func"](x[-1], u[-1], p)
-    return dot(force, force)
-
 def track_sum_contact_forces_forefoot(ocp, nlp, t, x, u, p, grf, target=()):
     ns = nlp["ns"]
     val = []
@@ -194,12 +188,18 @@ def prepare_ocp(
         boundary=50,
         phase=2,
     )
-    constraints.add(
-        get_last_contact_forces_forefoot,
+    constraints.add( # forces heel at zeros at the end of the phase
+        get_last_contact_force_nul,
         instant=Instant.ALL,
-        phase=2,
+        contact_name='Heel_r_X',
+        phase=1,
     )
-    # --- phase flatfoot ---
+    constraints.add( # forces heel at zeros at the end of the phase
+        get_last_contact_force_nul,
+        instant=Instant.ALL,
+        contact_name='Heel_r_Z',
+        phase=1,
+    )
     constraints.add( # positive vertical forces
         Constraint.CONTACT_FORCE_INEQUALITY,
         direction="GREATER_THAN",
@@ -208,10 +208,11 @@ def prepare_ocp(
         boundary=50,
         phase=1,
     )
-    constraints.add( # forces heel at zeros at the end of the phase
-        get_last_contact_forces_talon_flatfoot,
+    constraints.add(
+        get_last_contact_force_nul,
         instant=Instant.ALL,
-        phase=1,
+        contact_name='all',
+        phase=2,
     )
 
     # State Transitions
