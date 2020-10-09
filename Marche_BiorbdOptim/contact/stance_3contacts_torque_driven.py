@@ -32,9 +32,11 @@ def get_last_contact_force_nul(ocp, nlp, t, x, u, p, contact_name):
         val = force
     else:
         cn = nlp.model.contactNames()
+        val = []
         for i, c in enumerate(cn):
-            if c.to_string() == contact_name:
-                val = force[i]
+            for name in contact_name:
+                if c.to_string() == name:
+                    val = vertcat(val, force[i])
     return val
 
 # --- fcn contact talon ---
@@ -207,13 +209,7 @@ def prepare_ocp(
     constraints.add( # forces heel at zeros at the end of the phase
         get_last_contact_force_nul,
         instant=Instant.ALL,
-        contact_name='Heel_r_X',
-        phase=1,
-    )
-    constraints.add( # forces heel at zeros at the end of the phase
-        get_last_contact_force_nul,
-        instant=Instant.ALL,
-        contact_name='Heel_r_Z',
+        contact_name=('Heel_r_X', 'Heel_r_Z'),
         phase=1,
     )
 
@@ -315,15 +311,15 @@ if __name__ == "__main__":
     )
 
     ocp = prepare_ocp(
-        biorbd_model=biorbd_model, #(biorbd_model[0], biorbd_model[1], biorbd_model[2]),
-        final_time= phase_time, #(phase_time[0], phase_time[1], phase_time[2]),
-        nb_shooting=number_shooting_points, #(number_shooting_points[0], number_shooting_points[1], number_shooting_points[2]),
-        markers_ref=markers_ref, #(markers_ref[0], markers_ref[1], markers_ref[2]),
-        grf_ref=grf_ref, #(grf_ref[0], grf_ref[1], grf_ref[2]),
-        q_ref=q_ref, #(q_ref[0], q_ref[1], q_ref[2]),
-        qdot_ref=qdot_ref, #(qdot_ref[0], qdot_ref[1], qdot_ref[2]),
-        M_ref=M_ref, #(M_ref[0], M_ref[1], M_ref[2]),
-        CoP=CoP, #(CoP[0], CoP[1], CoP[2]),
+        biorbd_model=biorbd_model,
+        final_time= phase_time,
+        nb_shooting=number_shooting_points,
+        markers_ref=markers_ref,
+        grf_ref=grf_ref,
+        q_ref=q_ref,
+        qdot_ref=qdot_ref,
+        M_ref=M_ref,
+        CoP=CoP,
     )
 
     # --- Solve the program --- #
