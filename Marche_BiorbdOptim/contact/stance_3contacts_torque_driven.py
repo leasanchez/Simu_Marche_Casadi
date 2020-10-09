@@ -236,6 +236,7 @@ def prepare_ocp(
     # State Transitions
     state_transitions = StateTransitionList()
     state_transitions.add(StateTransition.IMPACT, phase_pre_idx=0)
+    state_transitions.add(StateTransition.IMPACT, phase_pre_idx=1)
 
     # Path constraint
     x_bounds = BoundsList()
