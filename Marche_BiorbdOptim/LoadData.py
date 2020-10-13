@@ -10,7 +10,6 @@ class Data_to_track:
         PROJET = "/home/leasanchez/programmation/Simu_Marche_Casadi/"
         self.name_subject = name_subject
         self.file = PROJET + "DonneesMouvement/" + name_subject + "_out.c3d"
-        self.kalman_file = PROJET + "DonneesMouvement/" + name_subject + "_out_MOD5000_leftHanded_GenderF_Florent_.Q2"
         self.two_leg = two_leg
         self.multiple_contact = multiple_contact
         self.start_leg, self.idx_start, self.idx_stop_stance, self.idx_stop = self.Get_Event()
@@ -594,39 +593,6 @@ class Data_to_track:
                 f = interp1d(t, qddot_init[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
                 qddot_ref.append(f(node_t))
         return qddot_ref
-
-
-    def load_data_q(self, biorbd_model, final_time, n_shooting_points, GaitPhase):
-        # Create initial vector for joint position (nbNoeuds x nbQ)
-        # Based on Kalman filter??
-
-        # # LOAD MAT FILE FOR GENERALIZED COORDINATES
-        kalman = sio.loadmat(self.kalman_file)
-        Q_real = kalman["Q2"]
-
-        # INTERPOLATE AND GET KALMAN JOINT POSITION FOR SHOOTING POINT FOR THE CYCLE PHASE
-        if GaitPhase == "stance":
-            if self.multiple_contact:
-                q_ref = []
-                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-                for i in range(len(final_time)):
-                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, Q_real[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                    q_ref.append(f_stance(node_t_stance))
-            else:
-                t = np.linspace(0, final_time, (self.idx_stop_stance - self.idx_start + 1))
-                node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, Q_real[:, self.idx_start : (self.idx_stop_stance + 1)], kind="cubic")
-                q_ref = f(node_t)
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, (self.idx_stop - self.idx_stop_stance) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, Q_real[:, self.idx_stop_stance : (self.idx_stop + 1)], kind="cubic")
-            q_ref = f(node_t)
-        else:
-            raise RuntimeError("Gaitphase doesn't exist")
-        return q_ref
 
     def load_data_emg(self, n_shooting_points):
         # Load c3d file and get the muscular excitation from emg
