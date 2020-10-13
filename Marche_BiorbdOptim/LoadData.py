@@ -628,7 +628,7 @@ class Data_to_track:
             raise RuntimeError("Gaitphase doesn't exist")
         return q_ref
 
-    def load_data_emg(self, final_time, n_shooting_points, GaitPhase):
+    def load_data_emg(self, n_shooting_points):
         # Load c3d file and get the muscular excitation from emg
 
         # LOAD C3D FILE
@@ -636,17 +636,12 @@ class Data_to_track:
         points = measurements["data"]["points"]
         labels_points = measurements["parameters"]["POINT"]["LABELS"]["value"]
 
-        # GET THE TIME OF TOE OFF & HEEL STRIKE
-        [start, stop_stance, stop] = self.Get_Event()
-
         # GET THE MUSCULAR EXCITATION FROM EMG (NOT ALL MUSCLES)
-        EMG = np.zeros(((self.nbMuscle - 7), len(points[0, 0, :])))
+        EMG = np.zeros(((self.nb_mus - 7), len(points[0, 0, :])))
 
         EMG[9, :] = points[0, labels_points.index("R_Tibialis_Anterior"), :].squeeze()  # R_Tibialis_Anterior
         EMG[8, :] = points[0, labels_points.index("R_Soleus"), :].squeeze()  # R_Soleus
-        EMG[7, :] = points[
-            0, labels_points.index("R_Gastrocnemius_Lateralis"), :
-        ].squeeze()  # R_Gastrocnemius_Lateralis
+        EMG[7, :] = points[0, labels_points.index("R_Gastrocnemius_Lateralis"), :].squeeze()  # R_Gastrocnemius_Lateralis
         EMG[6, :] = points[0, labels_points.index("R_Gastrocnemius_Medialis"), :].squeeze()  # R_Gastrocnemius_Medialis
         EMG[5, :] = points[0, labels_points.index("R_Vastus_Medialis"), :].squeeze()  # R_Vastus_Medialis
         EMG[4, :] = points[0, labels_points.index("R_Rectus_Femoris"), :].squeeze()  # R_Rectus_Femoris
@@ -656,44 +651,21 @@ class Data_to_track:
         EMG[0, :] = points[0, labels_points.index("R_Gluteus_Maximus"), :].squeeze()  # R_Gluteus_Maximus
 
         # INTERPOLATE AND GET REAL MUSCULAR EXCITATION FOR SHOOTING POINT FOR THE GAIT CYCLE PHASE
-        if GaitPhase == "stance":
-            if self.multiple_contact:
-                emg_ref = []
-                idx = [self.idx_start, self.idx_2_contacts, self.idx_heel_rise, self.idx_stop_stance]
-                for i in range(len(final_time)):
-                    t_stance = np.linspace(0, final_time[i], (idx[i + 1] - idx[i]) + 1)
-                    node_t_stance = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
-                    f_stance = interp1d(t_stance, EMG[:, idx[i] : (idx[i + 1] + 1)], kind="cubic")
-                    emg_ref.append(f_stance(node_t_stance))
-
-                    # RECTIFY EMG VALUES BETWEEN 0 & 1
-                    emg_ref[i][emg_ref[i] < 0] = 1e-3
-                    emg_ref[i][emg_ref[i] == 0] = 1e-3
-                    emg_ref[i][emg_ref[i] > 1] = 1
-            else:
-                t = np.linspace(0, final_time, int(stop_stance - start) + 1)
-                node_t = np.linspace(0, final_time, n_shooting_points + 1)
-                f = interp1d(t, EMG[:, int(start) : int(stop_stance) + 1], kind="cubic")
-                emg_ref = f(node_t)
-
-                # RECTIFY EMG VALUES BETWEEN 0 & 1
-                emg_ref[emg_ref < 0] = 1e-3
-                emg_ref[emg_ref == 0] = 1e-3
-                emg_ref[emg_ref > 1] = 1
-
-        elif GaitPhase == "swing":
-            t = np.linspace(0, final_time, int(stop - stop_stance) + 1)
-            node_t = np.linspace(0, final_time, n_shooting_points + 1)
-            f = interp1d(t, EMG[:, int(stop_stance) : int(stop) + 1], kind="cubic")
-            emg_ref = f(node_t)
-
-            # RECTIFY EMG VALUES BETWEEN 0 & 1
-            emg_ref[emg_ref < 0] = 1e-3
-            emg_ref[emg_ref == 0] = 1e-3
-            emg_ref[emg_ref > 1] = 1
+        final_time = self.GetTime()
+        emg_ref = []
+        if len(n_shooting_points)<len(final_time):
+            raise RuntimeError(f"Your problem has {len(final_time)} phases, it needs {len(final_time)} nb_shooting points")
         else:
-            raise RuntimeError("Gaitphase doesn't exist")
-
+            for i in range(len(final_time)):
+                t = np.linspace(0, final_time[i], (self.idx[i + 1] - self.idx[i]) + 1)
+                node_t = np.linspace(0, final_time[i], n_shooting_points[i] + 1)
+                f = interp1d(t, EMG[:, self.idx[i]: (self.idx[i + 1] + 1)], kind="cubic")
+                e = f(node_t)
+                # RECTIFY EMG VALUES BETWEEN 0 & 1
+                e[e < 0] = 1e-3
+                e[e == 0] = 1e-3
+                e[e > 1] = 1
+                emg_ref.append(e)
         return emg_ref
 
     def load_data_GRF(self, n_shooting_points):
