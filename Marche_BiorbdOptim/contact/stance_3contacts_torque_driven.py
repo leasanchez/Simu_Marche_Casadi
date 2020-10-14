@@ -192,6 +192,31 @@ def prepare_ocp(
         boundary=0,
         phase=1,
     )
+    constraints.add( # non slipping y
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=(1,2,5),
+        tangential_component_idx=4,
+        static_friction_coefficient=0.2,
+        phase=1,
+    )
+    constraints.add( # non slipping x m5
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=(2,5),
+        tangential_component_idx=3,
+        static_friction_coefficient=0.2,
+        phase=1,
+    )
+    constraints.add( # non slipping x heel
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=1,
+        tangential_component_idx=0,
+        static_friction_coefficient=0.2,
+        phase=1,
+    )
+
     constraints.add( # forces heel at zeros at the end of the phase
         get_last_contact_force_null,
         instant=Instant.ALL,
@@ -206,6 +231,30 @@ def prepare_ocp(
         instant=Instant.ALL,
         contact_force_idx=(1, 4),
         boundary=0,
+        phase=2,
+    )
+    constraints.add(
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=(1,4),
+        tangential_component_idx=3,
+        static_friction_coefficient=0.2,
+        phase=2,
+    )
+    constraints.add( # non slipping x m5
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=4,
+        tangential_component_idx=2,
+        static_friction_coefficient=0.2,
+        phase=2,
+    )
+    constraints.add( # non slipping x m1
+        Constraint.NON_SLIPPING,
+        instant=Instant.ALL,
+        normal_component_idx=1,
+        tangential_component_idx=0,
+        static_friction_coefficient=0.2,
         phase=2,
     )
     constraints.add(
