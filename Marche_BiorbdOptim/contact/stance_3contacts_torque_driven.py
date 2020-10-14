@@ -3,6 +3,7 @@ from casadi import dot, Function, vertcat, MX, mtimes, nlpsol
 import biorbd
 from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
+import Marche_BiorbdOptim.contact.Affichage_resultats as Affichage_resultat
 
 from bioptim import (
     OptimalControlProgram,
@@ -357,6 +358,23 @@ if __name__ == "__main__":
         CoP=CoP,
     )
 
+    # # get previous solution
+    # ocp_previous, sol_previous = ocp.load('./RES/1leg/cycle/cycle.bo')
+    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
+    # q = states_sol["q"]
+    # q_dot = states_sol["q_dot"]
+    # tau = controls_sol["tau"]
+    #
+    # mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
+    # idx_max_q, max_diff_q = Affichage_resultat.compute_max_difference(q, q_ref)
+    # R2 = Affichage_resultat.compute_R2(q, q_ref)
+    # forces = Affichage_resultat.compute_individual_forces(ocp_previous, sol_previous)
+    # Affichage_resultat.plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref)
+    # Affichage_resultat.plot_tau(biorbd_model, phase_time, number_shooting_points, tau)
+    # Affichage_resultat.plot_individual_forces(ocp_previous, sol_previous)
+    # Affichage_resultat.plot_sum_forces(ocp_previous, sol_previous, grf_ref)
+
+
     # --- Solve the program --- #
     sol = ocp.solve(
         solver=Solver.IPOPT,
@@ -376,70 +394,15 @@ if __name__ == "__main__":
     q_dot = states_sol["q_dot"]
     tau = controls_sol["tau"]
 
-    # --- Time vector --- #
-    nb_phases = len(ocp.nlp)
-    t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
-    for p in range(1, nb_phases):
-        t=np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[p], number_shooting_points[p] + 1)))
-
-    # --- Plot q --- #
-    q_name=[]
-    for s in range(biorbd_model[0].nbSegment()):
-        seg_name = biorbd_model[0].segment(s).name().to_string()
-        for d in range(biorbd_model[0].segment(s).nbDof()):
-            dof_name = biorbd_model[0].segment(s).nameDof(d).to_string()
-            q_name.append(seg_name + "_" + dof_name)
-
-    figure, axes = plt.subplots(3, 4)
-    axes = axes.flatten()
-    for i in range(nb_q):
-        axes[i].plot(t, q[i, :], 'r-')
-        q_plot = q_ref[0][i, :]
-        for p in range(1, nb_phases):
-            q_plot = np.concatenate([q_plot[:-1], q_ref[p][i, :]])
-        axes[i].plot(t, q_plot, 'b--')
-        pt=0
-        for p in range(nb_phases):
-            pt += phase_time[p]
-            axes[i].plot([pt, pt], [np.min(q_plot), np.max(q_plot)], 'k--')
-        axes[i].set_title(q_name[i])
-    plt.legend(['simulated', 'reference'])
-    plt.show()
-
-    # --- plot grf ---
-    # INIT
-    FORCE = []
-    for p in range(3):
-        forces = np.zeros((ocp.nlp[p].model.nbContacts(), number_shooting_points[p] + 1))
-        states_p, controls_p = Data.get_data(ocp, sol["x"], phase_idx=p)
-        Q = states_p["q"]
-        Qdot = states_p["q_dot"]
-        Tau = controls_p["tau"]
-
-        for n in range(number_shooting_points[p] + 1):
-            forces[:, n:n+1] = ocp.nlp[p].contact_forces_func(np.concatenate([Q[:, n], Qdot[:, n]]), Tau[:, n], 0)
-        FORCE.append(forces)
-
-    plt.figure()
-    plt.plot(grf_ref[0][2, :])
-    plt.plot(FORCE[0][2, :])
-    plt.plot([0, len(grf_ref[0][2, :])], [0, 0], "k--")
-
-    plt.figure()
-    plt.plot(grf_ref[1][2, :])
-    plt.plot(FORCE[1][1, :])
-    plt.plot(FORCE[1][2, :])
-    plt.plot(FORCE[1][5, :])
-    plt.plot(FORCE[1][1, :] + FORCE[1][2, :] + FORCE[1][5, :])
-    plt.plot([0, len(grf_ref[1][2, :])], [0, 0], "k--")
-
-    plt.figure()
-    plt.plot(grf_ref[2][2, :])
-    plt.plot(FORCE[2][1, :])
-    plt.plot(FORCE[2][4, :])
-    plt.plot(FORCE[2][1, :] + FORCE[2][4, :])
-    plt.plot([0, len(grf_ref[2][2, :])], [0, 0], "k--")
-    plt.show()
+    # --- Affichage ---
+    mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
+    idx_max_q, max_diff_q = Affichage_resultat.compute_max_difference(q, q_ref)
+    R2 = Affichage_resultat.compute_R2(q, q_ref)
+    forces = Affichage_resultat.compute_individual_forces(ocp, sol)
+    Affichage_resultat.plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref)
+    Affichage_resultat.plot_tau(biorbd_model, phase_time, number_shooting_points, tau)
+    Affichage_resultat.plot_individual_forces(ocp, sol)
+    Affichage_resultat.plot_sum_forces(ocp, sol, grf_ref)
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
