@@ -117,7 +117,7 @@ def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     return val
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP
+    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP, excitations_ref,
 ):
 
     # Problem parameters
@@ -125,13 +125,18 @@ def prepare_ocp(
     nb_q = biorbd_model[0].nbQ()
     nb_qdot = biorbd_model[0].nbQdot()
     nb_tau = biorbd_model[0].nbGeneralizedTorque()
+    nb_mus = biorbd_model[0].nbMuscleTotal()
 
     torque_min, torque_max, torque_init = -1000, 1000, 0
+    activation_min, activation_max, activation_init = 1e-3, 1, 0.1
 
     # Add objective functions
     objective_functions = ObjectiveList()
     for p in range(nb_phases):
-        objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref[p], phase=p)
+        # objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref[p], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, target=markers_ref[p], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, target=excitations_ref[p],phase=p)
+        objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, controls_idx=range(6, nb_tau), weight=1, phase=p)
     # track grf
     # --- contact talon ---
     objective_functions.add(track_sum_contact_forces_contact_talon,
@@ -179,8 +184,8 @@ def prepare_ocp(
     # Dynamics
     dynamics = DynamicsTypeList()
     for p in range(nb_phases - 1):
-        dynamics.add(DynamicsType.TORQUE_DRIVEN_WITH_CONTACT, phase=p)
-    dynamics.add(DynamicsType.TORQUE_DRIVEN, phase=3)
+        dynamics.add(DynamicsType.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=p)
+    dynamics.add(DynamicsType.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN, phase=3)
 
     # Constraints
     constraints = ConstraintList()
@@ -276,8 +281,8 @@ def prepare_ocp(
     for p in range(nb_phases):
         x_bounds.add(QAndQDotBounds(biorbd_model[p]))
         u_bounds.add([
-            [torque_min] * nb_tau,
-            [torque_max] * nb_tau,
+            [torque_min] * nb_tau + [activation_min]*nb_mus,
+            [torque_max] * nb_tau + [activation_max]*nb_mus,
         ])
 
     # Initial guess
@@ -286,11 +291,13 @@ def prepare_ocp(
     n_shoot=0
     for p in range(nb_phases):
         init_x = np.zeros((nb_q + nb_qdot, nb_shooting[p] + 1))
-        init_x[:nb_q, :] = q_ref[p] #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/q.npy')[:, n_shoot:n_shoot + nb_shooting[p] + 1] #
-        init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref[p] #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/q_dot.npy')[:,  n_shoot:n_shoot + nb_shooting[p] + 1] #qdot_ref[p]
+        init_x[:nb_q, :] = np.load('./RES/1leg/cycle/muscles/q.npy')[:, n_shoot:n_shoot + nb_shooting[p] + 1]
+        init_x[nb_q:nb_q + nb_qdot, :] = np.load('./RES/1leg/cycle/muscles/q_dot.npy')[:,  n_shoot:n_shoot + nb_shooting[p] + 1]
         x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-        init_u = np.zeros((nb_tau, number_shooting_points[p])) #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/tau.npy')[:,  n_shoot:n_shoot + nb_shooting[p]] # np.zeros((nb_tau, nb_shooting[p]))
+        init_u = np.zeros((nb_tau + nb_mus, nb_shooting[p]))
+        init_u[:nb_tau, :]=np.load('./RES/1leg/cycle/muscles/tau.npy')[:,  n_shoot:n_shoot + nb_shooting[p]]
+        init_u[nb_tau:, :]=excitations_ref[p][:, :-1]
         u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
         n_shoot += nb_shooting[p]
 
@@ -325,6 +332,7 @@ if __name__ == "__main__":
     nb_q = biorbd_model[0].nbQ()
     nb_qdot = biorbd_model[0].nbQdot()
     nb_tau = biorbd_model[0].nbGeneralizedTorque()
+    nb_mus = biorbd_model[0].nbMuscleTotal()
 
     # Generate data from file
     Data_to_track = Data_to_track("normal01", model=biorbd_model[0], multiple_contact=True)
@@ -338,6 +346,10 @@ if __name__ == "__main__":
     qdot_ref = Data_to_track.load_qdot_kalman(number_shooting_points)
     CoP = Data_to_track.load_data_CoP(number_shooting_points)
     M_ref = Data_to_track.load_data_Moment_at_CoP(number_shooting_points)
+    EMG_ref = Data_to_track.load_data_emg(number_shooting_points)
+    excitations_ref = []
+    for p in range(len(EMG_ref)):
+        excitations_ref.append(Data_to_track.load_muscularExcitation(EMG_ref[p]))
 
     biorbd_model = (
         biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_heel.bioMod"),
@@ -345,6 +357,7 @@ if __name__ == "__main__":
         biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_forefoot.bioMod"),
         biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_0contact.bioMod")
     )
+
 
     ocp = prepare_ocp(
         biorbd_model=biorbd_model,
@@ -356,6 +369,7 @@ if __name__ == "__main__":
         qdot_ref=qdot_ref,
         M_ref=M_ref,
         CoP=CoP,
+        excitations_ref=excitations_ref,
     )
 
     # # get previous solution
@@ -393,6 +407,7 @@ if __name__ == "__main__":
     q = states_sol["q"]
     q_dot = states_sol["q_dot"]
     tau = controls_sol["tau"]
+    activations = controls_sol["muscles"]
 
     # --- Affichage ---
     mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
