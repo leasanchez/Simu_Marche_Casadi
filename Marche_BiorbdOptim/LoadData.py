@@ -258,6 +258,31 @@ class Data_to_track:
             # plt.title('foot markers position during stance phase')
             # plt.ylabel('z position (mm)')
 
+            # GRF = self.GetForces()
+            # plt.figure()
+            # plt.plot(GRF[0].T)
+            # plt.plot(GRF[1].T)
+            # plt.plot([min(self.idx_start), min(self.idx_start)], [-170, 800], "k--", linewidth=0.7) # start -- LTO + contact orteils droits
+            # plt.text(min(self.idx_start) - 3, -190, 'LTO')
+            # plt.plot([max(self.idx_start), max(self.idx_start)], [-170, 800], "k--", linewidth=0.7) # heel strike L
+            # plt.text(max(self.idx_start)- 3, -190, 'LHS')
+            # plt.plot([min(self.idx_heel_rise), min(self.idx_heel_rise)], [-170, 800], "k--", linewidth=0.7) # heel rise R
+            # plt.text(min(self.idx_heel_rise)- 3, -190, 'RHR')
+            # plt.plot([max(self.idx_2_contacts), max(self.idx_2_contacts)], [-170, 800], "k--", linewidth=0.7) # toes on L
+            # plt.text(max(self.idx_2_contacts)- 3, -190, 'LTON')
+            # plt.plot([min(self.idx_stop_stance), min(self.idx_stop_stance)], [-170, 800], "k--", linewidth=0.7)  # RTO -- stop stance
+            # plt.text(min(self.idx_stop_stance)- 3, -190, 'RTO')
+            # plt.plot([min(self.idx_stop), min(self.idx_stop)], [-170, 800], "k--", linewidth=0.7)  # heel strike R -- stop
+            # plt.text(min(self.idx_stop)- 3, -190, 'RHS')
+            # plt.plot([max(self.idx_heel_rise), max(self.idx_heel_rise)], [-170, 800], "k--", linewidth=0.7)  # heel rise L
+            # plt.text(max(self.idx_heel_rise)- 3, -190, 'LHR')
+            # plt.plot([self.idx_2_contacts_otherleg, self.idx_2_contacts_otherleg], [-170, 800], "k--", linewidth=0.7)  # toes on R ???
+            # plt.text(self.idx_2_contacts_otherleg - 3, -190, 'RTON')
+            # plt.plot([max(self.idx_stop_stance), max(self.idx_stop_stance)], [-170, 800], "k--", linewidth=0.7)  # LTO
+            # plt.text(max(self.idx_stop_stance)- 3, -190, 'LTO')
+            # plt.title('foot markers position during stance phase')
+            # plt.ylabel('z position (mm)')
+
         else:
             Heel = markers[:, 19, self.idx_start: self.idx_stop_stance]
             Meta1 = markers[:, 21, self.idx_start: self.idx_stop_stance]
