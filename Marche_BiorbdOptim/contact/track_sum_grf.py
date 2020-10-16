@@ -1,8 +1,10 @@
 import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol
 import biorbd
+import BiorbdViz as BiorbdViz
 from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
+import Marche_BiorbdOptim.contact.Affichage_resultats as Affichage_resultat
 
 from bioptim import (
     OptimalControlProgram,
@@ -12,6 +14,7 @@ from bioptim import (
     Bounds,
     QAndQDotBounds,
     InitialGuessList,
+    InitialGuess,
     ShowResult,
     ObjectiveList,
     Objective,
@@ -20,9 +23,9 @@ from bioptim import (
     Instant,
     ConstraintList,
     Constraint,
+    Solver,
     StateTransitionList,
     StateTransition,
-    Solver,
 )
 
 # --- force nul at last point ---
@@ -40,101 +43,106 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
             if contact_name in c.to_string():
                 val = vertcat(val, force[i])
     return val
+
+def track_sum_contact_forces_flatfootR(ocp, nlp, t, x, u, p, grf, target=()):
     ns = nlp.ns
     val = []
     for n in range(ns):
         force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0]))
-        val = vertcat(val, grf[1, t[n]] - force[1])
-        val = vertcat(val, grf[2, t[n]] - (force[2]))
-    return dot(val, val)
-
-# --- fcn flatfoot ---
-def get_last_contact_forces_flatfoot(ocp, nlp, t, x, u, p, grf):
-    force = nlp.contact_forces_func(x[-1], u[-1], p)
-    val = grf[0, t[-1]] - force[3]
-    val = vertcat(val, grf[1, t[-1]] - force[4])
-    val = vertcat(val, grf[2, t[-1]] - (force[2] + force[5]))
-    return dot(val, val)
-
-def get_last_contact_forces_talon_flatfoot(ocp, nlp, t, x, u, p):
-    force = nlp.contact_forces_func(x[-1], u[-1], p)
-    val = force[0]
-    val = vertcat(val, force[1])
-    return dot(val, val)
-
-def track_sum_contact_forces_flatfoot(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0] + force[3]))
-        val = vertcat(val, grf[1, t[n]] - force[4])
-        val = vertcat(val, grf[2, t[n]] - (force[1] + force[2] + force[5]))
-    return dot(val, val)
-
-def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
-    # track moments
-    # CoP : evolution of the center of pression evolution
-    # M_ref : moments observed at the CoP on the force plateforme
-
-    ns = nlp.ns # number of shooting points
-    nq = nlp.model.nbQ() # number of dof
-    val = []
-    for n in range(ns):
-        q = x[n][:nq]
-        markers = nlp.model.markers(q)  # compute markers positions
-        heel =  markers[:, 19] + [0.04, 0, 0] - CoP[:, n]# ! modified x position !
-        meta1 = markers[:, 21] - CoP[:, n]
-        meta5 = markers[:, 24] - CoP[:, n]
-        forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
-
-        # Mcp + CpCOPXFp - MCop = 0
-        val = (heel[1] * forces[1] + meta1[1] * forces[2] + meta5[1] * forces[5]) - M_ref[0, n]
-        val = vertcat(val, (-heel[0]*forces[1] - meta1[0]*forces[2] - meta5[0]*forces[5]) - M_ref[1, n])
-        val = vertcat(val, (-heel[1]*forces[0] + meta5[0]*forces[4] - meta5[1]*forces[3]) - M_ref[2, :])
+        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[3]))
+        val = vertcat(val, grf[0][1, t[n]] - force[4])
+        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[2] + force[5]))
     return val
 
-# --- fcn forefoot ---
-def get_last_contact_forces_forefoot(ocp, nlp, t, x, u, p):
-    force = nlp.contact_forces_func(x[-1], u[-1], p)
-    return dot(force, force)
-
-def track_sum_contact_forces_forefoot(ocp, nlp, t, x, u, p, grf, target=()):
+def track_sum_contact_forces_forefootR(ocp, nlp, t, x, u, p, grf, target=()):
     ns = nlp.ns
     val = []
     for n in range(ns):
         force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[1, t[n]] - force[3])
-        val = vertcat(val, grf[2, t[n]] - (force[1] + force[4]))
-    return dot(val, val)
+        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
+        val = vertcat(val, grf[0][1, t[n]] - force[3])
+        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
+    return val
 
-def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
-    # track moments
-    # CoP : evolution of the center of pression evolution
-    # M_ref : moments observed at the CoP on the force plateforme
-
-    ns = nlp.ns # number of shooting points
-    nq = nlp.model.nbQ() # number of dof
+def track_sum_contact_forces_forefootR_HeelL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
     val = []
     for n in range(ns):
-        q = x[n][:nq]
-        markers = nlp.model.markers(q)  # compute markers positions
-        meta1 = markers[:, 21] - CoP[:, n]
-        meta5 = markers[:, 24] - CoP[:, n]
-        forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
+        val = vertcat(val, grf[0][1, t[n]] - force[3])
+        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
 
-        # Mcp + CpCOPXFp - MCop = 0
-        val = (meta1[1] * forces[1] + meta5[1] * forces[4]) - M_ref[0, n]
-        val = vertcat(val, (-meta1[0]*forces[1] - meta5[0]*forces[4]) - M_ref[1, n])
-        val = vertcat(val, (- meta1[1]*forces[0] + meta5[0]*forces[3] - meta5[1]*forces[2]) - M_ref[2, :])
+        val = vertcat(val, grf[1][0, t[n]] - force[5])
+        val = vertcat(val, grf[1][1, t[n]] - force[6])
+        val = vertcat(val, grf[1][2, t[n]] - force[7])
+    return val
+
+def track_sum_contact_forces_forefootR_flatfootL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
+    val = []
+    for n in range(ns):
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
+        val = vertcat(val, grf[0][1, t[n]] - force[3])
+        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
+
+        val = vertcat(val, grf[1][0, t[n]] - (force[5] + force[8]))
+        val = vertcat(val, grf[1][1, t[n]] - force[9])
+        val = vertcat(val, grf[1][2, t[n]] - (force[6] + force[7] + force[10]))
+    return val
+
+def track_sum_contact_forces_flatfootL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
+    val = []
+    for n in range(ns):
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        val = vertcat(val, grf[1][0, t[n]] - (force[0] + force[3]))
+        val = vertcat(val, grf[1][1, t[n]] - force[4])
+        val = vertcat(val, grf[1][2, t[n]] - (force[1] + force[2] + force[5]))
+    return val
+
+def track_sum_contact_forces_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
+    val = []
+    for n in range(ns):
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        val = vertcat(val, grf[1][0, t[n]] - (force[0] + force[2]))
+        val = vertcat(val, grf[1][1, t[n]] - force[3])
+        val = vertcat(val, grf[1][2, t[n]] - (force[1] + force[4]))
+    return val
+
+def track_sum_contact_forces_HeelR_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
+    val = []
+    for n in range(ns):
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        # val = vertcat(val, grf[0][0, t[n]] - force[0])
+        # val = vertcat(val, grf[0][1, t[n]] - force[1])
+        # val = vertcat(val, grf[0][2, t[n]] - force[2])
+
+        val = vertcat(val, grf[1][0, t[n]] - (force[3] + force[5]))
+        val = vertcat(val, grf[1][1, t[n]] - force[6])
+        val = vertcat(val, grf[1][2, t[n]] - (force[4] + force[7]))
+    return val
+
+def track_sum_contact_forces_flatfootR_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns
+    val = []
+    for n in range(ns):
+        force = nlp.contact_forces_func(x[n], u[n], p)
+        # val = vertcat(val, grf[0][0, t[n]] - force[0])
+        # val = vertcat(val, grf[0][1, t[n]] - force[1])
+        # val = vertcat(val, grf[0][2, t[n]] - force[2])
+
+        val = vertcat(val, grf[1][0, t[n]] - (force[6] + force[8]))
+        val = vertcat(val, grf[1][1, t[n]] - force[9])
+        val = vertcat(val, grf[1][2, t[n]] - (force[7] + force[10]))
     return val
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP
+    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, nb_threads,
 ):
-
     # Problem parameters
     nb_q = biorbd_model.nbQ()
     nb_qdot = biorbd_model.nbQdot()
@@ -144,25 +152,14 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref,)
-    # track grf
-    # --- flatfoot ---
-    objective_functions.add(track_sum_contact_forces_flatfoot, # track forces
+    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref)
+    objective_functions.add(track_sum_contact_forces_flatfootR_forefootL,
                             grf=grf_ref,
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.0001,)
-    objective_functions.add(track_sum_moments_flatfoot, # track moments
-                            CoP=CoP,
-                            M_ref=M_ref,
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.0001,)
-    objective_functions.add(get_last_contact_forces_flatfoot, # track last node forces
-                            grf=grf_ref,
-                            custom_type=Objective.Mayer,
-                            instant=Instant.ALL,
-                            weight=0.0001,)
+                            weight=0.0001,
+                            quadratic=True,
+                            phase=0)
 
     # Dynamics
     dynamics = DynamicsTypeList()
@@ -170,12 +167,11 @@ def prepare_ocp(
 
     # Constraints
     constraints = ConstraintList()
-    # --- phase flatfoot ---
-    constraints.add( # positive vertical forces
+    constraints.add(
         Constraint.CONTACT_FORCE_INEQUALITY,
         direction="GREATER_THAN",
         instant=Instant.ALL,
-        contact_force_idx=(1, 2, 5),
+        contact_force_idx=(1, 2, 5, 7, 10),
         boundary=0,
     )
     constraints.add(
@@ -183,6 +179,7 @@ def prepare_ocp(
         instant=Instant.ALL,
         contact_name=('Meta_1_l', 'Meta_5_l'),
     )
+
 
     # Path constraint
     x_bounds = BoundsList()
@@ -195,71 +192,72 @@ def prepare_ocp(
 
     # Initial guess
     x_init = InitialGuessList()
-    u_init = InitialGuessList()
     init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
-    init_x[:nb_q, :] = np.load('./RES/1leg/flatfoot/q.npy') #q_ref[p]
-    init_x[nb_q:nb_q + nb_qdot, :] = np.load('./RES/1leg/flatfoot/q_dot.npy') #qdot_ref[p]
+    init_x[:nb_q, :] = q_ref
+    init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref
     x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-    init_u = np.load('./RES/1leg/flatfoot/tau.npy')[:, :-1] # np.zeros((nb_tau, nb_shooting[p]))
+    u_init = InitialGuessList()
+    init_u = np.zeros((nb_tau, nb_shooting))
     u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
     # ------------- #
 
     return OptimalControlProgram(
-        biorbd_model=biorbd_model,
-        dynamics_type=dynamics,
-        number_shooting_points=nb_shooting,
-        phase_time=final_time,
-        x_init=x_init,
-        u_init=u_init,
-        x_bounds=x_bounds,
-        u_bounds=u_bounds,
-        objective_functions=objective_functions,
-        constraints=constraints,
-        nb_threads=4,
+        biorbd_model,
+        dynamics,
+        nb_shooting,
+        final_time,
+        x_init,
+        u_init,
+        x_bounds,
+        u_bounds,
+        objective_functions,
+        constraints,
+        nb_threads=nb_threads,
     )
 
-
 if __name__ == "__main__":
-    # Define the problem -- model path
+    # Define the problem --- Model path
+    model = biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_0contact.bioMod")
     biorbd_model = (
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_heel.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_flatfoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_forefoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_0contact.bioMod")
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_flatfootR.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_forefootR.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_forefootR_HeelL.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_forefootR_flatfootL.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_flatfootL.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_forefootL.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_HeelR_forefootL.bioMod"),
+        biorbd.Model("../../ModelesS2M/Marche_saine/2legs/2legs_18dof_flatfootR_forefootL.bioMod"),
     )
 
     # Problem parameters
-    dt = 0.01
-    nb_q = biorbd_model[0].nbQ()
-    nb_qdot = biorbd_model[0].nbQdot()
-    nb_tau = biorbd_model[0].nbGeneralizedTorque()
+    nb_q = model.nbQ()
+    nb_qdot = model.nbQdot()
+    nb_tau = model.nbGeneralizedTorque()
 
     # Generate data from file
-    Data_to_track = Data_to_track("normal01", model=biorbd_model[0], multiple_contact=True)
+    Data_to_track = Data_to_track("normal02", model=model, multiple_contact=True, two_leg=True)
     phase_time = Data_to_track.GetTime()
     number_shooting_points = []
     for time in phase_time:
-        number_shooting_points.append(int(time/0.01))
-    number_shooting_points[1]=35
+        number_shooting_points.append(int(time / 0.01))
+    markers_ref = Data_to_track.load_data_markers(number_shooting_points) # get markers positions
+    q_ref = Data_to_track.load_q_kalman(number_shooting_points) # get joint positions
+    qdot_ref = Data_to_track.load_qdot_kalman(number_shooting_points) # get joint velocities
+    qddot_ref = Data_to_track.load_qdot_kalman(number_shooting_points) # get joint accelerations
     grf_ref = Data_to_track.load_data_GRF(number_shooting_points)  # get ground reaction forces
-    markers_ref = Data_to_track.load_data_markers(number_shooting_points)
-    q_ref = Data_to_track.load_q_kalman(number_shooting_points)
-    qdot_ref = Data_to_track.load_qdot_kalman(number_shooting_points)
-    CoP = Data_to_track.load_data_CoP(number_shooting_points)
-    M_ref = Data_to_track.load_data_Moment_at_CoP(number_shooting_points)
 
+    n_p = 7
     ocp = prepare_ocp(
-        biorbd_model=(biorbd_model[1]),
-        final_time=(phase_time[1]),
-        nb_shooting=35,
-        markers_ref=(markers_ref[1]),
-        grf_ref=(grf_ref[1]),
-        q_ref=(q_ref[1]),
-        qdot_ref=(qdot_ref[1]),
-        M_ref=(M_ref[1]),
-        CoP=(CoP[1]),
+        biorbd_model=biorbd_model[n_p],
+        final_time=phase_time[n_p],
+        nb_shooting=number_shooting_points[n_p],
+        markers_ref=markers_ref[n_p],
+        grf_ref=grf_ref[n_p],
+        q_ref=q_ref[n_p],
+        qdot_ref=qdot_ref[n_p],
+        nb_threads=4,
     )
 
     # --- Solve the program --- #
@@ -276,101 +274,116 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    tau = controls_sol["tau"]
+    states, controls = Data.get_data(ocp, sol)
+    q, q_dot, tau = (
+        states["q"],
+        states["q_dot"],
+        controls["tau"],
+    )
 
     # --- Time vector --- #
-    t = np.linspace(0, phase_time[1], number_shooting_points[1] + 1)
+    t = np.linspace(0, phase_time[n_p], number_shooting_points[n_p] + 1)
 
     # --- Plot q --- #
-    q_name=[]
-    for s in range(biorbd_model[0].nbSegment()):
-        seg_name = biorbd_model[0].segment(s).name().to_string()
-        for d in range(biorbd_model[0].segment(s).nbDof()):
-            dof_name = biorbd_model[0].segment(s).nameDof(d).to_string()
+    q_name = []
+    for s in range(biorbd_model[n_p].nbSegment()):
+        seg_name = biorbd_model[n_p].segment(s).name().to_string()
+        for d in range(biorbd_model[n_p].segment(s).nbDof()):
+            dof_name = biorbd_model[n_p].segment(s).nameDof(d).to_string()
             q_name.append(seg_name + "_" + dof_name)
 
-    figure, axes = plt.subplots(3, 4)
+    figure, axes = plt.subplots(3, 6)
     axes = axes.flatten()
     for i in range(nb_q):
         axes[i].plot(t, q[i, :], 'r-')
-        axes[i].plot(t, q_ref[1][i, :])
+        axes[i].plot(t, q_ref[n_p][i, :], 'b--')
         axes[i].set_title(q_name[i])
     plt.legend(['simulated', 'reference'])
 
-    # --- plot grf ---
-    # INIT
-    nb_shooting = number_shooting_points[1] + 1 #total number of shooting points
+    # --- Plot torques --- #
+    figure, axes = plt.subplots(3, 6)
+    axes = axes.flatten()
+    for i in range(nb_tau):
+        axes[i].plot(t, tau[i, :], 'r-')
+        axes[i].set_title(q_name[i])
+    plt.show()
+
+    # --- Plot grf --- #
+    nb_shooting = number_shooting_points[n_p] #total number of shooting points
     labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
                      'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',]
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                     'Heel_l_X', 'Heel_l_Y', 'Heel_l_Z',
+                     'Meta_1_l_X', 'Meta_1_l_Y', 'Meta_1_l_Z',
+                     'Meta_5_l_X', 'Meta_5_l_Y', 'Meta_5_l_Z',
+                     ]
     forces = {}     # dictionary for forces
     for label in labels_forces:
-        forces[label] = np.zeros(nb_shooting)
+        forces[label] = np.zeros(nb_shooting + 1)
 
-    # COMPUTE FORCES FOR EACH PHASE
-    cn = biorbd_model[1].contactNames()           # get contact names for each model
-    for n in range(number_shooting_points[1] + 1):
-        # compute contact forces
+    cn = biorbd_model[n_p].contactNames()
+    for n in range(number_shooting_points[n_p] + 1):
         forces_sim = ocp.nlp[0].contact_forces_func(np.concatenate([q[:, n], q_dot[:, n]]), tau[:, n], 0)
         for i, c in enumerate(cn):
             if c.to_string() in forces:
-                forces[c.to_string()][n] = forces_sim[i]  #put corresponding forces in dictionnary
+                forces[c.to_string()][n] = forces_sim[i]  # put corresponding forces in dictionnary
 
     # PLOT EACH FORCES
     figure, axes = plt.subplots(3, 3)
     axes = axes.flatten()
-    for i, f in enumerate(forces):
-        axes[i].scatter(t, forces[f], color='r', s=3)
-        axes[i].plot(t, forces[f], 'r-', alpha=0.5)
-        axes[i].set_title(f)
-        if (i==2) or (i==5) or (i==8):
+    for i in range(9):
+        axes[i].scatter(t, forces[labels_forces[i]], color='r', s=3)
+        axes[i].plot(t, forces[labels_forces[i]], 'r-', alpha=0.5)
+        if (i == 2) or (i == 5) or (i == 8):
             axes[i].plot([t[0], t[-1]], [0, 0], 'k--')
+        axes[i].set_title(labels_forces[i])
+
+    figure, axes = plt.subplots(3, 3)
+    axes = axes.flatten()
+    for i in range(9):
+        axes[i].scatter(t, forces[labels_forces[9+i]], color='r', s=3)
+        axes[i].plot(t, forces[labels_forces[9+i]], 'r-', alpha=0.5)
+        if (i == 2) or (i == 5) or (i == 8):
+            axes[i].plot([t[0], t[-1]], [0, 0], 'k--')
+        axes[i].set_title(labels_forces[9+i])
 
     # PLOT SUM FORCES VS PLATEFORME FORCES
     figure, axes = plt.subplots(1, 3)
     axes = axes.flatten()
     coord_label = ['X', 'Y', 'Z']
     for i in range(3):
-        axes[i].plot(t, forces[f"Heel_r_{coord_label[i]}"] + forces[f"Meta_1_r_{coord_label[i]}"] + forces[
-            f"Meta_5_r_{coord_label[i]}"], 'r-')
-        axes[i].plot(t, grf_ref[1][i, :], 'b--')
+        axes[i].plot(t,
+                     forces[f"Heel_r_{coord_label[i]}"]
+                     + forces[f"Meta_1_r_{coord_label[i]}"]
+                     + forces[f"Meta_5_r_{coord_label[i]}"],
+                     'r-')
+        axes[i].plot(t, grf_ref[n_p][0][i, :], 'b--')
+        axes[i].scatter(t, forces[f"Heel_r_{coord_label[i]}"]
+                     + forces[f"Meta_1_r_{coord_label[i]}"]
+                     + forces[f"Meta_5_r_{coord_label[i]}"],
+                        color='r', s=3)
+        axes[i].scatter(t, grf_ref[n_p][0][i, :], color='b', s=3)
         axes[i].set_title("Forces in " + coord_label[i] + " R")
-
-
-    # COMPUTE MOMENTS
-    moments_sim = np.zeros((3, nb_shooting))
-    q_sym = MX.sym("q", nb_q, 1)
-    func = biorbd.to_casadi_func("markers", ocp.nlp[0].model.markers, q_sym)
-    for n in range(number_shooting_points[1]):
-         # compute markers positions
-        markers = func(q[:, n])
-        heel = markers[:, 19] - CoP[1][:, n] + [0.04, 0, 0]
-        meta1 = markers[:, 21] - CoP[1][:, n]
-        meta5 = markers[:, 24] - CoP[1][:, n]  # positions of the contact points VS CoP
-
-        # Mcp + CpCOPXFp - MCop = 0
-        moments_sim[0, n] = heel[1] * forces["Heel_r_Z"][n] + meta1[1] * forces["Meta_1_r_Z"][n] + meta5[1] * forces["Meta_5_r_Z"][n]
-        moments_sim[1, n] = -heel[0] * forces["Heel_r_Z"][n] - meta1[0]*forces["Meta_1_r_Z"][n] - meta5[0]*forces["Meta_5_r_Z"][n]
-        moments_sim[2, n] = heel[0] * forces["Heel_r_Y"][n] - heel[1] * forces["Heel_r_X"][n] \
-                            + meta1[0] * forces["Meta_1_r_Y"][n] - meta1[1] * forces["Meta_1_r_X"][n] \
-                            + meta5[0] * forces["Meta_5_r_Y"][n] - meta5[1] * forces["Meta_5_r_X"][n]
+    plt.legend(["simulation", "reference"])
 
     figure, axes = plt.subplots(1, 3)
     axes = axes.flatten()
     coord_label = ['X', 'Y', 'Z']
     for i in range(3):
-        axes[i].plot(t, moments_sim[i, :], 'r-')
-        axes[i].plot(t, M_ref[1][i, :], 'b--')
-        axes[i].set_title("Moments in " + coord_label[i] + " R")
+        axes[i].plot(t,
+                     forces[f"Heel_l_{coord_label[i]}"]
+                     + forces[f"Meta_1_l_{coord_label[i]}"]
+                     + forces[f"Meta_5_l_{coord_label[i]}"],
+                     'r-')
+        axes[i].plot(t, grf_ref[n_p][1][i, :], 'b--')
+        axes[i].scatter(t, forces[f"Heel_l_{coord_label[i]}"]
+                     + forces[f"Meta_1_l_{coord_label[i]}"]
+                     + forces[f"Meta_5_l_{coord_label[i]}"],
+                        color='r', s=3)
+        axes[i].scatter(t, grf_ref[n_p][1][i, :], color='b', s=3)
+        axes[i].set_title("Forces in " + coord_label[i] + " L")
+    plt.legend(["simulation", "reference"])
 
-    # COMPARISON BETWEEN MARKERS POSITIONS
-    func = biorbd.to_casadi_func("markers", ocp.nlp[0].model.markers, q_sym)
-    marker = np.zeros((3, biorbd_model[0].nbMarkers(), number_shooting_points[1]))
-    for n in range(number_shooting_points[1]):
-        marker[:, :, n] = func(q[:, n])
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)
