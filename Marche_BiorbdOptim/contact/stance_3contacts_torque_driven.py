@@ -134,7 +134,7 @@ def prepare_ocp(
     for p in range(nb_phases):
         # objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref[p], phase=p)
         objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, target=markers_ref[p], phase=p)
-        objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=0.0001, target=excitations_ref[p],phase=p)
+        objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.01, phase=p)
     # track grf
     # --- contact talon ---
     objective_functions.add(track_sum_contact_forces_contact_talon,
@@ -398,7 +398,10 @@ if __name__ == "__main__":
     q = states_sol["q"]
     q_dot = states_sol["q_dot"]
     tau = controls_sol["tau"]
-    activations = controls_sol["muscles"]
+
+    # --- Save Results ---
+    save_path = './RES/1leg/cycle/min_tau/cycle.bo'
+    ocp.save(sol, save_path)
 
     # --- Affichage ---
     mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
