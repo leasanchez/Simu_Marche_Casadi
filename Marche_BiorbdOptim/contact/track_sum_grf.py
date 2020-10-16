@@ -25,8 +25,21 @@ from bioptim import (
     Solver,
 )
 
-# --- fcn contact talon ---
-def track_sum_contact_forces_contact_talon(ocp, nlp, t, x, u, p, grf, target=()):
+# --- force nul at last point ---
+# --- force nul at last point ---
+def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
+    force = nlp.contact_forces_func(x[-1], u[-1], p)
+    cn = nlp.model.contactNames()
+    val = []
+    for i, c in enumerate(cn):
+        if isinstance(contact_name, tuple):
+            for name in contact_name:
+                if name in c.to_string():
+                    val = vertcat(val, force[i])
+        else:
+            if contact_name in c.to_string():
+                val = vertcat(val, force[i])
+    return val
     ns = nlp.ns
     val = []
     for n in range(ns):
@@ -165,9 +178,10 @@ def prepare_ocp(
         contact_force_idx=(1, 2, 5),
         boundary=0,
     )
-    constraints.add( # forces heel at zeros at the end of the phase
-        get_last_contact_forces_talon_flatfoot,
+    constraints.add(
+        get_last_contact_force_null,
         instant=Instant.ALL,
+        contact_name=('Meta_1_l', 'Meta_5_l'),
     )
 
     # Path constraint

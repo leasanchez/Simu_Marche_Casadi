@@ -30,15 +30,16 @@ from bioptim import (
 # --- force nul at last point ---
 def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
     force = nlp.contact_forces_func(x[-1], u[-1], p)
-    if contact_name == 'all':
-        val = force
-    else:
-        cn = nlp.model.contactNames()
-        val = []
-        for i, c in enumerate(cn):
+    cn = nlp.model.contactNames()
+    val = []
+    for i, c in enumerate(cn):
+        if isinstance(contact_name, tuple):
             for name in contact_name:
-                if c.to_string() == name:
+                if name in c.to_string():
                     val = vertcat(val, force[i])
+        else:
+            if contact_name in c.to_string():
+                val = vertcat(val, force[i])
     return val
 
 # --- flatfoot R ---
@@ -108,6 +109,12 @@ def prepare_ocp(
         contact_force_idx=(2, 3, 5),
         boundary=0,
         phase=0
+    )
+    constraints.add(
+        get_last_contact_force_null,
+        instant=Instant.ALL,
+        contact_name='Heel_r',
+        phase=0,
     )
     constraints.add(
         Constraint.CONTACT_FORCE_INEQUALITY,
