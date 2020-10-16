@@ -114,9 +114,9 @@ segment femur_r
 		0	0	1	 0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/9  pi/9 
-                   -pi/18 pi/9 
-                   -pi/9  pi/4
+        rangesQ    -pi/4  pi/4 
+                   -pi/4  pi/4
+                   -pi/4  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -179,8 +179,8 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/2 0.0873
-    rangesQdot -7 7
+        rangesQ    -pi/2   0.0873
+        rangesQdot -7      7
 	mass	3.0385
 	inertia
 		0.027795	0	0
@@ -268,8 +268,8 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/9 
-		-pi/6 pi/9
+   	rangesQ -pi/6 pi/4 
+		-pi/6 pi/4
     	rangesQdot -5.2360 5.2360
 		   -5.2360 5.2360  
 	mass	0.042104
@@ -407,9 +407,9 @@ segment femur_l
 		0	0	1	-0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/9  pi/9 
-                   -pi/18 pi/9 
-                   -pi/9  pi/4
+        rangesQ    -pi/4  pi/4 
+                   -pi/4  pi/4
+                   -pi/4  pi/4
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -473,8 +473,8 @@ segment tibia_l
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/2 0.0873
-    rangesQdot -7 7
+        rangesQ    -pi/2  0.0873
+        rangesQdot -7     7
 	mass	3.0385
 	inertia
 		0.027795	0	0
@@ -560,8 +560,8 @@ segment talus_l
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/9 
-		-pi/6 pi/9
+    	rangesQ -pi/6 pi/4 
+		-pi/6 pi/4
     	rangesQdot -5.2360 5.2360
 		   -5.2360 5.2360  
 	mass	0.042104
