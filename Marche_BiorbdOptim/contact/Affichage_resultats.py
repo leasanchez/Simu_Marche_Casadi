@@ -474,13 +474,6 @@ class Affichage:
                                      'k--')
         plt.legend(['simulated', 'reference'])
 
-def plot_activation(biorbd_model, phase_time, number_shooting_points, activations, excitations_ref):
-    # --- multiphase ---
-    nb_phases = len(biorbd_model)
-    if (nb_phases>1):
-        model = biorbd_model[0]
-    else:
-        model = biorbd_model
 
     def plot_sum_moments(self, M_ref):
         # PLOT MOMENTS
@@ -506,3 +499,20 @@ def plot_activation(biorbd_model, phase_time, number_shooting_points, activation
                                   np.max(moments_ref[f"force_{coord_label[i]}_R"])],
                                  'k--')
         plt.legend(['simulated', 'reference'])
+
+    def plot_CoP(self, CoP_ref):
+        CoP = self.compute_CoP()
+        color = ['green', 'red', 'blue']
+        n_shoot = 0
+
+        plt.figure()
+        plt.title("CoP comparison")
+        plt.xlabel("x (m)")
+        plt.ylabel("y (m)")
+        for p in range(self.nb_phases-1):
+            plt.scatter(CoP[0, n_shoot: n_shoot + self.ocp.nlp[p].ns], CoP[1, n_shoot: n_shoot + self.ocp.nlp[p].ns], c=color[p], marker='v', s=7)
+            plt.scatter(CoP_ref[p][0, :-1], CoP_ref[p][1, :-1], c=color[p], marker='o', s=7)
+            n_shoot += self.ocp.nlp[p].ns
+        plt.legend(['contact talon simulation', 'contact talon reference',
+                    'flatfoot simulation', 'flatfoot reference',
+                    'forefoot simulation', 'forefoot reference'])
