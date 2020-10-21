@@ -276,43 +276,33 @@ class Affichage:
         return R2
 
 
-def plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref):
-    # --- multiphase ---
-    nb_phases = len(biorbd_model)
-    if (nb_phases>1):
-        model = biorbd_model[0]
-    else:
-        model = biorbd_model
+    def plot_q(self, q_ref=()):
+        # --- plot q VS q_ref ---
+        q_name = self.get_q_name()  # dof names
+        n_column = int(self.nb_q/3) + (self.nb_q % 3 > 0)
+        figure, axes = plt.subplots(3,n_column)
+        axes = axes.flatten()
+        for i in range(self.nb_q):
+            axes[i].plot(self.t, self.q[i, :], 'r-', alpha=0.5)
+            # compute q_ref
+            if (self.nb_phases>1):
+                Q_ref = q_ref[0][i, :]
+                for p in range(1, self.nb_phases):
+                    Q_ref = np.concatenate([Q_ref[:-1], q_ref[p][i, :]])
+            else:
+                Q_ref = q_ref[i, :]
+            axes[i].plot(self.t, Q_ref, 'b-', alpha=0.5)
+            axes[i].scatter(self.t, self.q[i, :], color='r', s=3)
+            axes[i].scatter(self.t, Q_ref, color='b', s=3)
 
-    t = get_time_vector(phase_time, number_shooting_points) # time vector
-    q_name=get_q_name(model) # dof names
-
-    # --- plot q VS q_ref ---
-    nb_q = model.nbQ()
-    n_column = int(nb_q/3) + (nb_q % 3 > 0)
-    figure, axes = plt.subplots(3,n_column)
-    axes = axes.flatten()
-    for i in range(nb_q):
-        axes[i].plot(t, q[i, :], 'r-', alpha=0.5)
-        # compute q_ref
-        if (nb_phases>1):
-            Q_ref = q_ref[0][i, :]
-            for p in range(1, nb_phases):
-                Q_ref = np.concatenate([Q_ref[:-1], q_ref[p][i, :]])
-        else:
-            Q_ref = q_ref[i, :]
-        axes[i].plot(t, Q_ref, 'b-', alpha=0.5)
-        axes[i].scatter(t, q[i, :], color='r', s=3)
-        axes[i].scatter(t, Q_ref, color='b', s=3)
-
-        # plot phase transition
-        if (nb_phases>1):
-            pt=0
-            for p in range(nb_phases):
-                pt += phase_time[p]
-                axes[i].plot([pt, pt], [np.min(Q_ref), np.max(Q_ref)], 'k--')
-        axes[i].set_title(q_name[i])
-    plt.legend(['simulated', 'reference'])
+            # plot phase transition
+            if (self.nb_phases>1):
+                pt=0
+                for p in range(self.nb_phases):
+                    pt += self.ocp.nlp[p].tf
+                    axes[i].plot([pt, pt], [np.min(Q_ref), np.max(Q_ref)], 'k--')
+            axes[i].set_title(q_name[i])
+        plt.legend(['simulated', 'reference'])
 
 def plot_tau(biorbd_model, phase_time, number_shooting_points, tau):
     # --- multiphase ---
@@ -322,27 +312,22 @@ def plot_tau(biorbd_model, phase_time, number_shooting_points, tau):
     else:
         model = biorbd_model
 
-    # --- time vector ---
-    t = get_time_vector(phase_time, number_shooting_points)
-
-    # --- dof names ---
-    q_name=get_q_name(model)
-
-    # --- plot q VS q_ref ---
-    nb_q = model.nbQ()
-    n_column = int(nb_q/3) + (nb_q % 3 > 0)
-    figure, axes = plt.subplots(3,n_column)
-    axes = axes.flatten()
-    for i in range(nb_q):
-        axes[i].plot(t, tau[i, :], 'r-')
-        axes[i].plot([t[0], t[-1]], [0, 0], 'k--')
-        # plot phase transition
-        if (nb_phases>1):
-            pt=0
-            for p in range(nb_phases):
-                pt += phase_time[p]
-                axes[i].plot([pt, pt], [np.min(tau[i, :]), np.max(tau[i, :])], 'k--')
-        axes[i].set_title(q_name[i])
+    def plot_qdot(self):
+        # --- plot qdot
+        q_name = self.get_q_name()  # dof names
+        n_column = int(self.nb_q/3) + (self.nb_q % 3 > 0)
+        figure, axes = plt.subplots(3,n_column)
+        axes = axes.flatten()
+        for i in range(self.nb_q):
+            axes[i].plot(self.t, self.q_dot[i, :], 'r-')
+            axes[i].plot([self.t[0], self.t[-1]], [0, 0], 'k--')
+            # plot phase transition
+            if (self.nb_phases>1):
+                pt=0
+                for p in range(self.nb_phases):
+                    pt += self.ocp.nlp[p].tf
+                    axes[i].plot([pt, pt], [np.min(self.q_dot[i, :]), np.max(self.q_dot[i, :])], 'k--')
+            axes[i].set_title(q_name[i])
 
 def plot_individual_forces(ocp, sol, two_leg=False, muscles=False):
     forces=compute_individual_forces(ocp, sol, two_leg, muscles)
