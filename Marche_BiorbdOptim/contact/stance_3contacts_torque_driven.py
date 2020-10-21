@@ -80,7 +80,7 @@ def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
         forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
 
         # Mcp + CpCOPXFp - MCop = 0
-        val = (heel[1] * forces[1] + meta1[1] * forces[2] + meta5[1] * forces[5]) - M_ref[0, n]
+        val = vertcat(val, (heel[1] * forces[1] + meta1[1] * forces[2] + meta5[1] * forces[5]) - M_ref[0, n])
         val = vertcat(val, (-heel[0]*forces[1] - meta1[0]*forces[2] - meta5[0]*forces[5]) - M_ref[1, n])
         val = vertcat(val, (-heel[1]*forces[0] + meta5[0]*forces[4] - meta5[1]*forces[3]) - M_ref[2, :])
     return val
@@ -112,7 +112,7 @@ def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
         forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
 
         # Mcp + CpCOPXFp - MCop = 0
-        val = (meta1[1] * forces[1] + meta5[1] * forces[4]) - M_ref[0, n]
+        val = vertcat(val, (meta1[1] * forces[1] + meta5[1] * forces[4]) - M_ref[0, n])
         val = vertcat(val, (-meta1[0]*forces[1] - meta5[0]*forces[4]) - M_ref[1, n])
         val = vertcat(val, (- meta1[1]*forces[0] + meta5[0]*forces[3] - meta5[1]*forces[2]) - M_ref[2, :])
     return val
