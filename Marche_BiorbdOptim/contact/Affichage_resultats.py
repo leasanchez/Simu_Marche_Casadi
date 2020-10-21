@@ -206,15 +206,15 @@ class Affichage:
         moments={}
 
         # compute moments
-        moments["moments_X_R"] = (CoP[1, :] - position["heel_R"][1, :]) * forces["Heel_r_Z"] \
-                                 + (CoP[1, :] - position["meta1_R"][1, :]) * forces["Meta_1_r_Z"] \
-                                 + (CoP[1, :] - position["meta5_R"][1, :]) * forces["Meta_5_r_Z"]
-        moments["moments_Y_R"] = -(CoP[0, :] - position["heel_R"][0, :]) * forces["Heel_r_Z"] \
-                                 - (CoP[0, :] - position["meta1_R"][0, :]) * forces["Meta_1_r_Z"] \
-                                 - (CoP[0, :] - position["meta5_R"][0, :]) * forces["Meta_5_r_Z"]
-        moments["moments_Z_R"] = (CoP[0, :] - position["heel_R"][0, :]) * forces["Heel_r_Y"] - (CoP[1, :] - position["heel_R"][1, :])*forces["Heel_r_X"]\
-                                 + (CoP[0, :] - position["meta1_R"][0, :])*forces["Meta_1_r_Y"] - (CoP[1, :] - position["meta1_R"][1, :])*forces["Meta_1_r_X"]\
-                                 + (CoP[0, :] - position["meta5_R"][0, :])*forces["Meta_5_r_Y"] - (CoP[1, :] - position["meta5_R"][1, :])*forces["Meta_5_r_X"]
+        moments["moments_X_R"] = (position["heel_R"][1, :] - CoP[1, :]) * forces["Heel_r_Z"] \
+                                 + (position["meta1_R"][1, :] - CoP[1, :]) * forces["Meta_1_r_Z"] \
+                                 + (position["meta5_R"][1, :] - CoP[1, :]) * forces["Meta_5_r_Z"]
+        moments["moments_Y_R"] = -(position["heel_R"][0, :] - CoP[0, :]) * forces["Heel_r_Z"] \
+                                 - (position["meta1_R"][0, :] - CoP[0, :]) * forces["Meta_1_r_Z"] \
+                                 - (position["meta5_R"][0, :] - CoP[0, :]) * forces["Meta_5_r_Z"]
+        moments["moments_Z_R"] = (position["heel_R"][0, :] - CoP[0, :]) * forces["Heel_r_Y"] - (position["heel_R"][1, :] - CoP[1, :])*forces["Heel_r_X"]\
+                                 + (position["meta1_R"][0, :] - CoP[0, :])*forces["Meta_1_r_Y"] - (position["meta1_R"][1, :] - CoP[1, :])*forces["Meta_1_r_X"]\
+                                 + (position["meta5_R"][0, :] - CoP[0, :])*forces["Meta_5_r_Y"] - (position["meta5_R"][1, :] - CoP[1, :])*forces["Meta_5_r_X"]
         if self.two_leg:
             moments["moments_X_L"] = position["heel_L"][1, :]*forces["Heel_l_Z"] + position["meta1_L"][1, :]*forces["Meta_1_l_Z"] + position["meta5_L"][1, :]*forces["Meta_5_l_Z"]
             moments["moments_Y_L"] = -position["heel_L"][0, :]*forces["Heel_l_Z"] - position["meta1_L"][0, :]*forces["Meta_1_l_Z"] - position["meta5_L"][0, :]*forces["Meta_5_l_Z"]
