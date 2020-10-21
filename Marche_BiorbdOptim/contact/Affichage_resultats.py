@@ -41,31 +41,37 @@ class Affichage:
             t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
         return t
 
-def compute_individual_forces(ocp, sol, two_leg=False, muscles=False):
-    # --- total number of shooting points ---
-    nb_phases = ocp.nb_phases
-    if (nb_phases>1):
-        nb_shooting = 0
-        for p in range(nb_phases):
-            nb_shooting += ocp.nlp[p].ns
-    else:
-        nb_shooting = ocp.nlp[0].ns
+    def compute_markers_position(self):
+        # compute contact point position
+        position = {}
+        position["heel_R"] = np.zeros((3, self.nb_shooting + 1))
+        position["meta1_R"] = np.zeros((3, self.nb_shooting + 1))
+        position["meta5_R"] = np.zeros((3, self.nb_shooting + 1))
+        if self.two_leg:
+            position["heel_L"] = np.zeros((3, self.nb_shooting + 1))
+            position["meta1_L"] = np.zeros((3, self.nb_shooting + 1))
+            position["meta5_L"] = np.zeros((3, self.nb_shooting + 1))
 
-    if two_leg:
-        labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
-                         'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                         'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
-                         'Heel_l_X', 'Heel_l_Y', 'Heel_l_Z',
-                         'Meta_1_l_X', 'Meta_1_l_Y', 'Meta_1_l_Z',
-                         'Meta_5_l_X', 'Meta_5_l_Y', 'Meta_5_l_Z'
-                         ]
-    else:
-        labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
-                     'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',]
-    # --- dictionary for forces ---
-    forces = {}
-    for label in labels_forces:
+        symbolic_q = MX.sym("q", self.ocp.nlp[0].model.nbQ(), 1)
+        markers_func = Function(
+            "ForwardKin",
+            [symbolic_q],[self.ocp.nlp[0].model.markers(symbolic_q,)],
+            ["q"],
+            ["markers"],
+                ).expand()
+
+        for n in range(self.nb_shooting):
+            Q = self.q[:, n]
+            markers = markers_func(Q)  # compute markers positions
+            position["heel_R"][:, n:n+1] = markers[:, 19] + [0.04, 0, 0]  # ! modified x position !
+            position["meta1_R"][:, n:n+1] = markers[:, 21]
+            position["meta5_R"][:, n:n+1] = markers[:, 24]
+            if self.two_leg:
+                position["heel_R"][:, n:n + 1] = markers[:, 41] + [0.04, 0, 0]  # ! modified x position !
+                position["meta1_R"][:, n:n + 1] = markers[:, 43]
+                position["meta5_R"][:, n:n + 1] = markers[:, 46]
+        return position
+
         forces[label] = np.zeros(nb_shooting + 1)
 
     # COMPUTE FORCES FOR EACH PHASE
