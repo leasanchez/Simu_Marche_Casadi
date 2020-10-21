@@ -304,13 +304,22 @@ class Affichage:
             axes[i].set_title(q_name[i])
         plt.legend(['simulated', 'reference'])
 
-def plot_tau(biorbd_model, phase_time, number_shooting_points, tau):
-    # --- multiphase ---
-    nb_phases = len(biorbd_model)
-    if (nb_phases>1):
-        model = biorbd_model[0]
-    else:
-        model = biorbd_model
+    def plot_tau(self):
+        # --- tau
+        q_name = self.get_q_name()  # dof names
+        n_column = int(self.nb_q/3) + (self.nb_q % 3 > 0)
+        figure, axes = plt.subplots(3,n_column)
+        axes = axes.flatten()
+        for i in range(self.nb_q):
+            axes[i].plot(self.t, self.tau[i, :], 'r-')
+            axes[i].plot([self.t[0], self.t[-1]], [0, 0], 'k--')
+            # plot phase transition
+            if (self.nb_phases>1):
+                pt=0
+                for p in range(self.nb_phases):
+                    pt += self.ocp.nlp[p].tf
+                    axes[i].plot([pt, pt], [np.min(self.tau[i, :]), np.max(self.tau[i, :])], 'k--')
+            axes[i].set_title(q_name[i])
 
     def plot_qdot(self):
         # --- plot qdot
