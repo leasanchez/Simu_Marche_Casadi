@@ -237,19 +237,22 @@ class Affichage:
             mean_diff.append(np.mean(np.sqrt((x[i, :] - X_ref) ** 2)))
         return mean_diff
 
-    max_diff = []
-    idx_max = []
-    for i in range(nb_x):
-        if (nb_phases > 1):
-            X_ref = x_ref[0][i, :]
-            for p in range(1, nb_phases):
-                X_ref = np.concatenate([X_ref[:-1], x_ref[p][i, :]])
-        else:
-            X_ref = x_ref
-        diff = np.sqrt((x[i, :] - X_ref) ** 2)
-        max_diff.append(np.max(diff))
-        idx_max.append(np.where(diff == np.max(diff))[0][0])
-    return idx_max, max_diff
+    def compute_max_difference(self, x, x_ref):
+        nb_x = x.shape[0]
+        nb_phases = len(x_ref)
+        max_diff = []
+        idx_max = []
+        for i in range(nb_x):
+            if (nb_phases > 1):
+                X_ref = x_ref[0][i, :]
+                for p in range(1, nb_phases):
+                    X_ref = np.concatenate([X_ref[:-1], x_ref[p][i, :]])
+            else:
+                X_ref = x_ref
+            diff = np.sqrt((x[i, :] - X_ref) ** 2)
+            max_diff.append(np.max(diff))
+            idx_max.append(np.where(diff == np.max(diff))[0][0])
+        return idx_max, max_diff
 
 def compute_R2(x, x_ref):
     nb_x = x.shape[0]
