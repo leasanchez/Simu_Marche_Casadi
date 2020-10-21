@@ -198,6 +198,31 @@ class Affichage:
         CoP[0, :] = -moments["moments_Y_R"] / FZ
         CoP[1, :] = moments["moments_X_R"] / FZ
         return CoP
+
+    def compute_moments_at_CoP(self):
+        CoP = self.compute_CoP()
+        position = self.compute_markers_position()
+        forces = self.compute_individual_forces()
+        moments={}
+
+        # compute moments
+        moments["moments_X_R"] = (CoP[1, :] - position["heel_R"][1, :]) * forces["Heel_r_Z"] \
+                                 + (CoP[1, :] - position["meta1_R"][1, :]) * forces["Meta_1_r_Z"] \
+                                 + (CoP[1, :] - position["meta5_R"][1, :]) * forces["Meta_5_r_Z"]
+        moments["moments_Y_R"] = -(CoP[0, :] - position["heel_R"][0, :]) * forces["Heel_r_Z"] \
+                                 - (CoP[0, :] - position["meta1_R"][0, :]) * forces["Meta_1_r_Z"] \
+                                 - (CoP[0, :] - position["meta5_R"][0, :]) * forces["Meta_5_r_Z"]
+        moments["moments_Z_R"] = (CoP[0, :] - position["heel_R"][0, :]) * forces["Heel_r_Y"] - (CoP[1, :] - position["heel_R"][1, :])*forces["Heel_r_X"]\
+                                 + (CoP[0, :] - position["meta1_R"][0, :])*forces["Meta_1_r_Y"] - (CoP[1, :] - position["meta1_R"][1, :])*forces["Meta_1_r_X"]\
+                                 + (CoP[0, :] - position["meta5_R"][0, :])*forces["Meta_5_r_Y"] - (CoP[1, :] - position["meta5_R"][1, :])*forces["Meta_5_r_X"]
+        if self.two_leg:
+            moments["moments_X_L"] = position["heel_L"][1, :]*forces["Heel_l_Z"] + position["meta1_L"][1, :]*forces["Meta_1_l_Z"] + position["meta5_L"][1, :]*forces["Meta_5_l_Z"]
+            moments["moments_Y_L"] = -position["heel_L"][0, :]*forces["Heel_l_Z"] - position["meta1_L"][0, :]*forces["Meta_1_l_Z"] - position["meta5_L"][0, :]*forces["Meta_5_l_Z"]
+            moments["moments_Z_L"] = position["heel_L"][0, :]*forces["Heel_l_Y"] - position["heel_L"][1, :]*forces["Heel_l_X"]\
+                                 + position["meta1_L"][0, :]*forces["Meta_1_l_Y"] - position["meta1_L"][1, :]*forces["Meta_1_l_X"]\
+                                 + position["meta5_L"][0, :]*forces["Meta_5_l_Y"] - position["meta5_L"][1, :]*forces["Meta_5_l_X"]
+        return moments
+
     max_diff = []
     idx_max = []
     for i in range(nb_x):
