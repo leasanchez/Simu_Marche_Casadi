@@ -189,9 +189,15 @@ class Affichage:
                 forces_ref["force_Z_R"] = grf_ref[2, :]
         return forces_ref
 
-def compute_max_difference(x, x_ref):
-    nb_x = x.shape[0]
-    nb_phases = len(x_ref)
+    def compute_CoP(self):
+        CoP = np.zeros((3, self.nb_shooting + 1))
+        moments = self.compute_contact_moments()
+        forces = self.compute_individual_forces()
+        FZ=forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"]
+        FZ[FZ == 0] = np.nan
+        CoP[0, :] = -moments["moments_Y_R"] / FZ
+        CoP[1, :] = moments["moments_X_R"] / FZ
+        return CoP
     max_diff = []
     idx_max = []
     for i in range(nb_x):
