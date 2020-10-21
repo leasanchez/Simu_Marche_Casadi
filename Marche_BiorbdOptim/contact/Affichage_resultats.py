@@ -396,85 +396,83 @@ class Affichage:
                         pt += self.ocp.nlp[p].tf
                         axes[i].plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
 
-def plot_sum_forces(ocp, sol, grf_ref, two_leg=False, muscles=False):
-    # PLOT SUM FORCES VS PLATEFORME FORCES
-    forces=compute_individual_forces(ocp, sol, two_leg, muscles)
-    nb_phases = ocp.nb_phases
+    def plot_sum_forces(self, grf_ref):
+        # PLOT SUM FORCES VS PLATEFORME FORCES
+        forces = self.compute_individual_forces() # get individual forces
+        forces_ref = self.compute_contact_forces_ref(grf_ref) # get forces_ref
 
-    # --- time vector ---
-    if (nb_phases>1):
-        phase_time = []
-        number_shooting_points = []
-        for p in range(nb_phases):
-            phase_time.append(ocp.nlp[p].tf)
-            number_shooting_points.append(ocp.nlp[p].ns)
-        t = get_time_vector(phase_time, number_shooting_points)
-    else:
-        phase_time = ocp.nlp[0].tf
-        t = get_time_vector(ocp.nlp[0].tf, ocp.nlp[0].ns)
+        coord_label = ['X', 'Y', 'Z']
+        if self.two_leg:
+            figureR, axesR = plt.subplots(1, 3)
+            axesR = axesR.flatten()
+            figureL, axesL = plt.subplots(1, 3)
+            axesL = axesL.flatten()
 
-    # --- contact forces references ---
-    coord_label = ['X', 'Y', 'Z']
-    if (nb_phases>1):
-        forces_ref = {}
-        if two_leg:
-            forces_ref["force_X_R"] = grf_ref[0][0][0, :]
-            forces_ref["force_Y_R"] = grf_ref[0][0][1, :]
-            forces_ref["force_Z_R"] = grf_ref[0][0][2, :]
-            forces_ref["force_X_L"] = grf_ref[0][1][0, :]
-            forces_ref["force_Y_L"] = grf_ref[0][1][1, :]
-            forces_ref["force_Z_L"] = grf_ref[0][1][2, :]
+            for i in range(3):
+                axesR[i].plot(self.t,
+                             forces[f"Heel_r_{coord_label[i]}"]
+                             + forces[f"Meta_1_r_{coord_label[i]}"]
+                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             'r-', alpha=0.5)
+                axesR[i].plot(self.t, forces_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
+                axesR[i].scatter(self.t,
+                                forces[f"Heel_r_{coord_label[i]}"]
+                                + forces[f"Meta_1_r_{coord_label[i]}"]
+                                + forces[f"Meta_5_r_{coord_label[i]}"],
+                                color='r', s=3)
+                axesR[i].scatter(self.t, forces_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
+                axesR[i].set_title("Forces in " + coord_label[i] + " R")
+
+                axesL[i].plot(self.t,
+                             forces[f"Heel_l_{coord_label[i]}"]
+                             + forces[f"Meta_1_l_{coord_label[i]}"]
+                             + forces[f"Meta_5_l_{coord_label[i]}"],
+                             'r-', alpha=0.5)
+                axesL[i].plot(self.t, forces_ref[f"force_{coord_label[i]}_L"], 'b-', alpha=0.5)
+                axesL[i].scatter(self.t,
+                                forces[f"Heel_l_{coord_label[i]}"]
+                                + forces[f"Meta_1_l_{coord_label[i]}"]
+                                + forces[f"Meta_5_l_{coord_label[i]}"],
+                                color='r', s=3)
+                axesL[i].scatter(self.t, forces_ref[f"force_{coord_label[i]}_L"], color='b', s=3)
+                axesL[i].set_title("Forces in " + coord_label[i] + " L")
+                if (self.nb_phases > 1):
+                    pt = 0
+                    for p in range(self.nb_phases):
+                        pt += self.ocp.nlp[p].tf
+                        axesR[i].plot([pt, pt],
+                                     [np.min(forces_ref[f"force_{coord_label[i]}_R"]),
+                                      np.max(forces_ref[f"force_{coord_label[i]}_R"])],
+                                     'k--')
+                        axesL[i].plot([pt, pt],
+                                     [np.min(forces_ref[f"force_{coord_label[i]}_L"]),
+                                      np.max(forces_ref[f"force_{coord_label[i]}_L"])],
+                                     'k--')
         else:
-            forces_ref["force_X_R"] = grf_ref[0][0, :]
-            forces_ref["force_Y_R"] = grf_ref[0][1, :]
-            forces_ref["force_Z_R"] = grf_ref[0][2, :]
-        for p in range(1, nb_phases):
-            for i, f in enumerate(forces_ref):
-                forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][i, :]])
-                if two_leg:
-                    if (i<3): #R
-                        forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][0][i, :]])
-                    else:
-                        forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][1][i-3, :]])
-
-    else:
-        forces_ref = {}
-        if two_leg:
-            forces_ref["force_X_R"] = grf_ref[0][0, :]
-            forces_ref["force_Y_R"] = grf_ref[0][1, :]
-            forces_ref["force_Z_R"] = grf_ref[0][2, :]
-            forces_ref["force_X_L"] = grf_ref[1][0, :]
-            forces_ref["force_Y_L"] = grf_ref[1][1, :]
-            forces_ref["force_Z_L"] = grf_ref[1][2, :]
-        else:
-            forces_ref["force_X_R"] = grf_ref[0, :]
-            forces_ref["force_Y_R"] = grf_ref[1, :]
-            forces_ref["force_Z_R"] = grf_ref[2, :]
-
-    figure, axes = plt.subplots(1, 3)
-    axes = axes.flatten()
-    for i in range(3):
-        axes[i].plot(t,
-                     forces[f"Heel_r_{coord_label[i]}"]
-                     + forces[f"Meta_1_r_{coord_label[i]}"]
-                     + forces[f"Meta_5_r_{coord_label[i]}"],
-                     'r-', alpha=0.5)
-        axes[i].plot(t, forces_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
-        axes[i].scatter(t,
-                     forces[f"Heel_r_{coord_label[i]}"]
-                     + forces[f"Meta_1_r_{coord_label[i]}"]
-                     + forces[f"Meta_5_r_{coord_label[i]}"],
-                     color='r', s=3)
-        axes[i].scatter(t, forces_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
-        axes[i].set_title("Forces in " + coord_label[i] + " R")
-        if (nb_phases > 1):
-            pt = 0
-            for p in range(nb_phases):
-                pt += phase_time[p]
-                axes[i].plot([pt, pt],
-                             [np.min(forces_ref[f"force_{coord_label[i]}_R"]), np.max(forces_ref[f"force_{coord_label[i]}_R"])],
-                             'k--')
-    plt.legend(['simulated', 'reference'])
+            figure, axes = plt.subplots(1, 3)
+            axes = axes.flatten()
+            for i in range(3):
+                axes[i].plot(self.t,
+                             forces[f"Heel_r_{coord_label[i]}"]
+                             + forces[f"Meta_1_r_{coord_label[i]}"]
+                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             'r-', alpha=0.5)
+                axes[i].plot(self.t, forces_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
+                axes[i].scatter(self.t,
+                             forces[f"Heel_r_{coord_label[i]}"]
+                             + forces[f"Meta_1_r_{coord_label[i]}"]
+                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             color='r', s=3)
+                axes[i].scatter(self.t, forces_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
+                axes[i].set_title("Forces in " + coord_label[i] + " R")
+                if (self.nb_phases > 1):
+                    pt = 0
+                    for p in range(self.nb_phases):
+                        pt += self.ocp.nlp[p].tf
+                        axes[i].plot([pt, pt],
+                                     [np.min(forces_ref[f"force_{coord_label[i]}_R"]), np.max(forces_ref[f"force_{coord_label[i]}_R"])],
+                                     'k--')
+        plt.legend(['simulated', 'reference'])
 
 def plot_activation(biorbd_model, phase_time, number_shooting_points, activations, excitations_ref):
     # --- multiphase ---
