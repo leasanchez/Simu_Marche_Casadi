@@ -3,7 +3,7 @@ from casadi import dot, Function, vertcat, MX, mtimes, nlpsol
 import biorbd
 from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
-import Marche_BiorbdOptim.contact.Affichage_resultats as Affichage_resultat
+from Marche_BiorbdOptim.contact.Affichage_resultats import Affichage
 
 from bioptim import (
     OptimalControlProgram,
@@ -324,7 +324,7 @@ if __name__ == "__main__":
     nb_q = biorbd_model[0].nbQ()
     nb_qdot = biorbd_model[0].nbQdot()
     nb_tau = biorbd_model[0].nbGeneralizedTorque()
-    nb_mus = biorbd_model[0].nbMuscleTotal()
+    nb_phases = len(biorbd_model)
 
     # Generate data from file
     Data_to_track = Data_to_track("normal01", model=biorbd_model[0], multiple_contact=True)
@@ -363,22 +363,50 @@ if __name__ == "__main__":
         CoP=CoP,
     )
 
-    # # get previous solution
-    # ocp_previous, sol_previous = ocp.load('./RES/1leg/cycle/cycle.bo')
+    # get previous solution
+    # ocp_previous, sol_previous = ocp.load('./RES/1leg/cycle/min_torque/cycle.bo')
     # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
     # q = states_sol["q"]
     # q_dot = states_sol["q_dot"]
     # tau = controls_sol["tau"]
-    #
-    # mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
-    # idx_max_q, max_diff_q = Affichage_resultat.compute_max_difference(q, q_ref)
-    # R2 = Affichage_resultat.compute_R2(q, q_ref)
-    # forces = Affichage_resultat.compute_individual_forces(ocp_previous, sol_previous)
-    # Affichage_resultat.plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref)
-    # Affichage_resultat.plot_tau(biorbd_model, phase_time, number_shooting_points, tau)
-    # Affichage_resultat.plot_individual_forces(ocp_previous, sol_previous)
-    # Affichage_resultat.plot_sum_forces(ocp_previous, sol_previous, grf_ref)
 
+    # # show BiorbdViz
+    # # ShowResult(ocp_previous, sol_previous).animate()
+    #
+    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=False, two_leg=False)
+    # # plot states and controls
+    # Affichage_resultat.plot_q(q_ref=q_ref)
+    # Affichage_resultat.plot_tau()
+    # Affichage_resultat.plot_qdot()
+    #
+    # # plot Forces
+    # Affichage_resultat.plot_individual_forces()
+    # Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
+    #
+    # # plot CoP and moments
+    # Affichage_resultat.plot_CoP(CoP_ref=CoP)
+    # Affichage_resultat.plot_sum_moments(M_ref=M_ref)
+    #
+    # # compute differences
+    # CoP_ref = np.zeros((3, q.shape[1]))
+    # n_shoot = 0
+    # for p in range(nb_phases):
+    #     CoP_ref[:, n_shoot:n_shoot + ocp_previous.nlp[p].ns + 1] = CoP[p]
+    #     n_shoot += ocp_previous.nlp[p].ns
+    # CoP_simu = Affichage_resultat.compute_CoP()
+    # mean_diff_CoPx = np.mean(np.sqrt((CoP_ref[0, :56] - CoP_simu[0, :56])**2))
+    # max_diff_CoPx = np.max(np.sqrt((CoP_ref[0, :56] - CoP_simu[0, :56]) ** 2))
+    # mean_diff_CoPy = np.mean(np.sqrt((CoP_ref[1, :56] - CoP_simu[1, :56]) ** 2))
+    # max_diff_CoPy = np.max(np.sqrt((CoP_ref[1, :56] - CoP_simu[1, :56]) ** 2))
+    #
+    # moments_simu = Affichage_resultat.compute_moments_at_CoP()
+    # moments_ref = Affichage_resultat.compute_contact_forces_ref(grf_ref=M_ref)
+    # coords_label=['X', 'Y', 'Z']
+    # mean_diff_moments = []
+    # max_diff_moments = []
+    # for i in range(3):
+    #     mean_diff_moments.append(np.mean(np.sqrt((moments_ref[f"force_{coords_label[i]}_R"][:56] - moments_simu[f"moments_{coords_label[i]}_R"][:56])**2)))
+    #     max_diff_moments.append(np.max(np.sqrt((moments_ref[f"force_{coords_label[i]}_R"][:56] - moments_simu[f"moments_{coords_label[i]}_R"][:56]) ** 2)))
 
     # --- Solve the program --- #
     sol = ocp.solve(
@@ -399,21 +427,46 @@ if __name__ == "__main__":
     q_dot = states_sol["q_dot"]
     tau = controls_sol["tau"]
 
-    # --- Save Results ---
-    save_path = './RES/1leg/cycle/min_tau/cycle.bo'
+    # --- Save results ---
+    save_path = './RES/1leg/cycle/min_torque/cycle.bo'
     ocp.save(sol, save_path)
 
-    # --- Affichage ---
-    mean_diff_q = Affichage_resultat.compute_mean_difference(q, q_ref)
-    idx_max_q, max_diff_q = Affichage_resultat.compute_max_difference(q, q_ref)
-    R2 = Affichage_resultat.compute_R2(q, q_ref)
-    forces = Affichage_resultat.compute_individual_forces(ocp, sol)
-    Affichage_resultat.plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref)
-    Affichage_resultat.plot_tau(biorbd_model, phase_time, number_shooting_points, tau)
-    Affichage_resultat.plot_individual_forces(ocp, sol)
-    Affichage_resultat.plot_sum_forces(ocp, sol, grf_ref)
+    Affichage_resultat = Affichage(ocp, sol, muscles=False, two_leg=False)
+    # plot states and controls
+    Affichage_resultat.plot_q(q_ref=q_ref)
+    Affichage_resultat.plot_tau()
+    Affichage_resultat.plot_qdot()
+
+    # plot Forces
+    Affichage_resultat.plot_individual_forces()
+    Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
+
+    # plot CoP and moments
+    Affichage_resultat.plot_CoP(CoP_ref=CoP)
+    Affichage_resultat.plot_sum_moments(M_ref=M_ref)
+
+    # compute differences
+    CoP_ref = np.zeros((3, q.shape[1]))
+    n_shoot = 0
+    for p in range(nb_phases):
+        CoP_ref[:, n_shoot:n_shoot + ocp_previous.nlp[p].ns + 1] = CoP[p]
+        n_shoot += ocp_previous.nlp[p].ns
+    CoP_simu = Affichage_resultat.compute_CoP()
+    mean_diff_CoPx = np.mean(np.sqrt((CoP_ref[0, :56] - CoP_simu[0, :56])**2))
+    max_diff_CoPx = np.max(np.sqrt((CoP_ref[0, :56] - CoP_simu[0, :56]) ** 2))
+    mean_diff_CoPy = np.mean(np.sqrt((CoP_ref[1, :56] - CoP_simu[1, :56]) ** 2))
+    max_diff_CoPy = np.max(np.sqrt((CoP_ref[1, :56] - CoP_simu[1, :56]) ** 2))
+
+    moments_simu = Affichage_resultat.compute_moments_at_CoP()
+    moments_ref = Affichage_resultat.compute_contact_forces_ref(grf_ref=M_ref)
+    coords_label=['X', 'Y', 'Z']
+    mean_diff_moments = []
+    max_diff_moments = []
+    for i in range(3):
+        mean_diff_moments.append(np.mean(np.sqrt((moments_ref[f"force_{coords_label[i]}_R"][:56] - moments_simu[f"moments_{coords_label[i]}_R"][:56])**2)))
+        max_diff_moments.append(np.max(np.sqrt((moments_ref[f"force_{coords_label[i]}_R"][:56] - moments_simu[f"moments_{coords_label[i]}_R"][:56]) ** 2)))
 
     # --- Show results --- #
-    result = ShowResult(ocp, sol)
+    ShowResult(ocp, sol).animate()
     result.animate()
     result.graphs()
