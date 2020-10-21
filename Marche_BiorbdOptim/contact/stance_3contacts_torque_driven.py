@@ -277,7 +277,10 @@ def prepare_ocp(
     u_bounds = BoundsList()
     for p in range(nb_phases):
         x_bounds.add(QAndQDotBounds(biorbd_model[p]))
-        u_bounds.add([[torque_min] * nb_tau,[torque_max] * nb_tau])
+        u_bounds.add([
+            [torque_min] * nb_tau,
+            [torque_max] * nb_tau,
+        ])
 
     # Initial guess
     x_init = InitialGuessList()
@@ -285,11 +288,11 @@ def prepare_ocp(
     n_shoot=0
     for p in range(nb_phases):
         init_x = np.zeros((nb_q + nb_qdot, nb_shooting[p] + 1))
-        init_x[:nb_q, :] = np.load('./RES/1leg/cycle/q.npy')[:, n_shoot:n_shoot + nb_shooting[p] + 1]
-        init_x[nb_q:nb_q + nb_qdot, :] = np.load('./RES/1leg/cycle/q_dot.npy')[:,  n_shoot:n_shoot + nb_shooting[p] + 1]
+        init_x[:nb_q, :] = q_ref[p] #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/q.npy')[:, n_shoot:n_shoot + nb_shooting[p] + 1] #
+        init_x[nb_q:nb_q + nb_qdot, :] = qdot_ref[p] #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/q_dot.npy')[:,  n_shoot:n_shoot + nb_shooting[p] + 1] #qdot_ref[p]
         x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-        init_u=np.load('./RES/1leg/cycle/tau.npy')[:,  n_shoot:n_shoot + nb_shooting[p]]
+        init_u = np.zeros((nb_tau, number_shooting_points[p])) #np.load('./RES/1leg/3phases/TM1TM2CFI12_100/tau.npy')[:,  n_shoot:n_shoot + nb_shooting[p]] # np.zeros((nb_tau, nb_shooting[p]))
         u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
         n_shoot += nb_shooting[p]
 
