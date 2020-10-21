@@ -21,13 +21,17 @@ class Affichage:
         self.nb_q = ocp.nlp[0].model.nbQ()
         self.t = self.get_time_vector()
 
-def get_time_vector(phase_time, number_shooting_points):
-    nb_phases = len(phase_time)
-    if (nb_phases > 1):
-        t = np.linspace(0, phase_time[0], number_shooting_points[0] + 1)
-        for p in range(1, nb_phases):
-            t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[p], number_shooting_points[p] + 1)))
-    else:
+
+    def get_q_name(self):
+        model = self.ocp.nlp[0].model
+        q_name = []
+        for s in range(model.nbSegment()):
+            seg_name = model.segment(s).name().to_string()
+            for d in range(model.segment(s).nbDof()):
+                dof_name = model.segment(s).nameDof(d).to_string()
+                q_name.append(seg_name + "_" + dof_name)
+        return q_name
+
     def get_time_vector(self):
         if (self.nb_phases > 1):
             t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
