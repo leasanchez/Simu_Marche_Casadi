@@ -254,26 +254,26 @@ class Affichage:
             idx_max.append(np.where(diff == np.max(diff))[0][0])
         return idx_max, max_diff
 
-def compute_R2(x, x_ref):
-    nb_x = x.shape[0]
-    nb_phases = len(x_ref)
-    R2 = []
-    for i in range(nb_x):
-        mean_x = np.repeat(np.mean(x[i, :]), x.shape[1])
-        if (nb_phases > 1):
-            X_ref = x_ref[0][i, :]
-            for p in range(1, nb_phases):
-                X_ref = np.concatenate([X_ref[:-1], x_ref[p][i, :]])
-        else:
-            X_ref = x_ref
-        diff_q_square = (x[i, :] - X_ref)**2
-        diff_q_mean = (x[i, :] - mean_x)**2
-        if (np.sum(diff_q_square) > np.sum(diff_q_mean)):
-            s = np.sum(diff_q_mean) / np.sum(diff_q_square)
-        else:
-            s = np.sum(diff_q_square) / np.sum(diff_q_mean)
-        R2.append(1-s)
-    return R2
+    def compute_R2(self, x, x_ref):
+        nb_x = x.shape[0]
+        nb_phases = len(x_ref)
+        R2 = []
+        for i in range(nb_x):
+            mean_x = np.repeat(np.mean(x[i, :]), x.shape[1])
+            if (nb_phases > 1):
+                X_ref = x_ref[0][i, :]
+                for p in range(1, nb_phases):
+                    X_ref = np.concatenate([X_ref[:-1], x_ref[p][i, :]])
+            else:
+                X_ref = x_ref
+            diff_q_square = (x[i, :] - X_ref)**2
+            diff_q_mean = (x[i, :] - mean_x)**2
+            if (np.sum(diff_q_square) > np.sum(diff_q_mean)):
+                s = np.sum(diff_q_mean) / np.sum(diff_q_square)
+            else:
+                s = np.sum(diff_q_square) / np.sum(diff_q_mean)
+            R2.append(1-s)
+        return R2
 
 
 def plot_q(biorbd_model, phase_time, number_shooting_points, q, q_ref):
