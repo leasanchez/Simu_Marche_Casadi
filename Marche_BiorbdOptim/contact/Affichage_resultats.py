@@ -15,7 +15,7 @@ class Affichage:
         self.q_dot = states["q_dot"]
         self.tau = controls["tau"]
         if self.muscles:
-            self.activation = controls["muscles"]
+            self.activations = controls["muscles"]
         self.nb_phases = ocp.nb_phases
         self.nb_shooting = self.q.shape[1] - 1
         self.nb_q = ocp.nlp[0].model.nbQ()
