@@ -1,15 +1,25 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from bioptim import Data
+from casadi import MX, Function
 
-def get_q_name(model):
-    q_name = []
-    for s in range(model.nbSegment()):
-        seg_name = model.segment(s).name().to_string()
-        for d in range(model.segment(s).nbDof()):
-            dof_name = model.segment(s).nameDof(d).to_string()
-            q_name.append(seg_name + "_" + dof_name)
-    return q_name
+
+class Affichage:
+    def __init__(self, ocp, sol, muscles=False, two_leg=False):
+        self.muscles = muscles
+        self.two_leg = two_leg
+        self.ocp = ocp
+        self.sol = sol
+        states, controls = Data.get_data(ocp, sol["x"])
+        self.q = states["q"]
+        self.q_dot = states["q_dot"]
+        self.tau = controls["tau"]
+        if self.muscles:
+            self.activation = controls["muscles"]
+        self.nb_phases = ocp.nb_phases
+        self.nb_shooting = self.q.shape[1] - 1
+        self.nb_q = ocp.nlp[0].model.nbQ()
+        self.t = self.get_time_vector()
 
 def get_time_vector(phase_time, number_shooting_points):
     nb_phases = len(phase_time)
