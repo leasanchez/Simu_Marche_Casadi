@@ -72,50 +72,66 @@ class Affichage:
                 position["meta5_R"][:, n:n + 1] = markers[:, 46]
         return position
 
-        forces[label] = np.zeros(nb_shooting + 1)
+    def compute_individual_forces(self):
+        if self.two_leg:
+            labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                             'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                             'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                             'Heel_l_X', 'Heel_l_Y', 'Heel_l_Z',
+                             'Meta_1_l_X', 'Meta_1_l_Y', 'Meta_1_l_Z',
+                             'Meta_5_l_X', 'Meta_5_l_Y', 'Meta_5_l_Z'
+                             ]
+        else:
+            labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                         'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                         'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',]
+        # --- dictionary for forces ---
+        forces = {}
+        for label in labels_forces:
+            forces[label] = np.zeros(self.nb_shooting + 1)
 
-    # COMPUTE FORCES FOR EACH PHASE
-    if (nb_phases>1):
-        n_shoot = 0
-        for p in range(nb_phases):
-            cn = ocp.nlp[p].model.contactNames() # get contact names for each model
-            if (len(cn) > 0):
-                states_p, controls_p = Data.get_data(ocp, sol["x"], phase_idx=p)
-                Q = states_p["q"]
-                Qdot = states_p["q_dot"]
-                Tau = controls_p["tau"]
-                if muscles:
-                    Activation = controls_p["muscles"]
-                for n in range(ocp.nlp[p].ns + 1):
-                    s = np.concatenate([Q[:, n], Qdot[:, n]])
-                    if muscles:
-                        c = np.concatenate([Tau[:, n], Activation[:, n]])
-                    else:
-                        c=Tau[:, n]
-                    forces_sim = ocp.nlp[p].contact_forces_func(s, c, 0)
-                    for i, c in enumerate(cn):
-                        if c.to_string() in forces:
-                            forces[c.to_string()][n_shoot + n] = forces_sim[i]  # put corresponding forces in dictionnary
-                n_shoot += ocp.nlp[p].ns
-    else:
-        cn = ocp.nlp[0].model.contactNames()
-        states_p, controls_p = Data.get_data(ocp, sol["x"])
-        Q = states_p["q"]
-        Qdot = states_p["q_dot"]
-        Tau = controls_p["tau"]
-        if muscles:
-            Activation = controls_p["muscles"]
-        for n in range(ocp.nlp[0].ns + 1):
-            s = np.concatenate([Q[:, n], Qdot[:, n]])
-            if muscles:
-                c=np.concatenate([Tau[:, n], Activation[:, n]])
-            else:
-                c = Tau[:, n]
-            forces_sim = ocp.nlp[0].contact_forces_func(s, c, 0)
-            for i, c in enumerate(cn):
-                if c.to_string() in forces:
-                    forces[c.to_string()][n] = forces_sim[i]
-    return forces
+        # COMPUTE FORCES FOR EACH PHASE
+        if (self.nb_phases>1):
+            n_shoot = 0
+            for p in range(self.nb_phases):
+                cn = self.ocp.nlp[p].model.contactNames() # get contact names for each model
+                if (len(cn) > 0):
+                    states_p, controls_p = Data.get_data(self.ocp, self.sol["x"], phase_idx=p)
+                    Q = states_p["q"]
+                    Qdot = states_p["q_dot"]
+                    Tau = controls_p["tau"]
+                    if self.muscles:
+                        Activation = controls_p["muscles"]
+                    for n in range(self.ocp.nlp[p].ns + 1):
+                        s = np.concatenate([Q[:, n], Qdot[:, n]])
+                        if self.muscles:
+                            c = np.concatenate([Tau[:, n], Activation[:, n]])
+                        else:
+                            c=Tau[:, n]
+                        forces_sim = self.ocp.nlp[p].contact_forces_func(s, c, 0)
+                        for i, c in enumerate(cn):
+                            if c.to_string() in forces:
+                                forces[c.to_string()][n_shoot + n] = forces_sim[i]  # put corresponding forces in dictionnary
+                    n_shoot += self.ocp.nlp[p].ns
+        else:
+            cn = self.ocp.nlp[0].model.contactNames()
+            states_p, controls_p = Data.get_data(self.ocp, self.sol["x"])
+            Q = states_p["q"]
+            Qdot = states_p["q_dot"]
+            Tau = controls_p["tau"]
+            if self.muscles:
+                Activation = controls_p["muscles"]
+            for n in range(self.ocp.nlp[0].ns + 1):
+                s = np.concatenate([Q[:, n], Qdot[:, n]])
+                if self.muscles:
+                    c=np.concatenate([Tau[:, n], Activation[:, n]])
+                else:
+                    c = Tau[:, n]
+                forces_sim = self.ocp.nlp[0].contact_forces_func(s, c, 0)
+                for i, c in enumerate(cn):
+                    if c.to_string() in forces:
+                        forces[c.to_string()][n] = forces_sim[i]
+        return forces
 
 def compute_mean_difference(x, x_ref):
     nb_x = x.shape[0]
