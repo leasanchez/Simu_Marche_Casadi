@@ -338,20 +338,25 @@ class Affichage:
                     axes[i].plot([pt, pt], [np.min(self.q_dot[i, :]), np.max(self.q_dot[i, :])], 'k--')
             axes[i].set_title(q_name[i])
 
-def plot_individual_forces(ocp, sol, two_leg=False, muscles=False):
-    forces=compute_individual_forces(ocp, sol, two_leg, muscles)
-    nb_phases = ocp.nb_phases
-
-    if (nb_phases>1):
-        phase_time = []
-        number_shooting_points = []
-        for p in range(nb_phases):
-            phase_time.append(ocp.nlp[p].tf)
-            number_shooting_points.append(ocp.nlp[p].ns)
-        t = get_time_vector(phase_time, number_shooting_points)
-    else:
-        phase_time = ocp.nlp[0].tf
-        t = get_time_vector(ocp.nlp[0].tf, ocp.nlp[0].ns)
+    def plot_activation(self, excitations_ref):
+        nb_mus = self.ocp.nlp[0].model.nbMuscleTotal()
+        figure, axes = plt.subplots(3, 6)
+        axes = axes.flatten()
+        for i in range(nb_mus):
+            axes[i].plot(self.t, self.activations[i, :], 'r-')
+            if (self.nb_phases > 1):
+                a_plot = excitations_ref[0][i, :]
+                for p in range(1, self.nb_phases):
+                    a_plot = np.concatenate([a_plot[:-1], excitations_ref[p][i, :]])
+            else:
+                a_plot = excitations_ref[i, :]
+            axes[i].plot(self.t, a_plot, 'b--')
+            if (self.nb_phases > 1):
+                pt = 0
+                for p in range(self.nb_phases):
+                    pt += self.ocp.nlp[p].tf
+                    axes[i].plot([pt, pt], [np.min(a_plot), np.max(a_plot)], 'k--')
+            axes[i].set_title(self.ocp.nlp[0].model.muscle(i).name().to_string())
 
     if two_leg:
         figureR, axesR = plt.subplots(3, 3)
