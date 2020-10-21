@@ -482,24 +482,27 @@ def plot_activation(biorbd_model, phase_time, number_shooting_points, activation
     else:
         model = biorbd_model
 
-    # --- time vector ---
-    t = get_time_vector(phase_time, number_shooting_points)
+    def plot_sum_moments(self, M_ref):
+        # PLOT MOMENTS
+        moments = self.compute_moments_at_CoP() # compute moments at CoP from solution
+        moments_ref = self.compute_contact_forces_ref(M_ref) # get moments_ref
 
-    nb_mus = model.nbMuscleTotal()
-    figure, axes = plt.subplots(3, 6)
-    axes = axes.flatten()
-    for i in range(nb_mus):
-        axes[i].plot(t, activations[i, :], 'r-')
-        if (nb_phases>1):
-            a_plot = excitations_ref[0][i, :]
-            for p in range(1, nb_phases):
-                a_plot = np.concatenate([a_plot[:-1], excitations_ref[p][i, :]])
-        else:
-            a_plot = excitations_ref[i, :]
-        axes[i].plot(t, a_plot, 'b--')
-        if (nb_phases > 1):
-            pt=0
-            for p in range(nb_phases):
-                pt += phase_time[p]
-                axes[i].plot([pt, pt], [np.min(a_plot), np.max(a_plot)], 'k--')
-        axes[i].set_title(model.muscle(i).name().to_string())
+        coord_label = ['X', 'Y', 'Z']
+        figure, axes = plt.subplots(1, 3)
+        axes = axes.flatten()
+        for i in range(3):
+            axes[i].plot(self.t, moments[f"moments_{coord_label[i]}_R"], 'r-', alpha=0.5)
+            axes[i].plot(self.t, moments_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
+            axes[i].scatter(self.t, moments[f"moments_{coord_label[i]}_R"], color='r', s=3)
+            axes[i].scatter(self.t, moments_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
+            axes[i].set_title(f"Moments in {coord_label[i]} R at CoP")
+        if (self.nb_phases > 1):
+            for i in range(3):
+                pt = 0
+                for p in range(self.nb_phases):
+                    pt += self.ocp.nlp[p].tf
+                    axes[i].plot([pt, pt],
+                                 [np.min(moments_ref[f"force_{coord_label[i]}_R"]),
+                                  np.max(moments_ref[f"force_{coord_label[i]}_R"])],
+                                 'k--')
+        plt.legend(['simulated', 'reference'])
