@@ -146,6 +146,42 @@ def compute_mean_difference(x, x_ref):
             X_ref = x_ref
         mean_diff.append(np.mean(np.sqrt((x[i, :] - X_ref) ** 2)))
     return mean_diff
+    def compute_contact_forces_ref(self, grf_ref):
+        if (self.nb_phases>1):
+            forces_ref = {}
+            if self.two_leg:
+                forces_ref["force_X_R"] = grf_ref[0][0][0, :]
+                forces_ref["force_Y_R"] = grf_ref[0][0][1, :]
+                forces_ref["force_Z_R"] = grf_ref[0][0][2, :]
+                forces_ref["force_X_L"] = grf_ref[0][1][0, :]
+                forces_ref["force_Y_L"] = grf_ref[0][1][1, :]
+                forces_ref["force_Z_L"] = grf_ref[0][1][2, :]
+            else:
+                forces_ref["force_X_R"] = grf_ref[0][0, :]
+                forces_ref["force_Y_R"] = grf_ref[0][1, :]
+                forces_ref["force_Z_R"] = grf_ref[0][2, :]
+            for p in range(1, self.nb_phases):
+                for i, f in enumerate(forces_ref):
+                    forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][i, :]])
+                    if self.two_leg:
+                        if (i<3): #R
+                            forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][0][i, :]])
+                        else:
+                            forces_ref[f] = np.concatenate([forces_ref[f][:-1], grf_ref[p][1][i-3, :]])
+        else:
+            forces_ref = {}
+            if self.two_leg:
+                forces_ref["force_X_R"] = grf_ref[0][0, :]
+                forces_ref["force_Y_R"] = grf_ref[0][1, :]
+                forces_ref["force_Z_R"] = grf_ref[0][2, :]
+                forces_ref["force_X_L"] = grf_ref[1][0, :]
+                forces_ref["force_Y_L"] = grf_ref[1][1, :]
+                forces_ref["force_Z_L"] = grf_ref[1][2, :]
+            else:
+                forces_ref["force_X_R"] = grf_ref[0, :]
+                forces_ref["force_Y_R"] = grf_ref[1, :]
+                forces_ref["force_Z_R"] = grf_ref[2, :]
+        return forces_ref
 
 def compute_max_difference(x, x_ref):
     nb_x = x.shape[0]
