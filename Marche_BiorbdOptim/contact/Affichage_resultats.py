@@ -28,8 +28,14 @@ def get_time_vector(phase_time, number_shooting_points):
         for p in range(1, nb_phases):
             t = np.concatenate((t[:-1], t[-1] + np.linspace(0, phase_time[p], number_shooting_points[p] + 1)))
     else:
-        t = np.linspace(0, phase_time, number_shooting_points + 1)
-    return t
+    def get_time_vector(self):
+        if (self.nb_phases > 1):
+            t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
+            for p in range(1, self.nb_phases):
+                t = np.concatenate((t[:-1], t[-1] + np.linspace(0, self.ocp.nlp[p].tf, self.ocp.nlp[p].ns + 1)))
+        else:
+            t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
+        return t
 
 def compute_individual_forces(ocp, sol, two_leg=False, muscles=False):
     # --- total number of shooting points ---
