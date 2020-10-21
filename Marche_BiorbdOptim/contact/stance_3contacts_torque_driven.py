@@ -117,7 +117,7 @@ def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     return val
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP,
+    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP
 ):
 
     # Problem parameters
@@ -131,8 +131,8 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = ObjectiveList()
     for p in range(nb_phases):
-        # objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref[p], phase=p)
-        objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=500, target=markers_ref[p], phase=p)
+        objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=10000, states_idx=range(nb_q), target=q_ref[p], phase=p)
+        # objective_functions.add(Objective.Lagrange.TRACK_MARKERS, weight=10000, target=markers_ref[p], phase=p)
         objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.01, phase=p)
     # track grf
     # --- contact talon ---
@@ -140,7 +140,7 @@ def prepare_ocp(
                             grf=grf_ref[0],
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.00001,
+                            weight=0.01,
                             quadratic=True,
                             phase=0)
 
@@ -149,7 +149,7 @@ def prepare_ocp(
                             grf=grf_ref[1],
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.00001,
+                            weight=0.01,
                             quadratic=True,
                             phase=1)
     objective_functions.add(track_sum_moments_flatfoot,
@@ -157,7 +157,7 @@ def prepare_ocp(
                             M_ref=M_ref[1],
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.00001,
+                            weight=0.001,
                             quadratic=True,
                             phase=1)
 
@@ -166,7 +166,7 @@ def prepare_ocp(
                             grf=grf_ref[2],
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.00001,
+                            weight=0.01,
                             quadratic=True,
                             phase=2)
     objective_functions.add(track_sum_moments_forefoot,
@@ -174,15 +174,15 @@ def prepare_ocp(
                             M_ref=M_ref[2],
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.00001,
+                            weight=0.001,
                             quadratic=True,
                             phase=2)
 
     # Dynamics
     dynamics = DynamicsTypeList()
     for p in range(nb_phases - 1):
-        dynamics.add(DynamicsType.TORQUE_DRIVEN_WITH_CONTACT)
-    dynamics.add(DynamicsType.TORQUE_DRIVEN)
+        dynamics.add(DynamicsType.TORQUE_DRIVEN_WITH_CONTACT, phase=p)
+    dynamics.add(DynamicsType.TORQUE_DRIVEN, phase=3)
 
     # Constraints
     constraints = ConstraintList()
