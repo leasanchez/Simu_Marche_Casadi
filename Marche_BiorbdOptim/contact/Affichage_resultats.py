@@ -358,42 +358,43 @@ class Affichage:
                     axes[i].plot([pt, pt], [np.min(a_plot), np.max(a_plot)], 'k--')
             axes[i].set_title(self.ocp.nlp[0].model.muscle(i).name().to_string())
 
-    if two_leg:
-        figureR, axesR = plt.subplots(3, 3)
-        axesR = axesR.flatten()
-        figureL, axesL = plt.subplots(3, 3)
-        axesL = axesL.flatten()
+    def plot_individual_forces(self):
+        forces=self.compute_individual_forces()
+        if self.two_leg:
+            figureR, axesR = plt.subplots(3, 3)
+            axesR = axesR.flatten()
+            figureL, axesL = plt.subplots(3, 3)
+            axesL = axesL.flatten()
 
-        for i, f in enumerate(forces):
-            if (i<9):
-                ax = axesR[i]
-            else:
-                ax = axesL[i-9]
-            ax.scatter(t, forces[f], color='r', s=3)
-            ax.plot(t, forces[f], 'r-', alpha=0.5)
-            if (i == 2) or (i == 5) or (i == 8):
-                ax.plot([t[0], t[-1]], [0, 0], 'k--')
-            ax[i].set_title(f)
-            if (nb_phases > 1):
-                pt = 0
-                for p in range(nb_phases):
-                    pt += phase_time[p]
-                    ax.plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
-
-    else:
-        figure, axes = plt.subplots(3, 3)
-        axes = axes.flatten()
-        for i, f in enumerate(forces):
-            axes[i].scatter(t, forces[f], color='r', s=3)
-            axes[i].plot(t, forces[f], 'r-', alpha=0.5)
-            if (i==2) or (i==5) or (i==8):
-                axes[i].plot([t[0], t[-1]], [0, 0], 'k--')
-            axes[i].set_title(f)
-            if (nb_phases>1):
-                pt = 0
-                for p in range(nb_phases):
-                    pt += phase_time[p]
-                    axes[i].plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
+            for i, f in enumerate(forces):
+                if (i<9):
+                    ax = axesR[i]
+                else:
+                    ax = axesL[i-9]
+                ax.scatter(self.t, forces[f], color='r', s=3)
+                ax.plot(self.t, forces[f], 'r-', alpha=0.5)
+                if (i == 2) or (i == 5) or (i == 8):
+                    ax.plot([self.t[0], self.t[-1]], [0, 0], 'k--')
+                ax[i].set_title(f)
+                if (self.nb_phases > 1):
+                    pt = 0
+                    for p in range(self.nb_phases):
+                        pt += self.ocp.nlp[p].tf
+                        ax.plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
+        else:
+            figure, axes = plt.subplots(3, 3)
+            axes = axes.flatten()
+            for i, f in enumerate(forces):
+                axes[i].scatter(self.t, forces[f], color='r', s=3)
+                axes[i].plot(self.t, forces[f], 'r-', alpha=0.5)
+                if (i==2) or (i==5) or (i==8):
+                    axes[i].plot([self.t[0], self.t[-1]], [0, 0], 'k--')
+                axes[i].set_title(f)
+                if (self.nb_phases>1):
+                    pt = 0
+                    for p in range(self.nb_phases):
+                        pt += self.ocp.nlp[p].tf
+                        axes[i].plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
 
 def plot_sum_forces(ocp, sol, grf_ref, two_leg=False, muscles=False):
     # PLOT SUM FORCES VS PLATEFORME FORCES
