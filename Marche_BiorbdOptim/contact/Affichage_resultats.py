@@ -133,19 +133,25 @@ class Affichage:
                         forces[c.to_string()][n] = forces_sim[i]
         return forces
 
-def compute_mean_difference(x, x_ref):
-    nb_x = x.shape[0]
-    nb_phases = len(x_ref)
-    mean_diff = []
-    for i in range(nb_x):
-        if (nb_phases > 1):
-            X_ref = x_ref[0][i, :]
-            for p in range(1, nb_phases):
-                X_ref = np.concatenate([X_ref[:-1], x_ref[p][i, :]])
-        else:
-            X_ref = x_ref
-        mean_diff.append(np.mean(np.sqrt((x[i, :] - X_ref) ** 2)))
-    return mean_diff
+    def compute_contact_moments(self):
+        moments = {} # init
+        forces = self.compute_individual_forces()  # get forces
+        position = self.compute_markers_position() # get markers position
+
+        # compute moments
+        moments["moments_X_R"] = position["heel_R"][1, :]*forces["Heel_r_Z"] + position["meta1_R"][1, :]*forces["Meta_1_r_Z"] + position["meta5_R"][1, :]*forces["Meta_5_r_Z"]
+        moments["moments_Y_R"] = -position["heel_R"][0, :]*forces["Heel_r_Z"] - position["meta1_R"][0, :]*forces["Meta_1_r_Z"] - position["meta5_R"][0, :]*forces["Meta_5_r_Z"]
+        moments["moments_Z_R"] = position["heel_R"][0, :]*forces["Heel_r_Y"] - position["heel_R"][1, :]*forces["Heel_r_X"]\
+                                 + position["meta1_R"][0, :]*forces["Meta_1_r_Y"] - position["meta1_R"][1, :]*forces["Meta_1_r_X"]\
+                                 + position["meta5_R"][0, :]*forces["Meta_5_r_Y"] - position["meta5_R"][1, :]*forces["Meta_5_r_X"]
+        if self.two_leg:
+            moments["moments_X_L"] = position["heel_L"][1, :]*forces["Heel_l_Z"] + position["meta1_L"][1, :]*forces["Meta_1_l_Z"] + position["meta5_L"][1, :]*forces["Meta_5_l_Z"]
+            moments["moments_Y_L"] = -position["heel_L"][0, :]*forces["Heel_l_Z"] - position["meta1_L"][0, :]*forces["Meta_1_l_Z"] - position["meta5_L"][0, :]*forces["Meta_5_l_Z"]
+            moments["moments_Z_L"] = position["heel_L"][0, :]*forces["Heel_l_Y"] - position["heel_L"][1, :]*forces["Heel_l_X"]\
+                                 + position["meta1_L"][0, :]*forces["Meta_1_l_Y"] - position["meta1_L"][1, :]*forces["Meta_1_l_X"]\
+                                 + position["meta5_L"][0, :]*forces["Meta_5_l_Y"] - position["meta5_L"][1, :]*forces["Meta_5_l_X"]
+        return moments
+
     def compute_contact_forces_ref(self, grf_ref):
         if (self.nb_phases>1):
             forces_ref = {}
