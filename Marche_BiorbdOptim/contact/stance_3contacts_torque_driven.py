@@ -35,8 +35,12 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
         cn = nlp.model.contactNames()
         val = []
         for i, c in enumerate(cn):
-            for name in contact_name:
-                if c.to_string() == name:
+            if isinstance(contact_name, tuple):
+                for name in contact_name:
+                    if name in c.to_string():
+                        val = vertcat(val, force[i])
+            else:
+                if contact_name in c.to_string():
                     val = vertcat(val, force[i])
     return val
 
@@ -223,7 +227,7 @@ def prepare_ocp(
     constraints.add( # forces heel at zeros at the end of the phase
         get_last_contact_force_null,
         instant=Instant.ALL,
-        contact_name=('Heel_r_X', 'Heel_r_Z'),
+        contact_name='Heel_r',
         phase=1,
     )
 
