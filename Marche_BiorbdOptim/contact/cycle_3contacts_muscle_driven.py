@@ -56,27 +56,38 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
                     val = vertcat(val, force[i])
     return val
 
-# --- fcn contact talon ---
-def track_sum_contact_forces_contact_talon(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
+# --- track grf ---
+def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf, target=()):
+    ns = nlp.ns  # number of shooting points for the phase
+    val = []     # init
+    cn = nlp.model.contactNames() # contact name for the model
+
+    # --- compute forces ---
+    forces={} # define dictionnary with all the contact point possible
+    labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                     'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z', ]
+    for label in labels_forces:
+        forces[label] = [] # init
+
     for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0]))
-        val = vertcat(val, grf[1, t[n]] - force[1])
-        val = vertcat(val, grf[2, t[n]] - (force[2]))
+        for f in forces:
+            forces[f].append(0.0) # init: put 0 if the contact point is not activated
+
+        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        for i, c in enumerate(cn):
+            if c.to_string() in forces: # check if contact point is activated
+                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
+
+        # --- tracking forces ---
+        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n]))
+        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n]))
+        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n]))
     return val
 
+
+
 # --- fcn flatfoot ---
-def track_sum_contact_forces_flatfoot(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0] + force[3]))
-        val = vertcat(val, grf[1, t[n]] - force[4])
-        val = vertcat(val, grf[2, t[n]] - (force[1] + force[2] + force[5]))
-    return val
 
 def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     # track moments
@@ -101,15 +112,6 @@ def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     return val
 
 # --- fcn forefoot ---
-def track_sum_contact_forces_forefoot(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[1, t[n]] - force[3])
-        val = vertcat(val, grf[2, t[n]] - (force[1] + force[4]))
-    return val
 
 def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
     # track moments
@@ -153,24 +155,17 @@ def prepare_ocp(
         objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=0.001, controls_idx=range(6, nb_tau), phase=p)
         objective_functions.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=0.001, phase=p)
 
-    # track grf
-    # --- contact talon ---
-    objective_functions.add(track_sum_contact_forces_contact_talon,
-                            grf=grf_ref[0],
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.01,
-                            quadratic=True,
-                            phase=0)
+    # --- track contact forces for the stance phase ---
+    for p in range(nb_phases - 1):
+        objective_functions.add(track_sum_contact_forces, # track contact forces
+                                grf=grf_ref[p],
+                                custom_type=Objective.Lagrange,
+                                instant=Instant.ALL,
+                                weight=0.01,
+                                quadratic=True,
+                                phase=p)
 
     # --- flatfoot ---
-    objective_functions.add(track_sum_contact_forces_flatfoot,
-                            grf=grf_ref[1],
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.01,
-                            quadratic=True,
-                            phase=1)
     objective_functions.add(track_sum_moments_flatfoot,
                             CoP=CoP[1],
                             M_ref=M_ref[1],
@@ -181,13 +176,6 @@ def prepare_ocp(
                             phase=1)
 
     # --- forefoot ---
-    objective_functions.add(track_sum_contact_forces_forefoot,
-                            grf=grf_ref[2],
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.01,
-                            quadratic=True,
-                            phase=2)
     objective_functions.add(track_sum_moments_forefoot,
                             CoP=CoP[2],
                             M_ref=M_ref[2],
