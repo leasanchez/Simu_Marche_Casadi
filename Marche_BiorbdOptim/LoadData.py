@@ -178,7 +178,7 @@ class Data_to_track:
             for leg in range(2): #still starting from the right stance
                 Heel = markers[:, 19 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
                 Meta1 = markers[:, 20 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
-                Meta5 = markers[:, 24 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
+                Meta5 = markers[:, 25 + 22*leg, self.idx_start[leg]: self.idx_stop_stance[leg]]
 
                 # plt.figure()
                 # plt.plot(COP[leg][0, :], COP[leg][1, :], 'k+')
@@ -286,7 +286,7 @@ class Data_to_track:
         else:
             Heel = markers[:, 19, self.idx_start: self.idx_stop_stance]
             Meta1 = markers[:, 21, self.idx_start: self.idx_stop_stance]
-            Meta5 = markers[:, 24, self.idx_start: self.idx_stop_stance]
+            Meta5 = markers[:, 25, self.idx_start: self.idx_stop_stance]
 
             # Heel rise
             idx_heel = np.where(Heel[2, :] > seuil)
