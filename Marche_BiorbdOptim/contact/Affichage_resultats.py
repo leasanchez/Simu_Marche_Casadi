@@ -47,6 +47,7 @@ class Affichage:
         position["heel_R"] = np.zeros((3, self.nb_shooting + 1))
         position["meta1_R"] = np.zeros((3, self.nb_shooting + 1))
         position["meta5_R"] = np.zeros((3, self.nb_shooting + 1))
+        position["toe_R"] = np.zeros((3, self.nb_shooting + 1))
         if self.two_leg:
             position["heel_L"] = np.zeros((3, self.nb_shooting + 1))
             position["meta1_L"] = np.zeros((3, self.nb_shooting + 1))
@@ -60,12 +61,13 @@ class Affichage:
             ["markers"],
                 ).expand()
 
-        for n in range(self.nb_shooting):
+        for n in range(self.nb_shooting + 1):
             Q = self.q[:, n]
             markers = markers_func(Q)  # compute markers positions
-            position["heel_R"][:, n:n+1] = markers[:, 19] + [0.04, 0, 0]  # ! modified x position !
-            position["meta1_R"][:, n:n+1] = markers[:, 21]
-            position["meta5_R"][:, n:n+1] = markers[:, 24]
+            position["heel_R"][:, n:n+1] = markers[:, -4]  # ! modified x position !
+            position["meta1_R"][:, n:n+1] = markers[:, -3]
+            position["meta5_R"][:, n:n+1] = markers[:, -2]
+            position["toe_R"][:, n:n + 1] = markers[:, -1]
             if self.two_leg:
                 position["heel_R"][:, n:n + 1] = markers[:, 41] + [0.04, 0, 0]  # ! modified x position !
                 position["meta1_R"][:, n:n + 1] = markers[:, 43]
@@ -83,8 +85,9 @@ class Affichage:
                              ]
         else:
             labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
-                         'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                         'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',]
+                             'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                             'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                             'Toe_r_X', 'Toe_r_Y', 'Toe_r_Z']
         # --- dictionary for forces ---
         forces = {}
         for label in labels_forces:
@@ -139,11 +142,18 @@ class Affichage:
         position = self.compute_markers_position() # get markers position
 
         # compute moments
-        moments["moments_X_R"] = position["heel_R"][1, :]*forces["Heel_r_Z"] + position["meta1_R"][1, :]*forces["Meta_1_r_Z"] + position["meta5_R"][1, :]*forces["Meta_5_r_Z"]
-        moments["moments_Y_R"] = -position["heel_R"][0, :]*forces["Heel_r_Z"] - position["meta1_R"][0, :]*forces["Meta_1_r_Z"] - position["meta5_R"][0, :]*forces["Meta_5_r_Z"]
+        moments["moments_X_R"] = position["heel_R"][1, :]*forces["Heel_r_Z"] \
+                                 + position["meta1_R"][1, :]*forces["Meta_1_r_Z"] \
+                                 + position["meta5_R"][1, :]*forces["Meta_5_r_Z"] \
+                                 + position["toe_R"][1, :]*forces["Toe_r_Z"]
+        moments["moments_Y_R"] = -position["heel_R"][0, :]*forces["Heel_r_Z"] \
+                                 - position["meta1_R"][0, :]*forces["Meta_1_r_Z"] \
+                                 - position["meta5_R"][0, :]*forces["Meta_5_r_Z"] \
+                                 - position["toe_R"][0, :]*forces["Toe_r_Z"]
         moments["moments_Z_R"] = position["heel_R"][0, :]*forces["Heel_r_Y"] - position["heel_R"][1, :]*forces["Heel_r_X"]\
                                  + position["meta1_R"][0, :]*forces["Meta_1_r_Y"] - position["meta1_R"][1, :]*forces["Meta_1_r_X"]\
-                                 + position["meta5_R"][0, :]*forces["Meta_5_r_Y"] - position["meta5_R"][1, :]*forces["Meta_5_r_X"]
+                                 + position["meta5_R"][0, :]*forces["Meta_5_r_Y"] - position["meta5_R"][1, :]*forces["Meta_5_r_X"] \
+                                 + position["toe_R"][0, :]*forces["Toe_r_Y"] - position["toe_R"][1, :]*forces["Toe_r_X"]
         if self.two_leg:
             moments["moments_X_L"] = position["heel_L"][1, :]*forces["Heel_l_Z"] + position["meta1_L"][1, :]*forces["Meta_1_l_Z"] + position["meta5_L"][1, :]*forces["Meta_5_l_Z"]
             moments["moments_Y_L"] = -position["heel_L"][0, :]*forces["Heel_l_Z"] - position["meta1_L"][0, :]*forces["Meta_1_l_Z"] - position["meta5_L"][0, :]*forces["Meta_5_l_Z"]
@@ -193,7 +203,7 @@ class Affichage:
         CoP = np.zeros((3, self.nb_shooting + 1))
         moments = self.compute_contact_moments()
         forces = self.compute_individual_forces()
-        FZ=forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"]
+        FZ=forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"] + forces["Toe_r_Z"]
         FZ[FZ == 0] = np.nan
         CoP[0, :] = -moments["moments_Y_R"] / FZ
         CoP[1, :] = moments["moments_X_R"] / FZ
@@ -208,13 +218,16 @@ class Affichage:
         # compute moments
         moments["moments_X_R"] = (position["heel_R"][1, :] - CoP[1, :]) * forces["Heel_r_Z"] \
                                  + (position["meta1_R"][1, :] - CoP[1, :]) * forces["Meta_1_r_Z"] \
-                                 + (position["meta5_R"][1, :] - CoP[1, :]) * forces["Meta_5_r_Z"]
+                                 + (position["meta5_R"][1, :] - CoP[1, :]) * forces["Meta_5_r_Z"] \
+                                 + (position["toe_R"][1, :] - CoP[1, :]) * forces["Toe_r_Z"]
         moments["moments_Y_R"] = -(position["heel_R"][0, :] - CoP[0, :]) * forces["Heel_r_Z"] \
                                  - (position["meta1_R"][0, :] - CoP[0, :]) * forces["Meta_1_r_Z"] \
-                                 - (position["meta5_R"][0, :] - CoP[0, :]) * forces["Meta_5_r_Z"]
+                                 - (position["meta5_R"][0, :] - CoP[0, :]) * forces["Meta_5_r_Z"] \
+                                 - (position["toe_R"][0, :] - CoP[0, :]) * forces["Toe_r_Z"]
         moments["moments_Z_R"] = (position["heel_R"][0, :] - CoP[0, :]) * forces["Heel_r_Y"] - (position["heel_R"][1, :] - CoP[1, :])*forces["Heel_r_X"]\
                                  + (position["meta1_R"][0, :] - CoP[0, :])*forces["Meta_1_r_Y"] - (position["meta1_R"][1, :] - CoP[1, :])*forces["Meta_1_r_X"]\
-                                 + (position["meta5_R"][0, :] - CoP[0, :])*forces["Meta_5_r_Y"] - (position["meta5_R"][1, :] - CoP[1, :])*forces["Meta_5_r_X"]
+                                 + (position["meta5_R"][0, :] - CoP[0, :])*forces["Meta_5_r_Y"] - (position["meta5_R"][1, :] - CoP[1, :])*forces["Meta_5_r_X"] \
+                                 + (position["toe_R"][0, :] - CoP[0, :])*forces["Toe_r_Y"] - (position["toe_R"][1, :] - CoP[1, :])*forces["Toe_r_X"]
         if self.two_leg:
             moments["moments_X_L"] = position["heel_L"][1, :]*forces["Heel_l_Z"] + position["meta1_L"][1, :]*forces["Meta_1_l_Z"] + position["meta5_L"][1, :]*forces["Meta_5_l_Z"]
             moments["moments_Y_L"] = -position["heel_L"][0, :]*forces["Heel_l_Z"] - position["meta1_L"][0, :]*forces["Meta_1_l_Z"] - position["meta5_L"][0, :]*forces["Meta_5_l_Z"]
@@ -382,7 +395,7 @@ class Affichage:
                         pt += self.ocp.nlp[p].tf
                         ax.plot([pt, pt], [np.min(forces[f]), np.max(forces[f])], 'k--')
         else:
-            figure, axes = plt.subplots(3, 3)
+            figure, axes = plt.subplots(4, 3)
             axes = axes.flatten()
             for i, f in enumerate(forces):
                 axes[i].scatter(self.t, forces[f], color='r', s=3)
@@ -412,13 +425,15 @@ class Affichage:
                 axesR[i].plot(self.t,
                              forces[f"Heel_r_{coord_label[i]}"]
                              + forces[f"Meta_1_r_{coord_label[i]}"]
-                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             + forces[f"Meta_5_r_{coord_label[i]}"]
+                             + forces[f"Toe_r_{coord_label[i]}"],
                              'r-', alpha=0.5)
                 axesR[i].plot(self.t, forces_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
                 axesR[i].scatter(self.t,
                                 forces[f"Heel_r_{coord_label[i]}"]
                                 + forces[f"Meta_1_r_{coord_label[i]}"]
-                                + forces[f"Meta_5_r_{coord_label[i]}"],
+                                + forces[f"Meta_5_r_{coord_label[i]}"]
+                                + forces[f"Toe_r_{coord_label[i]}"],
                                 color='r', s=3)
                 axesR[i].scatter(self.t, forces_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
                 axesR[i].set_title("Forces in " + coord_label[i] + " R")
@@ -455,13 +470,15 @@ class Affichage:
                 axes[i].plot(self.t,
                              forces[f"Heel_r_{coord_label[i]}"]
                              + forces[f"Meta_1_r_{coord_label[i]}"]
-                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             + forces[f"Meta_5_r_{coord_label[i]}"]
+                             + forces[f"Toe_r_{coord_label[i]}"],
                              'r-', alpha=0.5)
                 axes[i].plot(self.t, forces_ref[f"force_{coord_label[i]}_R"], 'b-', alpha=0.5)
                 axes[i].scatter(self.t,
                              forces[f"Heel_r_{coord_label[i]}"]
                              + forces[f"Meta_1_r_{coord_label[i]}"]
-                             + forces[f"Meta_5_r_{coord_label[i]}"],
+                             + forces[f"Meta_5_r_{coord_label[i]}"]
+                             + forces[f"Toe_r_{coord_label[i]}"],
                              color='r', s=3)
                 axes[i].scatter(self.t, forces_ref[f"force_{coord_label[i]}_R"], color='b', s=3)
                 axes[i].set_title("Forces in " + coord_label[i] + " R")
@@ -502,6 +519,7 @@ class Affichage:
 
     def plot_CoP(self, CoP_ref):
         CoP = self.compute_CoP()
+        position = self.compute_markers_position()
         color = ['green', 'red', 'blue']
         n_shoot = 0
 
@@ -510,9 +528,19 @@ class Affichage:
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
         for p in range(self.nb_phases-1):
-            plt.scatter(CoP[0, n_shoot: n_shoot + self.ocp.nlp[p].ns], CoP[1, n_shoot: n_shoot + self.ocp.nlp[p].ns], c=color[p], marker='v', s=7)
-            plt.scatter(CoP_ref[p][0, :-1], CoP_ref[p][1, :-1], c=color[p], marker='o', s=7)
+            plt.scatter(CoP[0, n_shoot: n_shoot + self.ocp.nlp[p].ns], CoP[1, n_shoot: n_shoot + self.ocp.nlp[p].ns], c=color[p], marker='v', s=15)
+            plt.scatter(CoP_ref[p][0, :-1], CoP_ref[p][1, :-1], c=color[p], marker='o', s=15)
+            for i in range(self.ocp.nlp[p].ns):
+                plt.plot([CoP[0, n_shoot + i], CoP_ref[p][0, i]], [CoP[1, n_shoot + i], CoP_ref[p][1, i]], color=color[p], alpha=0.2, linestyle='--')
             n_shoot += self.ocp.nlp[p].ns
-        plt.legend(['contact talon simulation', 'contact talon reference',
-                    'flatfoot simulation', 'flatfoot reference',
-                    'forefoot simulation', 'forefoot reference'])
+        plt.plot(position["heel_R"][0, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns],
+                 position["heel_R"][1, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns], 'k+', alpha=0.5)
+        plt.plot(position["meta1_R"][0, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                 position["meta1_R"][1, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+        plt.plot(position["meta5_R"][0, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                 position["meta5_R"][1, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+        plt.plot(position["toe_R"][0, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                 position["toe_R"][1, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+        # plt.legend(['contact talon simulation', 'contact talon reference',
+        #             'flatfoot simulation', 'flatfoot reference',
+        #             'forefoot simulation', 'forefoot reference'])
