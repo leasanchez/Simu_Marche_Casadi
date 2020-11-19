@@ -46,62 +46,35 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
                     val = vertcat(val, force[i])
     return val
 
-def track_sum_contact_forces_flatfootR(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
+
+# --- track grf ---
+def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
+    ns = nlp.ns  # number of shooting points for the phase
+    val = []     # init
+    cn = nlp.model.contactNames() # contact name for the model
+
+    # --- compute forces ---
+    forces={} # define dictionnary with all the contact point possible
+    labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                     'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                     'Toe_r_X', 'Toe_r_Y', 'Toe_r_Z',]
+    for label in labels_forces:
+        forces[label] = [] # init
+
     for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[3]))
-        val = vertcat(val, grf[0][1, t[n]] - force[4])
-        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[2] + force[5]))
-    return val
+        for f in forces:
+            forces[f].append(0.0) # init: put 0 if the contact point is not activated
 
-def track_sum_contact_forces_forefootR(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[0][1, t[n]] - force[3])
-        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
-    return val
+        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        for i, c in enumerate(cn):
+            if c.to_string() in forces: # check if contact point is activated
+                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
-def track_sum_contact_forces_forefootR_HeelL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[0][1, t[n]] - force[3])
-        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
-
-        val = vertcat(val, grf[1][0, t[n]] - force[5])
-        val = vertcat(val, grf[1][1, t[n]] - force[6])
-        val = vertcat(val, grf[1][2, t[n]] - force[7])
-    return val
-
-def track_sum_contact_forces_forefootR_flatfootL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[0][0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[0][1, t[n]] - force[3])
-        val = vertcat(val, grf[0][2, t[n]] - (force[1] + force[4]))
-
-        val = vertcat(val, grf[1][0, t[n]] - (force[5] + force[8]))
-        val = vertcat(val, grf[1][1, t[n]] - force[9])
-        val = vertcat(val, grf[1][2, t[n]] - (force[6] + force[7] + force[10]))
-    return val
-
-def track_sum_contact_forces_flatfootL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[1][0, t[n]] - (force[0] + force[3]))
-        val = vertcat(val, grf[1][1, t[n]] - force[4])
-        val = vertcat(val, grf[1][2, t[n]] - (force[1] + force[2] + force[5]))
+        # --- tracking forces ---
+        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
+        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
+        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
     return val
 
 def track_sum_contact_forces_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
