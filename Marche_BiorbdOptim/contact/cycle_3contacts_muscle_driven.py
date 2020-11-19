@@ -66,7 +66,8 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf, target=()):
     forces={} # define dictionnary with all the contact point possible
     labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
                      'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z', ]
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                     'Toe_r_X', 'Toe_r_Y', 'Toe_r_Z',]
     for label in labels_forces:
         forces[label] = [] # init
 
@@ -80,9 +81,9 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf, target=()):
                 forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
         # --- tracking forces ---
-        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n]))
-        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n]))
-        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n]))
+        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
+        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
+        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
     return val
 
 
@@ -103,7 +104,7 @@ def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
         heel =  markers[:, 19] + [0.04, 0, 0] - CoP[:, n]# ! modified x position !
         meta1 = markers[:, 21] - CoP[:, n]
         meta5 = markers[:, 24] - CoP[:, n]
-        forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
+        toe =   markers[:, -1] - CoP[:, t[n]]
 
         # Mcp + CpCOPXFp - MCop = 0
         val = vertcat(val, (heel[1] * forces[1] + meta1[1] * forces[2] + meta5[1] * forces[5]) - M_ref[0, n])
@@ -474,7 +475,7 @@ if __name__ == "__main__":
     activation = controls_sol["muscles"]
 
     # --- Save results ---
-    save_path = './RES/1leg/cycle/min_torque/muscles/cycle.bo'
+    save_path = './RES/1leg/cycle/min_torque/muscles/contact_toe/cycle.bo'
     ocp.save(sol, save_path)
 
     Affichage_resultat = Affichage(ocp, sol, muscles=True, two_leg=False)
