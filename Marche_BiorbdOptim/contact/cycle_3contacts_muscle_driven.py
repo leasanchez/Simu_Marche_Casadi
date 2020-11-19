@@ -182,6 +182,12 @@ def prepare_ocp(
 
     # Constraints
     constraints = ConstraintList()
+    constraints.add( # null speed for the first phase --> non sliding contact point
+        Constraint.TRACK_MARKERS_VELOCITY,
+        instant=Instant.START,
+        markers_idx=26,
+        phase=0,
+    )
     # --- phase flatfoot ---
     constraints.add( # positive vertical forces
         Constraint.CONTACT_FORCE_INEQUALITY,
