@@ -29,19 +29,21 @@ from bioptim import (
 )
 
 # --- force nul at last point ---
-# --- force nul at last point ---
 def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
     force = nlp.contact_forces_func(x[-1], u[-1], p)
-    cn = nlp.model.contactNames()
-    val = []
-    for i, c in enumerate(cn):
-        if isinstance(contact_name, tuple):
-            for name in contact_name:
-                if name in c.to_string():
+    if contact_name == 'all':
+        val = force
+    else:
+        cn = nlp.model.contactNames()
+        val = []
+        for i, c in enumerate(cn):
+            if isinstance(contact_name, tuple):
+                for name in contact_name:
+                    if name in c.to_string():
+                        val = vertcat(val, force[i])
+            else:
+                if contact_name in c.to_string():
                     val = vertcat(val, force[i])
-        else:
-            if contact_name in c.to_string():
-                val = vertcat(val, force[i])
     return val
 
 def track_sum_contact_forces_flatfootR(ocp, nlp, t, x, u, p, grf, target=()):
