@@ -72,24 +72,30 @@ segment pelvis
 		0	0.064617	0
 		0	0	0.064617
 	com	-0.093546	-0.028679	0
+
+	mesh -0.020816	-0.029674	-0.12337
+	mesh -0.17639	 0.012676	-0.0489
+	mesh -0.17639	 0.012676	 0.0489
+	mesh -0.020816	-0.029674	 0.12337
+	mesh -0.020816	-0.029674	-0.12337
 endsegment
 // ---- Markers
-marker	L_IAS
+marker	L_IAS //0
 	parent	pelvis
 	position	-0.020816	-0.029674	-0.12337
 	anatomical	1
 endmarker
-marker	L_IPS
+marker	L_IPS //1
 	parent	pelvis
 	position	-0.17639	0.012676	-0.0489
 	anatomical	1
 endmarker
-marker	R_IPS
+marker	R_IPS //2
 	parent	pelvis
 	position	-0.17639	0.012676	0.0489
 	anatomical	1
 endmarker
-marker	R_IAS
+marker	R_IAS //3
 	parent	pelvis
 	position	-0.020816	-0.029674	0.12337
 	anatomical	1
@@ -120,39 +126,42 @@ segment femur_r
 		0	0.036976	0
 		0	0	0.14317
 	com	0	-0.14785	0
+
+	mesh  0   0       0
+	mesh  0  -0.3627  0
 endsegment
 // ---- Markers
-marker	R_FTC
+marker	R_FTC //4
 	parent	femur_r
 	position	-0.013006	-0.025906	0.081625
 	anatomical	1
 endmarker
-marker	R_Thigh_Top
+marker	R_Thigh_Top //5
 	parent	femur_r
 	position	0.01451	-0.1373	0.075053
 	anatomical	1
 endmarker
-marker	R_Thigh_Down
+marker	R_Thigh_Down //6
 	parent	femur_r
 	position	0.023087	-0.20578	0.065
 	anatomical	1
 endmarker
-marker	R_Thigh_Front
+marker	R_Thigh_Front //7
 	parent	femur_r
 	position	0.049445	-0.16781	0.067705
 	anatomical	1
 endmarker
-marker	R_Thigh_Back
+marker	R_Thigh_Back //8
 	parent	femur_r
 	position	-0.015012	-0.17638	0.071602
 	anatomical	1
 endmarker
-marker	R_FLE
+marker	R_FLE //9
 	parent	femur_r
 	position	-0.00023683	-0.37117	0.053452
 	anatomical	1
 endmarker
-marker	R_FME
+marker	R_FME //10
 	parent	femur_r
 	position	-0.0038077	-0.37454	-0.052836
 	anatomical	1
@@ -179,44 +188,47 @@ segment tibia_r
 		0	0.0047781	0
 		0	0	0.028936
 	com	0	-0.17087	0
+
+	mesh  0   0        0
+	mesh  0  -0.42392  0
 endsegment
 // ---- Markers
-marker	R_FAX
+marker	R_FAX //11
 	parent	tibia_r
 	position	-0.011332	-0.08518	0.05617
 	anatomical	1
 endmarker
-marker	R_TTC
+marker	R_TTC //12
 	parent	tibia_r
 	position	0.047765	-0.067362	-0.0016557
 	anatomical	1
 endmarker
-marker	R_Shank_Top
+marker	R_Shank_Top //13
 	parent	tibia_r
 	position	-0.0325225	-0.190916	0.0504195
 	anatomical	1
 endmarker
-marker	R_Shank_Down
+marker	R_Shank_Down //14
 	parent	tibia_r
 	position	-0.0251773	-0.26157	0.0481634
 	anatomical	1
 endmarker
-marker	R_Shank_Front
+marker	R_Shank_Front //15
 	parent	tibia_r
 	position	0.0110749	-0.221199	0.0498432
 	anatomical	1
 endmarker
-marker	R_Shank_Tibia
+marker	R_Shank_Tibia //16
 	parent	tibia_r
 	position	0.0350151	-0.216442	-0.00246147
 	anatomical	1
 endmarker
-marker	R_FAL
+marker	R_FAL //17
 	parent	tibia_r
 	position	-0.0110108	-0.41033	0.0507917
 	anatomical	1
 endmarker
-marker	R_TAM
+marker	R_TAM //18
 	parent	tibia_r
 	position	0.00917708	-0.384122	-0.0353354
 	anatomical	1
@@ -266,6 +278,9 @@ segment talus_r
 		0	9.298e-07	0
 		0	0	2.7894e-06
 	com	0.0054828	0.0022928	0
+
+	mesh  0         0        0
+	mesh -0.048617 -0.041819 0.0078952
 endsegment
 // ---- Markers
 // no marker
@@ -310,39 +325,47 @@ segment foot_marker_r
 		0	0	0
 		0	0	0
 	com	0	0	0
+
+	mesh 0.0054278	 -0.02	  0.00220395 // FCC
+	mesh 0.144628	 -0.02	 -0.030874   // FMP1
+	mesh 0.19973	 -0.02	 -0.0323195  // FM1
+	mesh 0.200778	 -0.02	  0.0127656  // FM2
+	mesh 0.156485	 -0.02	  0.0638694  // FM5
+	mesh 0.096359	 -0.02	  0.0532144  // FMP5
+	mesh 0.0054278	 -0.02	  0.00220395 // FCC
 endsegment
 // ---- Markers
-marker	R_FCC
+marker	R_FCC //19
 	parent	foot_marker_r
 	position	0.0054278	0.00177226	0.00220395
 	technical	1
 endmarker
-marker	R_FM1
+marker	R_FM1 //20
 	parent	foot_marker_r
 	position	0.19973	-0.00594403	-0.0323195
 	technical	1
 endmarker
-marker	R_FMP1
+marker	R_FMP1 //21
 	parent	foot_marker_r
 	position	0.144628	0.00808546	-0.030874
 	technical	1
 endmarker
-marker	R_FM2
+marker	R_FM2 /22
 	parent	foot_marker_r
 	position	0.200778	-0.00525585	0.0127656
 	technical	1
 endmarker
-marker	R_FMP2
+marker	R_FMP2 //23
 	parent	foot_marker_r
 	position	0.135043	0.0244291	0.00583628
 	technical	1
 endmarker
-marker	R_FM5
+marker	R_FM5 //24
 	parent	foot_marker_r
 	position	0.156485	-0.00712829	0.0638694
 	technical	1
 endmarker
-marker	R_FMP5
+marker	R_FMP5 //25
 	parent	foot_marker_r
 	position	0.096359	0.00353103	0.0532144
 	technical	1
@@ -358,22 +381,22 @@ endcontact
 // --------------------------------------------------------------------------------------------------------
 // Markers Contact
 // --------------------------------------------------------------------------------------------------------
-marker	 Heel_r
+marker	 Heel_r //26
 	parent    foot_marker_r
 	position    0.0054278	  -0.02	   0.00220395
 	technical	1
 endmarker
-marker	Meta_1_r
+marker	Meta_1_r //27
 	parent    foot_marker_r
 	position    0.144628	 -0.02	  -0.0223195
 	technical	1
 endmarker
-marker	 Meta_5_r
+marker	 Meta_5_r //28
 	parent    foot_marker_r
 	position    0.096359	 -0.02	   0.0432144
 	technical	1
 endmarker
-marker	  Toe_r
+marker	  Toe_r //29
 	parent    foot_marker_r
 	position    0.200778	 -0.02	   0.00583628
 	technical	1
