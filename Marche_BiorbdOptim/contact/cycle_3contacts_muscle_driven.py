@@ -87,52 +87,50 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf, target=()):
     return val
 
 
+# --- track moments ---
+def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
+    # --- aliases ---
+    ns = nlp.ns  # number of shooting points for the phase
+    nq = nlp.model.nbQ()  # number of dof
+    cn = nlp.model.contactNames() # contact name for the model
+    val = []  # init
 
-# --- fcn flatfoot ---
+    # --- init forces ---
+    forces={} # define dictionnary with all the contact point possible
+    labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                     'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                     'Toe_r_X', 'Toe_r_Y', 'Toe_r_Z',]
+    for label in labels_forces:
+        forces[label] = [] # init
 
-def track_sum_moments_flatfoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
-    # track moments
-    # CoP : evolution of the center of pression evolution
-    # M_ref : moments observed at the CoP on the force plateforme
-
-    ns = nlp.ns # number of shooting points
-    nq = nlp.model.nbQ() # number of dof
-    val = []
     for n in range(ns):
+        # --- compute contact point position ---
         q = x[n][:nq]
         markers = nlp.model.markers(q)  # compute markers positions
-        heel =  markers[:, 19] + [0.04, 0, 0] - CoP[:, n]# ! modified x position !
-        meta1 = markers[:, 21] - CoP[:, n]
-        meta5 = markers[:, 24] - CoP[:, n]
+        heel =  markers[:, -4] - CoP[:, t[n]] # ! modified x position !
+        meta1 = markers[:, -3] - CoP[:, t[n]]
+        meta5 = markers[:, -2] - CoP[:, t[n]]
         toe =   markers[:, -1] - CoP[:, t[n]]
 
-        # Mcp + CpCOPXFp - MCop = 0
-        val = vertcat(val, (heel[1] * forces[1] + meta1[1] * forces[2] + meta5[1] * forces[5]) - M_ref[0, n])
-        val = vertcat(val, (-heel[0]*forces[1] - meta1[0]*forces[2] - meta5[0]*forces[5]) - M_ref[1, n])
-        val = vertcat(val, (-heel[1]*forces[0] + meta5[0]*forces[4] - meta5[1]*forces[3]) - M_ref[2, :])
-    return val
+        # --- compute forces ---
+        for f in forces:
+            forces[f].append(0.0) # init: put 0 if the contact point is not activated
+        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        for i, c in enumerate(cn):
+            if c.to_string() in forces: # check if contact point is activated
+                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
-# --- fcn forefoot ---
-
-def track_sum_moments_forefoot(ocp, nlp, t, x, u, p, CoP, M_ref, target=()):
-    # track moments
-    # CoP : evolution of the center of pression evolution
-    # M_ref : moments observed at the CoP on the force plateforme
-
-    ns = nlp.ns # number of shooting points
-    nq = nlp.model.nbQ() # number of dof
-    val = []
-    for n in range(ns):
-        q = x[n][:nq]
-        markers = nlp.model.markers(q)  # compute markers positions
-        meta1 = markers[:, 21] - CoP[:, n]
-        meta5 = markers[:, 24] - CoP[:, n]
-        forces = nlp.contact_forces_func(x[n], u[n], p) # compute forces at each contact points
-
-        # Mcp + CpCOPXFp - MCop = 0
-        val = vertcat(val, (meta1[1] * forces[1] + meta5[1] * forces[4]) - M_ref[0, n])
-        val = vertcat(val, (-meta1[0]*forces[1] - meta5[0]*forces[4]) - M_ref[1, n])
-        val = vertcat(val, (- meta1[1]*forces[0] + meta5[0]*forces[3] - meta5[1]*forces[2]) - M_ref[2, :])
+        # --- tracking moments ---
+        Mx = heel[1]*forces["Heel_r_Z"][n] + meta1[1]*forces["Meta_1_r_Z"][n] + meta5[1]*forces["Meta_5_r_Z"][n] + toe[1]*forces["Toe_r_Z"][n]
+        My = -heel[0]*forces["Heel_r_Z"][n] - meta1[0]*forces["Meta_1_r_Z"][n] - meta5[0]*forces["Meta_5_r_Z"][n] - toe[0]*forces["Toe_r_Z"][n]
+        Mz = heel[0]*forces["Heel_r_Y"][n] - heel[1]*forces["Heel_r_X"][n]\
+             + meta1[0]*forces["Meta_1_r_Y"][n] - meta1[1]*forces["Meta_1_r_X"][n]\
+             + meta5[0]*forces["Meta_5_r_Y"][n] - meta5[1]*forces["Meta_5_r_X"][n]\
+             + toe[0]*forces["Toe_r_Y"][n] - toe[1]*forces["Toe_r_X"][n]
+        val = vertcat(val, M_ref[0, t[n]] - Mx)
+        val = vertcat(val, M_ref[1, t[n]] - My)
+        val = vertcat(val, M_ref[2, t[n]] - Mz)
     return val
 
 def prepare_ocp(
@@ -166,25 +164,15 @@ def prepare_ocp(
                                 quadratic=True,
                                 phase=p)
 
-    # --- flatfoot ---
-    objective_functions.add(track_sum_moments_flatfoot,
-                            CoP=CoP[1],
-                            M_ref=M_ref[1],
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.001,
-                            quadratic=True,
-                            phase=1)
-
-    # --- forefoot ---
-    objective_functions.add(track_sum_moments_forefoot,
-                            CoP=CoP[2],
-                            M_ref=M_ref[2],
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.001,
-                            quadratic=True,
-                            phase=2)
+    for p in range(1, nb_phases - 1):
+        objective_functions.add(track_sum_contact_moments,
+                                CoP=CoP[p],
+                                M_ref=M_ref[p],
+                                custom_type=Objective.Lagrange,
+                                instant=Instant.ALL,
+                                weight=0.01,
+                                quadratic=True,
+                                phase=p)
 
     # Dynamics
     dynamics = DynamicsTypeList()
