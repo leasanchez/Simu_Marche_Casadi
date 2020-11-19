@@ -77,42 +77,50 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
         val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
     return val
 
-def track_sum_contact_forces_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
+# --- track moments ---
+def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
+    # --- aliases ---
+    ns = nlp.ns  # number of shooting points for the phase
+    nq = nlp.model.nbQ()  # number of dof
+    cn = nlp.model.contactNames() # contact name for the model
+    val = []  # init
+
+    # --- init forces ---
+    forces={} # define dictionnary with all the contact point possible
+    labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
+                     'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
+                     'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
+                     'Toe_r_X', 'Toe_r_Y', 'Toe_r_Z',]
+    for label in labels_forces:
+        forces[label] = [] # init
+
     for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        val = vertcat(val, grf[1][0, t[n]] - (force[0] + force[2]))
-        val = vertcat(val, grf[1][1, t[n]] - force[3])
-        val = vertcat(val, grf[1][2, t[n]] - (force[1] + force[4]))
-    return val
+        # --- compute contact point position ---
+        q = x[n][:nq]
+        markers = nlp.model.markers(q)  # compute markers positions
+        heel =  markers[-4].to_mx() - CoP[:, t[n]]
+        meta1 = markers[-3].to_mx() - CoP[:, t[n]]
+        meta5 = markers[-2].to_mx() - CoP[:, t[n]]
+        toe =   markers[-1].to_mx() - CoP[:, t[n]]
 
-def track_sum_contact_forces_HeelR_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        # val = vertcat(val, grf[0][0, t[n]] - force[0])
-        # val = vertcat(val, grf[0][1, t[n]] - force[1])
-        # val = vertcat(val, grf[0][2, t[n]] - force[2])
+        # --- compute forces ---
+        for f in forces:
+            forces[f].append(0.0) # init: put 0 if the contact point is not activated
+        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        for i, c in enumerate(cn):
+            if c.to_string() in forces: # check if contact point is activated
+                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
-        val = vertcat(val, grf[1][0, t[n]] - (force[3] + force[5]))
-        val = vertcat(val, grf[1][1, t[n]] - force[6])
-        val = vertcat(val, grf[1][2, t[n]] - (force[4] + force[7]))
-    return val
-
-def track_sum_contact_forces_flatfootR_forefootL(ocp, nlp, t, x, u, p, grf, target=()):
-    ns = nlp.ns
-    val = []
-    for n in range(ns):
-        force = nlp.contact_forces_func(x[n], u[n], p)
-        # val = vertcat(val, grf[0][0, t[n]] - force[0])
-        # val = vertcat(val, grf[0][1, t[n]] - force[1])
-        # val = vertcat(val, grf[0][2, t[n]] - force[2])
-
-        val = vertcat(val, grf[1][0, t[n]] - (force[6] + force[8]))
-        val = vertcat(val, grf[1][1, t[n]] - force[9])
-        val = vertcat(val, grf[1][2, t[n]] - (force[7] + force[10]))
+        # --- tracking moments ---
+        Mx = heel[1]*forces["Heel_r_Z"][n] + meta1[1]*forces["Meta_1_r_Z"][n] + meta5[1]*forces["Meta_5_r_Z"][n] + toe[1]*forces["Toe_r_Z"][n]
+        My = -heel[0]*forces["Heel_r_Z"][n] - meta1[0]*forces["Meta_1_r_Z"][n] - meta5[0]*forces["Meta_5_r_Z"][n] - toe[0]*forces["Toe_r_Z"][n]
+        Mz = heel[0]*forces["Heel_r_Y"][n] - heel[1]*forces["Heel_r_X"][n]\
+             + meta1[0]*forces["Meta_1_r_Y"][n] - meta1[1]*forces["Meta_1_r_X"][n]\
+             + meta5[0]*forces["Meta_5_r_Y"][n] - meta5[1]*forces["Meta_5_r_X"][n]\
+             + toe[0]*forces["Toe_r_Y"][n] - toe[1]*forces["Toe_r_X"][n]
+        val = vertcat(val, M_ref[0, t[n]] - Mx)
+        val = vertcat(val, M_ref[1, t[n]] - My)
+        val = vertcat(val, M_ref[2, t[n]] - Mz)
     return val
 
 def prepare_ocp(
@@ -129,12 +137,19 @@ def prepare_ocp(
     objective_functions = ObjectiveList()
     objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=200, states_idx=range(nb_q), target=q_ref)
     objective_functions.add(track_sum_contact_forces_flatfootR_forefootL,
+    objective_functions.add(track_sum_contact_forces,
                             grf=grf_ref,
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.0001,
-                            quadratic=True,
-                            phase=0)
+                            weight=0.01,
+                            quadratic=True,)
+    objective_functions.add(track_sum_contact_moments,
+                            CoP=CoP,
+                            M_ref=M_ref,
+                            custom_type=Objective.Lagrange,
+                            instant=Instant.ALL,
+                            weight=0.01,
+                            quadratic=True,)
 
     # Dynamics
     dynamics = DynamicsTypeList()
