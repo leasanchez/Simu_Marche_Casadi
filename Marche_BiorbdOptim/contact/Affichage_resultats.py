@@ -10,7 +10,7 @@ class Affichage:
         self.two_leg = two_leg
         self.ocp = ocp
         self.sol = sol
-        states, controls = Data.get_data(ocp, sol["x"])
+        states, controls = Data.get_data(ocp, sol)
         self.q = states["q"]
         self.q_dot = states["q_dot"]
         self.tau = controls["tau"]
@@ -240,6 +240,7 @@ class Affichage:
         nb_x = x.shape[0]
         nb_phases = len(x_ref)
         mean_diff = []
+        std = []
         for i in range(nb_x):
             if (nb_phases > 1):
                 X_ref = x_ref[0][i, :]
@@ -248,7 +249,8 @@ class Affichage:
             else:
                 X_ref = x_ref
             mean_diff.append(np.mean(np.sqrt((x[i, :] - X_ref) ** 2)))
-        return mean_diff
+            std.append(np.std(np.sqrt((x[i, :] - X_ref) ** 2)))
+        return std, mean_diff
 
     def compute_max_difference(self, x, x_ref):
         nb_x = x.shape[0]
@@ -527,20 +529,36 @@ class Affichage:
         plt.title("CoP comparison")
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
-        for p in range(self.nb_phases-1):
-            plt.scatter(CoP[0, n_shoot: n_shoot + self.ocp.nlp[p].ns], CoP[1, n_shoot: n_shoot + self.ocp.nlp[p].ns], c=color[p], marker='v', s=15)
-            plt.scatter(CoP_ref[p][0, :-1], CoP_ref[p][1, :-1], c=color[p], marker='o', s=15)
-            for i in range(self.ocp.nlp[p].ns):
-                plt.plot([CoP[0, n_shoot + i], CoP_ref[p][0, i]], [CoP[1, n_shoot + i], CoP_ref[p][1, i]], color=color[p], alpha=0.2, linestyle='--')
-            n_shoot += self.ocp.nlp[p].ns
-        plt.plot(position["heel_R"][0, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns],
-                 position["heel_R"][1, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns], 'k+', alpha=0.5)
-        plt.plot(position["meta1_R"][0, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)],
-                 position["meta1_R"][1, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
-        plt.plot(position["meta5_R"][0, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
-                 position["meta5_R"][1, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
-        plt.plot(position["toe_R"][0, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
-                 position["toe_R"][1, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+
+        if (self.nb_phases > 1):
+            for p in range(self.nb_phases - 1):
+                plt.scatter(CoP[0, n_shoot: n_shoot + self.ocp.nlp[p].ns],
+                            CoP[1, n_shoot: n_shoot + self.ocp.nlp[p].ns], c=color[p], marker='v', s=15)
+                plt.scatter(CoP_ref[p][0, :-1], CoP_ref[p][1, :-1], c=color[p], marker='o', s=15)
+                for i in range(self.ocp.nlp[p].ns):
+                    plt.plot([CoP[0, n_shoot + i], CoP_ref[p][0, i]], [CoP[1, n_shoot + i], CoP_ref[p][1, i]],
+                             color=color[p], alpha=0.2, linestyle='--')
+                n_shoot += self.ocp.nlp[p].ns
+
+            plt.plot(position["heel_R"][0, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns],
+                     position["heel_R"][1, :self.ocp.nlp[0].ns + self.ocp.nlp[1].ns], 'k+', alpha=0.5)
+            plt.plot(position["meta1_R"][0, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                     position["meta1_R"][1, self.ocp.nlp[0].ns:(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+            plt.plot(position["meta5_R"][0, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                     position["meta5_R"][1, self.ocp.nlp[0].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+            plt.plot(position["toe_R"][0, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)],
+                     position["toe_R"][1, self.ocp.nlp[0].ns + self.ocp.nlp[1].ns :(self.nb_shooting - self.ocp.nlp[-1].ns)], 'k+', alpha=0.5)
+        else:
+            plt.scatter(CoP[0, :], CoP[1, :] , c=color[0], marker='v', s=15)
+            plt.scatter(CoP_ref[0, :-1], CoP_ref[1, :-1], c=color[0], marker='o', s=15)
+            for i in range(self.ocp.nlp[0].ns):
+                plt.plot([CoP[0, n_shoot + i], CoP_ref[0, i]], [CoP[1, n_shoot + i], CoP_ref[1, i]],
+                         color=color[0], alpha=0.2, linestyle='--')
+
+            plt.plot(position["heel_R"][0, :], position["heel_R"][1, :], 'k+', alpha=0.5)
+            plt.plot(position["meta1_R"][0, :], position["meta1_R"][1, :], 'k+', alpha=0.5)
+            plt.plot(position["meta5_R"][0, :], position["meta5_R"][1, :], 'k+', alpha=0.5)
+            plt.plot(position["toe_R"][0, :], position["toe_R"][1, :], 'k+', alpha=0.5)
         # plt.legend(['contact talon simulation', 'contact talon reference',
         #             'flatfoot simulation', 'flatfoot reference',
         #             'forefoot simulation', 'forefoot reference'])
