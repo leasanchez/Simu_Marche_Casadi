@@ -19,6 +19,7 @@ class Affichage:
         self.nb_phases = ocp.nb_phases
         self.nb_shooting = self.q.shape[1] - 1
         self.nb_q = ocp.nlp[0].model.nbQ()
+        self.nb_markers = ocp.nlp[0].model.nbMarkers()
         self.t = self.get_time_vector()
 
 
@@ -54,24 +55,25 @@ class Affichage:
             position["meta5_L"] = np.zeros((3, self.nb_shooting + 1))
 
         symbolic_q = MX.sym("q", self.ocp.nlp[0].model.nbQ(), 1)
-        markers_func = Function(
-            "ForwardKin",
-            [symbolic_q],[self.ocp.nlp[0].model.markers(symbolic_q,)],
-            ["q"],
-            ["markers"],
-                ).expand()
+        markers_func = []
+        for m in range(self.nb_markers):
+            markers_func.append(Function(
+                "ForwardKin",
+                [symbolic_q],[self.ocp.nlp[0].model.marker(symbolic_q,m).to_mx()],
+                ["q"],
+                ["markers"],
+                    ).expand())
 
         for n in range(self.nb_shooting + 1):
             Q = self.q[:, n]
-            markers = markers_func(Q)  # compute markers positions
-            position["heel_R"][:, n:n+1] = markers[:, -4]  # ! modified x position !
-            position["meta1_R"][:, n:n+1] = markers[:, -3]
-            position["meta5_R"][:, n:n+1] = markers[:, -2]
-            position["toe_R"][:, n:n + 1] = markers[:, -1]
+            position["heel_R"][:, n:n+1] = markers_func[26](Q)
+            position["meta1_R"][:, n:n+1] = markers_func[27](Q)
+            position["meta5_R"][:, n:n+1] = markers_func[28](Q)
+            position["toe_R"][:, n:n + 1] = markers_func[29](Q)
             if self.two_leg:
-                position["heel_R"][:, n:n + 1] = markers[:, 41] + [0.04, 0, 0]  # ! modified x position !
-                position["meta1_R"][:, n:n + 1] = markers[:, 43]
-                position["meta5_R"][:, n:n + 1] = markers[:, 46]
+                position["heel_R"][:, n:n + 1] = markers_func[41](Q)
+                position["meta1_R"][:, n:n + 1] = markers_func[43](Q)
+                position["meta5_R"][:, n:n + 1] = markers_func[46](Q)
         return position
 
     def compute_individual_forces(self):
