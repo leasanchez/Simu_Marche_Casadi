@@ -24,8 +24,19 @@ from bioptim import (
     Constraint,
     Solver,
     Simulate,
-    ParameterList, 
+    ParameterList,
+    InitialGuess,
 )
+
+# --- isometric forces ---
+def modify_isometric_force(biorbd_model, value, fiso_init):
+    n_muscle = 0
+    for nGrp in range(biorbd_model.nbMuscleGroups()):
+        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
+            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(
+                value[n_muscle] * fiso_init[n_muscle]
+            )
+            n_muscle += 1
 
 # --- force nul at last point ---
 def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
@@ -97,10 +108,10 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
         # --- compute contact point position ---
         q = x[n][:nq]
         markers = nlp.model.markers(q)  # compute markers positions
-        heel =  markers[-4].to_mx() - CoP[:, t[n]]
-        meta1 = markers[-3].to_mx() - CoP[:, t[n]]
-        meta5 = markers[-2].to_mx() - CoP[:, t[n]]
-        toe =   markers[-1].to_mx() - CoP[:, t[n]]
+        heel =  markers[26].to_mx() - CoP[:, t[n]]
+        meta1 = markers[27].to_mx() - CoP[:, t[n]]
+        meta5 = markers[28].to_mx() - CoP[:, t[n]]
+        toe =   markers[29].to_mx() - CoP[:, t[n]]
 
         # --- compute forces ---
         for f in forces:
@@ -123,7 +134,7 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
     return val
 
 def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP, excitations_ref, nb_threads,
+    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP, excitations_ref, fiso_init, nb_threads,
 ):
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -136,29 +147,36 @@ def prepare_ocp(
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=1000, states_idx=range(nb_q), target=q_ref)
+    objective_functions.add(Objective.Lagrange.TRACK_STATE, weight=100, states_idx=range(nb_q), target=q_ref)
     objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=0.1, controls_idx=range(6, nb_tau))
-    objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=10, target=excitations_ref[:, :-1])
+    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.1, controls_idx=range(6, nb_tau))
+    objective_functions.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=1, target=excitations_ref[:, :-1])
     objective_functions.add(track_sum_contact_forces,
                             grf=grf_ref,
                             custom_type=Objective.Lagrange,
                             instant=Instant.ALL,
-                            weight=0.01,
+                            weight=0.1,
                             quadratic=True,)
-    objective_functions.add(track_sum_contact_moments,
-                            CoP=CoP,
-                            M_ref=M_ref,
-                            custom_type=Objective.Lagrange,
-                            instant=Instant.ALL,
-                            weight=0.01,
-                            quadratic=True,)
+    # objective_functions.add(track_sum_contact_moments,
+    #                         CoP=CoP,
+    #                         M_ref=M_ref,
+    #                         custom_type=Objective.Lagrange,
+    #                         instant=Instant.ALL,
+    #                         weight=0.01,
+    #                         quadratic=True,)
 
     # Dynamics
     dynamics = DynamicsTypeList()
     dynamics.add(DynamicsType.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
+    # dynamics.add(DynamicsType.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN)
 
     # Constraints
     constraints = ConstraintList()
+    # constraints.add( # null speed for the first phase --> non sliding contact point
+    #     Constraint.TRACK_MARKERS_VELOCITY,
+    #     instant=Instant.START,
+    #     markers_idx=26,
+    # )
     constraints.add( # positive vertical forces
         Constraint.CONTACT_FORCE,
         min_bound=0,
@@ -173,20 +191,20 @@ def prepare_ocp(
         tangential_component_idx=4,
         static_friction_coefficient=0.2,
     )
-    constraints.add( # non slipping x m5
-        Constraint.NON_SLIPPING,
-        instant=Instant.ALL,
-        normal_component_idx=(2, 5),
-        tangential_component_idx=3,
-        static_friction_coefficient=0.2,
-    )
-    constraints.add( # non slipping x heel
-        Constraint.NON_SLIPPING,
-        instant=Instant.ALL,
-        normal_component_idx=1,
-        tangential_component_idx=0,
-        static_friction_coefficient=0.2,
-    )
+    # constraints.add( # non slipping x m5
+    #     Constraint.NON_SLIPPING,
+    #     instant=Instant.ALL,
+    #     normal_component_idx=(2, 5),
+    #     tangential_component_idx=3,
+    #     static_friction_coefficient=0.2,
+    # )
+    # constraints.add( # non slipping x heel
+    #     Constraint.NON_SLIPPING,
+    #     instant=Instant.ALL,
+    #     normal_component_idx=1,
+    #     tangential_component_idx=0,
+    #     static_friction_coefficient=0.2,
+    # )
 
     constraints.add( # forces heel at zeros at the end of the phase
         get_last_contact_force_null,
@@ -215,6 +233,22 @@ def prepare_ocp(
     init_u[nb_tau:, :] = excitations_ref[:, :-1]
     u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
+    # Define the parameter to optimize
+    # Give the parameter some min and max bounds
+    parameters = ParameterList()
+    bound_params = Bounds(
+        min_bound=np.repeat(0.2, nb_mus), max_bound=np.repeat(5, nb_mus), interpolation=InterpolationType.CONSTANT
+    )
+    initial_prams = InitialGuess(np.repeat(1, nb_mus))
+    parameters.add(
+        parameter_name="force_isometric",  # The name of the parameter
+        function=modify_isometric_force,  # The function that modifies the biorbd model
+        initial_guess=initial_prams,  # The initial guess
+        bounds=bound_params,  # The bounds
+        size=nb_mus,  # The number of elements this particular parameter vector has
+        fiso_init=fiso_init,
+    )
+
     # ------------- #
 
     return OptimalControlProgram(
@@ -229,6 +263,7 @@ def prepare_ocp(
         objective_functions,
         constraints,
         nb_threads=nb_threads,
+        parameters=parameters,
     )
 
 if __name__ == "__main__":
@@ -264,6 +299,13 @@ if __name__ == "__main__":
     for p in range(nb_phases):
         excitations_ref.append(Data_to_track.load_muscularExcitation(EMG_ref[p]))
 
+    # Get initial isometric forces
+    fiso_init = []
+    n_muscle = 0
+    for nGrp in range(biorbd_model[0].nbMuscleGroups()):
+        for nMus in range(biorbd_model[0].muscleGroup(nGrp).nbMuscles()):
+            fiso_init.append(biorbd_model[0].muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
+
     n_p = 1
     ocp = prepare_ocp(
         biorbd_model=biorbd_model[n_p],
@@ -276,10 +318,11 @@ if __name__ == "__main__":
         M_ref=M_ref[n_p],
         CoP=CoP[n_p],
         excitations_ref=excitations_ref[n_p],
+        fiso_init=fiso_init,
         nb_threads=4,
     )
 
-    # path_previous = './RES/1leg/heel/muscles/cycle.bo'
+    # path_previous = './RES/1leg/flatfoot/muscles/cycle.bo'
     # ocp_previous, sol_previous = ocp.load(path_previous)
     # states_previous, controls_previous = Data.get_data(ocp_previous, sol_previous)
     # q_previous, q_dot_previous, tau_previous, muscles_previous = (
@@ -288,10 +331,7 @@ if __name__ == "__main__":
     #     controls_previous["tau"],
     #     controls_previous["muscles"],
     # )
-    # sim = Simulate.from_data(ocp_previous, Data.get_data(ocp_previous, sol_previous), single_shoot=True)
-    # Affichage_resultat = Affichage(ocp_previous, sim, muscles=True, two_leg=False)
-    # Affichage_resultat.plot_q(q_ref=q_previous)
-    # plt.show()
+    # ShowResult(ocp_previous, sol_previous).graphs()
 
     # --- Solve the program --- #
     sol = ocp.solve(
@@ -307,26 +347,34 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    states, controls = Data.get_data(ocp, sol)
+    states, controls, params = Data.get_data(ocp, sol, get_parameters=True)
     q, q_dot, tau, muscles = (
         states["q"],
         states["q_dot"],
         controls["tau"],
         controls["muscles"],
     )
+    ShowResult(ocp, sol).graphs()
 
     # --- Save results ---
-    save_path = './RES/1leg/swing/muscles/cycle.bo'
-    ocp.save(sol, save_path)
+    save_path = './RES/1leg/flatfoot/muscles/param/'
+    ocp.save(sol, save_path + "cycle.bo")
+    np.save(save_path + "q", q)
+    np.save(save_path + "q_dot", q_dot)
+    np.save(save_path + "tau", tau)
+    np.save(save_path + "muscles", muscles)
+    np.save(save_path + "params", params)
 
     Affichage_resultat = Affichage(ocp, sol, muscles=True, two_leg=False)
+    Affichage_resultat.plot_sum_forces(grf_ref=grf_ref[n_p])
+
     # plot states and controls
     Affichage_resultat.plot_q(q_ref=q_ref[n_p])
     Affichage_resultat.plot_tau()
     Affichage_resultat.plot_qdot()
     Affichage_resultat.plot_activation(excitations_ref=excitations_ref[n_p])
     mean_diff_q = Affichage_resultat.compute_mean_difference(x=q, x_ref=q_ref[n_p])
-    isx, max_diff_q = Affichage_resultat.compute_max_difference(x=q, x_ref=q_ref[n_p])
+    idx, max_diff_q = Affichage_resultat.compute_max_difference(x=q, x_ref=q_ref[n_p])
     R2_q = Affichage_resultat.compute_R2(x=q, x_ref=q_ref[n_p])
 
     # plot Forces

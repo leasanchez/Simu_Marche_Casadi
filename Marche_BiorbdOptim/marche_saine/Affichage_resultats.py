@@ -293,13 +293,16 @@ class Affichage:
         return R2
 
 
-    def plot_q(self, q_ref=(), R2=False):
+    def plot_q(self, q_ref=(), R2=False, RMSE=False):
         # --- plot q VS q_ref ---
         q_name = self.get_q_name()  # dof names
         n_column = int(self.nb_q/3) + (self.nb_q % 3 > 0)
 
         if R2:
             R2_value = self.compute_R2(x=self.q, x_ref=q_ref)
+        if RMSE:
+            std_value, RMSE_value = self.compute_mean_difference(x=self.q, x_ref=q_ref)
+
         figure, axes = plt.subplots(3,n_column)
         axes = axes.flatten()
         for i in range(self.nb_q):
@@ -321,10 +324,13 @@ class Affichage:
                 for p in range(self.nb_phases):
                     pt += self.ocp.nlp[p].tf
                     axes[i].plot([pt, pt], [np.min(Q_ref), np.max(Q_ref)], 'k--')
+
+            title = q_name[i]
             if R2:
-                axes[i].set_title(f"{q_name[i]} - R2 : {round(R2_value[i], 2)}")
-            else :
-                axes[i].set_title(q_name[i])
+                title = title + f" - R2 : {round(R2_value[i], 2)}"
+            if RMSE :
+                title = title + f" - RMSE : {round(RMSE_value[i], 2)} +/- {round(std_value[i], 2)}"
+            axes[i].set_title(title)
         plt.legend(['simulated', 'reference'])
 
     def plot_tau(self):
