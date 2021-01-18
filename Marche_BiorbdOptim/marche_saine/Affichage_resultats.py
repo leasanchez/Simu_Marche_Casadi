@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from bioptim import Data
 from casadi import MX, Function
 
@@ -32,6 +33,17 @@ class Affichage:
                 dof_name = model.segment(s).nameDof(d).to_string()
                 q_name.append(seg_name + "_" + dof_name)
         return q_name
+
+    def get_q_range(self):
+        model = self.ocp.nlp[0].model
+        q_max = []
+        q_min = []
+        for s in range(model.nbSegment()):
+            q_range = model.segment(s).QRanges()
+            for r in q_range:
+                q_max.append(r.max())
+                q_min.append(r.min())
+        return q_max, q_min
 
     def get_time_vector(self):
         if (self.nb_phases > 1):
@@ -137,6 +149,29 @@ class Affichage:
                     if c.to_string() in forces:
                         forces[c.to_string()][n] = forces_sim[i]
         return forces
+
+    def compute_sum_forces_simu(self):
+        forces = self.compute_individual_forces()
+        coord_label = ['X', 'Y', 'Z']
+        if self.two_leg:
+            grf_simu = np.zeros((2, 3, self.nb_shooting))
+            for i in range(3):
+                grf_simu[0, i, :] = forces[f"Heel_r_{coord_label[i]}"] \
+                                 + forces[f"Meta_1_r_{coord_label[i]}"] \
+                                 + forces[f"Meta_5_r_{coord_label[i]}"] \
+                                 + forces[f"Toe_r_{coord_label[i]}"],
+                grf_simu[1, i, :] = forces[f"Heel_l_{coord_label[i]}"] \
+                                 + forces[f"Meta_1_l_{coord_label[i]}"] \
+                                 + forces[f"Meta_5_l_{coord_label[i]}"] \
+                                 + forces[f"Toe_l_{coord_label[i]}"],
+        else:
+            grf_simu = np.zeros((3, self.nb_shooting + 1))
+            for i in range(3):
+                grf_simu[i:i+1, :] = forces[f"Heel_r_{coord_label[i]}"] \
+                                 + forces[f"Meta_1_r_{coord_label[i]}"] \
+                                 + forces[f"Meta_5_r_{coord_label[i]}"] \
+                                 + forces[f"Toe_r_{coord_label[i]}"],
+        return grf_simu
 
     def compute_contact_moments(self):
         moments = {} # init
@@ -285,17 +320,15 @@ class Affichage:
                 X_ref = x_ref
             diff_q_square = (x[i, :] - X_ref)**2
             diff_q_mean = (x[i, :] - mean_x)**2
-            if (np.sum(diff_q_square) > np.sum(diff_q_mean)):
-                s = np.sum(diff_q_mean) / np.sum(diff_q_square)
-            else:
-                s = np.sum(diff_q_square) / np.sum(diff_q_mean)
-            R2.append(1-s)
+            s = np.sum(diff_q_square) / np.sum(diff_q_mean)
+            R2.append(np.abs(1-s))
         return R2
 
 
     def plot_q(self, q_ref=(), R2=False, RMSE=False):
         # --- plot q VS q_ref ---
         q_name = self.get_q_name()  # dof names
+        q_max, q_min = self.get_q_range()
         n_column = int(self.nb_q/3) + (self.nb_q % 3 > 0)
 
         if R2:
@@ -323,7 +356,7 @@ class Affichage:
                 pt=0
                 for p in range(self.nb_phases):
                     pt += self.ocp.nlp[p].tf
-                    axes[i].plot([pt, pt], [np.min(Q_ref), np.max(Q_ref)], 'k--')
+                    axes[i].plot([pt, pt], [q_min[i], q_max[i]], 'k--')
 
             title = q_name[i]
             if R2:
@@ -331,6 +364,7 @@ class Affichage:
             if RMSE :
                 title = title + f" - RMSE : {round(RMSE_value[i], 2)} +/- {round(std_value[i], 2)}"
             axes[i].set_title(title)
+            axes[i].set_ylim([q_min[i], q_max[i]])
         plt.legend(['simulated', 'reference'])
 
     def plot_tau(self):
@@ -577,3 +611,152 @@ class Affichage:
         # plt.legend(['contact talon simulation', 'contact talon reference',
         #             'flatfoot simulation', 'flatfoot reference',
         #             'forefoot simulation', 'forefoot reference'])
+
+    def plot_foot(self, ax, markers, idx_node, color="black", alpha=1.0):
+        # plot pelvis
+        ax.plot([markers[0, 0, idx_node], markers[0, 1, idx_node]],
+                [markers[1, 0, idx_node], markers[1, 1, idx_node]],
+                [markers[2, 0, idx_node], markers[2, 1, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 1, idx_node], markers[0, 2, idx_node]],
+                [markers[1, 1, idx_node], markers[1, 2, idx_node]],
+                [markers[2, 1, idx_node], markers[2, 2, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 2, idx_node], markers[0, 3, idx_node]],
+                [markers[1, 2, idx_node], markers[1, 3, idx_node]],
+                [markers[2, 2, idx_node], markers[2, 3, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 0, idx_node], markers[0, 3, idx_node]],
+                [markers[1, 0, idx_node], markers[1, 3, idx_node]],
+                [markers[2, 0, idx_node], markers[2, 3, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        # plot cuisse
+        ax.plot([markers[0, 4, idx_node], (markers[0, 9, idx_node] + markers[0, 10, idx_node])/2],
+                [markers[1, 4, idx_node], (markers[1, 9, idx_node] + markers[1, 10, idx_node])/2],
+                [markers[2, 4, idx_node], (markers[2, 9, idx_node] + markers[2, 10, idx_node])/2],
+                c=color, alpha=alpha, linestyle='dashed')
+        #plot jambe
+        ax.plot([(markers[0, 17, idx_node] + markers[0, 18, idx_node])/2, (markers[0, 9, idx_node] + markers[0, 10, idx_node])/2],
+                [(markers[1, 17, idx_node] + markers[1, 18, idx_node])/2, (markers[1, 9, idx_node] + markers[1, 10, idx_node])/2],
+                [(markers[2, 17, idx_node] + markers[2, 18, idx_node])/2, (markers[2, 9, idx_node] + markers[2, 10, idx_node])/2],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([(markers[0, 17, idx_node] + markers[0, 18, idx_node])/2, markers[0, 19, idx_node]],
+                [(markers[1, 17, idx_node] + markers[1, 18, idx_node])/2, markers[1, 19, idx_node]],
+                [(markers[2, 17, idx_node] + markers[2, 18, idx_node])/2, markers[2, 19, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        # plot pied
+        ax.plot([markers[0, 19, idx_node], markers[0, 21, idx_node]],
+                [markers[1, 19, idx_node], markers[1, 21, idx_node]],
+                [markers[2, 19, idx_node], markers[2, 21, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 21, idx_node], markers[0, 20, idx_node]],
+                [markers[1, 21, idx_node], markers[1, 20, idx_node]],
+                [markers[2, 21, idx_node], markers[2, 20, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 20, idx_node], markers[0, 22, idx_node]],
+                [markers[1, 20, idx_node], markers[1, 22, idx_node]],
+                [markers[2, 20, idx_node], markers[2, 22, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 22, idx_node], markers[0, 24, idx_node]],
+                [markers[1, 22, idx_node], markers[1, 24, idx_node]],
+                [markers[2, 22, idx_node], markers[2, 24, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 24, idx_node], markers[0, 25, idx_node]],
+                [markers[1, 24, idx_node], markers[1, 25, idx_node]],
+                [markers[2, 24, idx_node], markers[2, 25, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+        ax.plot([markers[0, 25, idx_node], markers[0, 19, idx_node]],
+                [markers[1, 25, idx_node], markers[1, 19, idx_node]],
+                [markers[2, 25, idx_node], markers[2, 19, idx_node]],
+                c=color, alpha=alpha, linestyle='dashed')
+
+    def plot_stance_phase(self, markers, CoP, grf, markers_ref, CoP_ref, grf_ref):
+        MAX_GRF = np.max(grf[2, :]) * 10
+        MAX_GRF_ref = np.max(grf_ref[2, :]) * 10
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        self.plot_foot(ax, markers=markers_ref, idx_node=0, color="black", alpha=0.5)
+        for i in range(markers.shape[2]):
+            self.plot_foot(ax, markers=markers, idx_node=i, color="red", alpha=0.5)
+            ax.plot([CoP[0, i], CoP[0, i] + grf[0, i] / MAX_GRF],
+                    [CoP[1, i], CoP[1, i] + grf[1, i] / MAX_GRF],
+                    [CoP[2, i], grf[2, i] / MAX_GRF],
+                    c='g')
+            ax.plot([CoP_ref[0, i], CoP_ref[0, i] + grf_ref[0, i] / MAX_GRF_ref],
+                    [CoP_ref[1, i], CoP_ref[1, i] + grf_ref[1, i] / MAX_GRF_ref],
+                    [CoP_ref[2, i], grf_ref[2, i] / MAX_GRF_ref],
+                    c='b')
+        for m in range(17, 26):
+            ax.scatter(markers[0, m, 0], markers[1, m, 0], markers[2, m, 0], c="black", alpha=0.7)
+            ax.scatter(markers[0, m, 1:], markers[1, m, 1:], markers[2, m, 1:], c="black", alpha=0.5)
+        ax.scatter(CoP[0, :], CoP[1, :], CoP[2, :], c='g')
+        ax.scatter(CoP_ref[0, :], CoP_ref[1, :], CoP_ref[2, :], c='b')
+        min_x = np.round(np.min([markers[0, 19, 0], markers_ref[0, 2, 0]]), 1) - 0.1
+        max_x = np.round(np.max([markers[0, 0, -1], markers_ref[0, 22, -1]]), 1) + 0.1
+        ax.set_xlabel('x')
+        ax.set_xlim([min_x, max_x])
+        ax.set_ylabel('y')
+        ax.set_ylim([-0.2, max_x - min_x - 0.2])
+        ax.set_zlabel('z')
+        # ax.set_zlim([-0.05, 0.2])
+
+
+    def heatmap(self, data, row_labels, col_labels, ax=None,
+                cbar_kw={}, cbarlabel="", **kwargs):
+        """
+        Create a heatmap from a numpy array and two lists of labels.
+
+        Parameters
+        ----------
+        data
+            A 2D numpy array of shape (N, M).
+        row_labels
+            A list or array of length N with the labels for the rows.
+        col_labels
+            A list or array of length M with the labels for the columns.
+        ax
+            A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+            not provided, use current axes or create a new one.  Optional.
+        cbar_kw
+            A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+        cbarlabel
+            The label for the colorbar.  Optional.
+        **kwargs
+            All other arguments are forwarded to `imshow`.
+        """
+
+        if not ax:
+            ax = plt.gca()
+
+        # Plot the heatmap
+        im = ax.imshow(data, **kwargs)
+
+        # Create colorbar
+        cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+        cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+        # We want to show all ticks...
+        ax.set_xticks(np.arange(data.shape[1]))
+        ax.set_yticks(np.arange(data.shape[0]))
+        # ... and label them with the respective list entries.
+        ax.set_xticklabels(col_labels)
+        ax.set_yticklabels(row_labels)
+
+        # Let the horizontal axes labeling appear on top.
+        ax.tick_params(top=True, bottom=False,
+                       labeltop=True, labelbottom=False)
+
+        # Rotate the tick labels and set their alignment.
+        plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+                 rotation_mode="anchor")
+
+        # Turn spines off and create white grid.
+        for edge, spine in ax.spines.items():
+            spine.set_visible(False)
+
+        ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+        ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        ax.tick_params(which="minor", bottom=False, left=False)
+
+        return im, cbar

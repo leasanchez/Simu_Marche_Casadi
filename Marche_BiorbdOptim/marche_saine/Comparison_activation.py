@@ -4,7 +4,7 @@ import biorbd
 import bioviz
 from matplotlib import pyplot as plt
 from Marche_BiorbdOptim.LoadData import Data_to_track
-from Marche_BiorbdOptim.contact.Affichage_resultats import Affichage
+from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
 
 
 def plot_control(ax, t, x, color="k", linestyle="--", linewidth=1):
