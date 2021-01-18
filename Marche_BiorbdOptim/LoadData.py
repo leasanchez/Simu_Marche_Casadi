@@ -285,8 +285,8 @@ class Data_to_track:
 
         else:
             Heel = markers[:, 19, self.idx_start: self.idx_stop_stance]
-            Meta1 = markers[:, 21, self.idx_start: self.idx_stop_stance]
-            Meta5 = markers[:, 25, self.idx_start: self.idx_stop_stance]
+            Meta1 = markers[:, 20, self.idx_start: self.idx_stop_stance]
+            Meta5 = markers[:, 24, self.idx_start: self.idx_stop_stance]
 
             # Heel rise
             idx_heel = np.where(Heel[2, :] > seuil)
