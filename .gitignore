@@ -21,3 +21,9 @@ ModelesS2M/Open_Sim/Meshfiles/
 ModelesS2M/Open_Sim/Multiphase/Meshfiles/
 
 Marche_BiorbdOptim/contact/test_3contacts.py
+
+*.bob
+
+*.ogv
+
+*.c3d
