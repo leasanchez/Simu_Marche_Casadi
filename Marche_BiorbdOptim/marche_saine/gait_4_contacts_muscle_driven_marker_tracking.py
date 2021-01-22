@@ -195,25 +195,42 @@ def prepare_ocp(
     activation_min, activation_max, activation_init = 1e-3, 1.0, 0.1
 
     # Add objective functions
+    # --- markers_idx ---
     markers_pelvis = [0,1,2,3]
     markers_anat = [4,9,10,11,12,17,18]
     markers_tissus = [5,6,7,8,13,14,15,16]
     markers_pied = [19,20,21,22,23,24,25]
+
+    # --- torques_idx ---
+    tau_2D = [8,9,11]
+    tau_3D = [6,7,10]
+
     objective_functions = ObjectiveList()
     for p in range(nb_phases):
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, weight=1, index=range(nb_q), target=q_ref[p], phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=1000, index=markers_anat, target=markers_ref[p][:, markers_anat, :],
+        # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, weight=1, index=range(nb_q), target=q_ref[p], phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
+                                weight=1e3,
+                                index=markers_anat,
+                                target=markers_ref[p][:, markers_anat, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100000, index=markers_pelvis, target=markers_ref[p][:, markers_pelvis, :],
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
+                                weight=1e7, index=markers_pelvis,
+                                target=markers_ref[p][:, markers_pelvis, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100000, index=markers_pied, target=markers_ref[p][:, markers_pied, :],
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
+                                weight=1e7, index=markers_pied,
+                                target=markers_ref[p][:, markers_pied, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100, index=markers_tissus, target=markers_ref[p][:, markers_tissus, :],
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
+                                weight=1e2,
+                                index=markers_tissus,
+                                target=markers_ref[p][:, markers_tissus, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.001, index=(10), phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10, phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.1, phase=p, quadratic=True)
+
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e-2, index=(10), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e1, index=(6,7, 8,9,11), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=1e2, phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=1e-1, phase=p, quadratic=True)
 
     # --- track contact forces for the stance phase ---
     for p in range(nb_phases - 1):
@@ -361,7 +378,7 @@ def prepare_ocp(
     #     n_shoot += nb_shooting[p]
 
     # Initial guess
-    save_path = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight'
+    save_path = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight/'
     x_init = InitialGuessList()
     u_init = InitialGuessList()
     n_shoot=0
@@ -450,9 +467,9 @@ if __name__ == "__main__":
         excitations_ref=excitations_ref,
         nb_threads=4,
     )
-    #
+
     # # --- Get Previous Results --- #
-    # path_previous = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weightcycle.bo'
+    # path_previous = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight/cycle.bo'
     # ocp_previous, sol_previous = ocp.load(path_previous)
     # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
     # q = states_sol["q"]
@@ -497,9 +514,13 @@ if __name__ == "__main__":
     #         position_markers[:, m, n:n+1]=markers_func[m](Q)
     #
     # complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
+    # complete_grf_ref = np.zeros((3, q.shape[1]))
+    # complete_CoP_ref = np.zeros((3, q.shape[1]))
     # n_shoot=0
     # for p in range(len(biorbd_model)):
     #     complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
+    #     complete_grf_ref[:, n_shoot:n_shoot + q_ref[p].shape[1]] = grf_ref[p]
+    #     complete_CoP_ref[:, n_shoot:n_shoot + q_ref[p].shape[1]] = CoP[p]
     #     n_shoot+=number_shooting_points[p]
     #
     # # plot markers differences
@@ -528,19 +549,22 @@ if __name__ == "__main__":
     #                                      grf=grf_simu[:, :markers_ref[0].shape[2]],
     #                                      markers_ref=markers_ref[0],
     #                                      CoP_ref=CoP[0],
-    #                                      grf_ref=grf_ref[0])
+    #                                      grf_ref=grf_ref[0]
+    #                                      )
     # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
     #                                      CoP=CoP_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
     #                                      grf=grf_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
     #                                      markers_ref=markers_ref[1],
     #                                      CoP_ref=CoP[1],
-    #                                      grf_ref=grf_ref[1])
+    #                                      grf_ref=grf_ref[1]
+    #                                      )
     # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
     #                                      CoP=CoP_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
     #                                      grf=grf_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
     #                                      markers_ref=markers_ref[2],
     #                                      CoP_ref=CoP[2],
-    #                                      grf_ref=grf_ref[2])
+    #                                      grf_ref=grf_ref[2]
+    #                                      )
     #
     # # --- Show results --- #
     # ShowResult(ocp_previous, sol_previous).animate()
