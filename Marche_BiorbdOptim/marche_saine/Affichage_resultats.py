@@ -670,27 +670,34 @@ class Affichage:
                 [markers[2, 25, idx_node], markers[2, 19, idx_node]],
                 c=color, alpha=alpha, linestyle='dashed')
 
-    def plot_stance_phase(self, markers, CoP, grf, markers_ref, CoP_ref, grf_ref):
+    def plot_stance_phase(self, markers, CoP, grf, markers_ref, CoP_ref=(), grf_ref=()):
         MAX_GRF = np.max(grf[2, :]) * 10
-        MAX_GRF_ref = np.max(grf_ref[2, :]) * 10
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         self.plot_foot(ax, markers=markers_ref, idx_node=0, color="black", alpha=0.5)
-        for i in range(markers.shape[2]):
+        for i in range(markers.shape[2]-1):
             self.plot_foot(ax, markers=markers, idx_node=i, color="red", alpha=0.5)
             ax.plot([CoP[0, i], CoP[0, i] + grf[0, i] / MAX_GRF],
                     [CoP[1, i], CoP[1, i] + grf[1, i] / MAX_GRF],
                     [CoP[2, i], grf[2, i] / MAX_GRF],
                     c='g')
-            ax.plot([CoP_ref[0, i], CoP_ref[0, i] + grf_ref[0, i] / MAX_GRF_ref],
-                    [CoP_ref[1, i], CoP_ref[1, i] + grf_ref[1, i] / MAX_GRF_ref],
-                    [CoP_ref[2, i], grf_ref[2, i] / MAX_GRF_ref],
-                    c='b')
+            if len(CoP_ref) > 0:
+                MAX_GRF_ref = np.max(grf_ref[2, :]) * 10
+                ax.scatter(CoP_ref[0, i], CoP_ref[1, i], CoP_ref[2, i], c='b')
+                ax.plot([CoP_ref[0, i], CoP_ref[0, i] + grf_ref[0, i] / MAX_GRF_ref],
+                        [CoP_ref[1, i], CoP_ref[1, i] + grf_ref[1, i] / MAX_GRF_ref],
+                        [CoP_ref[2, i], grf_ref[2, i] / MAX_GRF_ref],
+                        c='b')
         for m in range(17, 26):
-            ax.scatter(markers[0, m, 0], markers[1, m, 0], markers[2, m, 0], c="black", alpha=0.7)
-            ax.scatter(markers[0, m, 1:], markers[1, m, 1:], markers[2, m, 1:], c="black", alpha=0.5)
-        ax.scatter(CoP[0, :], CoP[1, :], CoP[2, :], c='g')
-        ax.scatter(CoP_ref[0, :], CoP_ref[1, :], CoP_ref[2, :], c='b')
+            # plot computed markers position
+            ax.scatter(markers[0, m, 0], markers[1, m, 0], markers[2, m, 0], c="red", alpha=0.7)
+            ax.scatter(markers[0, m, 1:], markers[1, m, 1:], markers[2, m, 1:], c="red", alpha=0.5)
+
+            # plot reference markers position
+            ax.scatter(markers_ref[0, m, 0],  markers_ref[1, m, 0],  markers_ref[2, m, 0],  c="black", alpha=0.7)
+            ax.scatter(markers_ref[0, m, 1:], markers_ref[1, m, 1:], markers_ref[2, m, 1:], c="black", alpha=0.5)
+
+        ax.scatter(CoP[0, :-1], CoP[1, :-1], CoP[2, :-1], c='g')
         min_x = np.round(np.min([markers[0, 19, 0], markers_ref[0, 2, 0]]), 1) - 0.1
         max_x = np.round(np.max([markers[0, 0, -1], markers_ref[0, 22, -1]]), 1) + 0.1
         ax.set_xlabel('x')
