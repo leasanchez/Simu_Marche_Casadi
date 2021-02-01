@@ -361,7 +361,7 @@ def prepare_ocp(
     #     n_shoot += nb_shooting[p]
 
     # Initial guess
-    save_path = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight'
+    save_path = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight/'
     x_init = InitialGuessList()
     u_init = InitialGuessList()
     n_shoot=0
