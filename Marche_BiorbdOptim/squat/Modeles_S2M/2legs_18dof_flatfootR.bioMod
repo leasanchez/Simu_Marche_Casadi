@@ -60,10 +60,10 @@ segment pelvis
                 -0.5  1.5 
                 -5    5 
                 -pi/2 pi/2 
-                -pi/4 pi/4 
-                -pi/4 pi/4
+                -pi/2 pi/2
+                -pi/2 pi/2
         rangesQdot -2      2 
- 	           -2      2 
+ 	               -2      2
                    -2      2 
                    -5.2360 5.2360 
                    -5.2360 5.2360 
@@ -117,7 +117,7 @@ segment torso
 		0	1	0	 -0.028679
 		0	0	1	  0.0
 		0	0	0	  1
-	rotations	yxz
+	rotations	xyz
         rangesQ -pi/2 pi/2 
                 -pi/4 pi/4 
                 -pi/4 pi/4
@@ -181,9 +181,9 @@ segment femur_r
 		0	0	1	 0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/4  pi/4 
-                   -pi/4  pi/4
-                   -pi/4  pi/4
+        rangesQ    -pi/2  pi/2
+                   -pi/2  pi/2
+                   -pi/2  pi/2
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -246,7 +246,7 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-        rangesQ    -pi/2  0.0873
+        rangesQ    -pi/2  pi/6
         rangesQdot -7     7
 	mass	3.0385
 	inertia
@@ -336,10 +336,10 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/4 
-		-pi/6 pi/4
-    	rangesQdot -5.2360 5.2360
-		   -5.2360 5.2360
+    rangesQ -pi/4 pi/4
+            -pi/2 pi/2
+    rangesQdot -5.2360 5.2360
+               -5.2360 5.2360
 	mass	0.042104
 	inertia
 		2.7894e-06	0	        0
@@ -486,9 +486,9 @@ segment femur_l
 		0	0	1	-0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/4  pi/4 
-                   -pi/4  pi/4
-                   -pi/4  pi/4
+        rangesQ    -pi/2  pi/2
+                   -pi/2  pi/2
+                   -pi/2  pi/2
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -552,7 +552,7 @@ segment tibia_l
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-	rangesQ    -pi/2 0.0873
+	rangesQ    -pi/2 pi/6
 	rangesQdot -7 7
 	mass	3.0385
 	inertia
@@ -639,10 +639,10 @@ segment talus_l
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/4 
-		-pi/6 pi/4
-    	rangesQdot -5.2360 5.2360
-		   -5.2360 5.2360
+    rangesQ -pi/4 pi/4
+            -pi/2 pi/2
+    rangesQdot -5.2360 5.2360
+               -5.2360 5.2360
 	mass	0.042104
 	inertia
 		2.7894e-06	0	        0
