@@ -4,6 +4,7 @@ import biorbd
 import bioviz
 from matplotlib import pyplot as plt
 import Load_exp_data
+from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
 
 from bioptim import (
     OptimalControlProgram,
@@ -190,7 +191,7 @@ def prepare_ocp(
                                 M_ref=M_ref[p],
                                 custom_type=ObjectiveFcn.Lagrange,
                                 node=Node.ALL,
-                                weight=0.01,
+                                weight=0.1,
                                 quadratic=True,
                                 phase=p)
 
@@ -389,6 +390,15 @@ if __name__ == "__main__":
         CoP=cop_ref,
         nb_threads=4,
     )
+    # path_previous = 'gait.bo'
+    # ocp_previous, sol_previous = ocp.load(path_previous)
+    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
+    # q = states_sol["q"]
+    # q_dot = states_sol["q_dot"]
+    # tau = controls_sol["tau"]
+    # activation = controls_sol["muscles"]
+    #
+    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
 
     # --- Solve the program --- #
     sol = ocp.solve(
