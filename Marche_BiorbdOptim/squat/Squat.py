@@ -22,12 +22,10 @@ from bioptim import (
     Node,
     ConstraintList,
     ConstraintFcn,
-    StateTransitionList,
-    StateTransitionFcn,
     Solver,
 )
 
-def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init):
+def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init, qdot_init, nb_threads):
 
     # Problem parameters
     nb_q = biorbd_model.nbQ()
@@ -46,61 +44,57 @@ def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init):
 
     # --- Objective function --- #
     objective_functions = ObjectiveList()
-    objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1)
-    objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                            node=Node.MID,
-                            index=range(nb_q),
-                            target=np.array(position_low),
-                            weight=10)
+    # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1)
+    # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+    #                         node=Node.MID,
+    #                         index=range(nb_q),
+    #                         target=np.array(position_low),
+    #                         weight=10)
 
     # --- Dynamics --- #
     dynamics = DynamicsList()
-    dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
+    dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
 
     # --- Constraints --- #
     constraints = ConstraintList()
-    # constraints.add( # position haute
-    #     ConstraintFcn.TRACK_STATE,
-    #     node=Node.END,
-    #     target=np.zeros((nb_q, 1)),
-    # )
-    # constraints.add( # position basse
-    #     ConstraintFcn.TRACK_STATE,
-    #     index=(12, 18),
-    #     node=Node.END,
-    #     target=np.array([[-np.pi/2], [-np.pi/2]])
-    # )
-
-    # # contact forces constraint
-    # constraints.add( # positive vertical forces
-    #     ConstraintFcn.CONTACT_FORCE,
-    #     min_bound=0,
-    #     max_bound=np.inf,
-    #     node=Node.ALL,
-    #     contact_force_idx=1,
-    # )
+    # contact forces constraint
+    contact_z_axes = (1, 2, 5, 7, 8, 11)
+    for c in contact_z_axes:
+        constraints.add( # positive vertical forces
+            ConstraintFcn.CONTACT_FORCE,
+            min_bound=0,
+            max_bound=np.inf,
+            node=Node.ALL,
+            contact_force_idx=c,
+        )
 
 
     # --- Path constraints --- #
     x_bounds = BoundsList()
     x_bounds.add(bounds=QAndQDotBounds(biorbd_model))
     x_bounds[0][:nb_q, 0] = 0
-    x_bounds[0][:nb_q, -1] = 0
+    x_bounds[0][[11, 12, 17,18], -1] = np.pi/2
 
     u_bounds = BoundsList()
+    # u_bounds.add(
+    #             [torque_min] * nb_tau + [activation_min] * nb_mus,
+    #             [torque_max] * nb_tau + [activation_max] * nb_mus,
+    # )
     u_bounds.add(
-                [torque_min] * nb_tau + [activation_min] * nb_mus,
-                [torque_max] * nb_tau + [activation_max] * nb_mus,
+                [torque_min] * nb_tau,
+                [torque_max] * nb_tau,
     )
 
     # --- Initial guess --- #
     x_init = InitialGuessList()
     init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
     init_x[:nb_q, :] = q_init
+    init_x[nb_q:, :] = qdot_init
     x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
     u_init = InitialGuessList()
-    u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
+    # u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
+    u_init.add([torque_init] * nb_tau)
 
     # ------------- #
 
@@ -115,15 +109,16 @@ def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init):
         u_bounds,
         objective_functions,
         constraints,
+        n_threads=nb_threads,
     )
 
 if __name__ == "__main__":
     model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
 
-    c = model.contactNames()
-    for (i, name) in enumerate(c):
-        print(f"{i} : {name.to_string()}")
-
+    # c = model.contactNames()
+    # for (i, name) in enumerate(c):
+    #     print(f"{i} : {name.to_string()}")
+    #
     q_name = []
     for s in range(model.nbSegment()):
         seg_name = model.segment(s).name().to_string()
@@ -134,23 +129,32 @@ if __name__ == "__main__":
         print(f"{i} : {q}")
 
     nb_q = model.nbQ()
-    nb_shooting = 30
+    nb_shooting = 31
     position_high = [0]*nb_q
-    position_low = [-0.06, -0.25, 0, 0, 0, -0.8,
+    position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
                     0, 0, 0.2,
                     0, 0, 1.53, -1.55, 0, 0.68,
                     0, 0, 1.53, -1.55, 0, 0.68]
     q_init = np.zeros((nb_q, nb_shooting + 1))
     for i in range(nb_q):
-        q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2))
-        q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1)
+        # q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2))
+        # q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1)
+        q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1)
+    qdot_init = np.gradient(q_init)[1]
+    qddot_init = np.gradient(qdot_init)[1]
+
     # b = bioviz.Viz(loaded_model=model)
     # # b.set_q(np.array(position_low))
     # # b.set_q(np.array(position_high))
     # b.load_movement(q_init)
     # b.exec()
 
-    ocp = prepare_ocp(biorbd_model=model, nb_shooting=30, final_time=0.8, q_init=q_init)
+    ocp = prepare_ocp(biorbd_model=model,
+                      nb_shooting=31,
+                      final_time=0.4,
+                      q_init=q_init,
+                      qdot_init=qdot_init,
+                      nb_threads=4,)
 
     # --- Solve the program --- #
     sol = ocp.solve(
