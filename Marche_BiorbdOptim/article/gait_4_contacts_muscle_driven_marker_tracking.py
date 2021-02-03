@@ -21,13 +21,14 @@ from bioptim import (
     Node,
     ConstraintList,
     ConstraintFcn,
-    StateTransitionList,
-    StateTransitionFcn,
+    PhaseTransitionList,
+    PhaseTransitionFcn,
     Solver,
+    PenaltyNodes,
 )
 
 # --- force nul at last point ---
-def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
+def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
     """
     Adds the constraint that the force at the specific contact point should be nul
     at the last phase point.
@@ -35,11 +36,11 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
 
     """
 
-    force = nlp.contact_forces_func(x[-1], u[-1], p)
+    force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
     if contact_name == 'all':
         val = force
     else:
-        cn = nlp.model.contactNames()
+        cn = pn.nlp.model.contactNames()
         val = []
         for i, c in enumerate(cn):
             if isinstance(contact_name, tuple):
@@ -52,15 +53,15 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
     return val
 
 # --- track grf ---
-def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
+def track_sum_contact_forces(pn: PenaltyNodes, grf: bytearray) -> MX:
     """
     Adds the objective that the mismatch between the
     sum of the contact forces and the reference ground reaction forces should be minimized.
     """
 
-    ns = nlp.ns  # number of shooting points for the phase
+    ns = pn.nlp.ns  # number of shooting points for the phase
     val = []     # init
-    cn = nlp.model.contactNames() # contact name for the model
+    cn = pn.nlp.model.contactNames() # contact name for the model
 
     # --- compute forces ---
     forces={} # define dictionnary with all the contact point possible
@@ -75,29 +76,36 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
         for f in forces:
             forces[f].append(0.0) # init: put 0 if the contact point is not activated
 
-        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p) # compute force
         for i, c in enumerate(cn):
             if c.to_string() in forces: # check if contact point is activated
                 forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
         # --- tracking forces ---
-        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
-        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
-        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
+        val = vertcat(val, grf[0, pn.t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
+        val = vertcat(val, grf[1, pn.t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
+        val = vertcat(val, grf[2, pn.t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
     return val
 
 
 # --- track moments ---
-def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
+def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
+    """
+
+    :param pn:
+    :param CoP:
+    :param M_ref:
+    :return:
+    """
     """
     Adds the objective that the mismatch between the
     sum of the contact moments and the reference ground reaction moments should be minimized.
     """
 
     # --- aliases ---
-    ns = nlp.ns  # number of shooting points for the phase
-    nq = nlp.model.nbQ()  # number of dof
-    cn = nlp.model.contactNames() # contact name for the model
+    ns = pn.nlp.ns  # number of shooting points for the phase
+    nq = pn.nlp.model.nbQ()  # number of dof
+    cn = pn.nlp.model.contactNames() # contact name for the model
     val = []  # init
 
     # --- init forces ---
@@ -111,17 +119,17 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
 
     for n in range(ns):
         # --- compute contact point position ---
-        q = x[n][:nq]
-        markers = nlp.model.markers(q)  # compute markers positions
-        heel  = markers[-4].to_mx() - CoP[:, t[n]]
-        meta1 = markers[-3].to_mx() - CoP[:, t[n]]
-        meta5 = markers[-2].to_mx() - CoP[:, t[n]]
-        toe   = markers[-1].to_mx() - CoP[:, t[n]]
+        q = pn.x[n][:nq]
+        markers = pn.nlp.model.markers(q)  # compute markers positions
+        heel  = markers[-4].to_mx() - CoP[:, n]
+        meta1 = markers[-3].to_mx() - CoP[:, n]
+        meta5 = markers[-2].to_mx() - CoP[:, n]
+        toe   = markers[-1].to_mx() - CoP[:, n]
 
         # --- compute forces ---
         for f in forces:
             forces[f].append(0.0) # init: put 0 if the contact point is not activated
-        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p) # compute force
         for i, c in enumerate(cn):
             if c.to_string() in forces: # check if contact point is activated
                 forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
@@ -133,15 +141,22 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
              + meta1[0]*forces["Meta_1_r_Y"][n] - meta1[1]*forces["Meta_1_r_X"][n]\
              + meta5[0]*forces["Meta_5_r_Y"][n] - meta5[1]*forces["Meta_5_r_X"][n]\
              + toe[0]*forces["Toe_r_Y"][n] - toe[1]*forces["Toe_r_X"][n]
-        val = vertcat(val, M_ref[0, t[n]] - Mx)
-        val = vertcat(val, M_ref[1, t[n]] - My)
-        val = vertcat(val, M_ref[2, t[n]] - Mz)
+        val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
+        val = vertcat(val, M_ref[1, pn.t[n]] - My)
+        val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
     return val
 
 
-def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP, nb_threads,
-):
+def prepare_ocp(biorbd_model: tuple,
+                final_time: list,
+                nb_shooting: list,
+                markers_ref: list,
+                grf_ref: list,
+                q_ref: list,
+                qdot_ref: list,
+                M_ref: list,
+                CoP: list,
+                nb_threads:int) -> OptimalControlProgram:
 
     # Problem parameters
     nb_phases = len(biorbd_model)
@@ -283,9 +298,9 @@ def prepare_ocp(
     )
 
     # State Transitions
-    state_transitions = StateTransitionList()
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=0)
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=1)
+    phase_transitions = PhaseTransitionList()
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=0)
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=1)
 
     # Path constraint
     x_bounds = BoundsList()
@@ -324,8 +339,8 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         constraints,
-        state_transitions=state_transitions,
-        nb_threads=nb_threads,
+        phase_transitions=phase_transitions,
+        n_threads=nb_threads,
     )
 
 
@@ -390,15 +405,61 @@ if __name__ == "__main__":
         CoP=cop_ref,
         nb_threads=4,
     )
-    # path_previous = 'gait.bo'
-    # ocp_previous, sol_previous = ocp.load(path_previous)
-    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
-    # q = states_sol["q"]
-    # q_dot = states_sol["q_dot"]
-    # tau = controls_sol["tau"]
-    # activation = controls_sol["muscles"]
-    #
-    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
+    path_previous = 'gait.bo'
+    ocp_previous, sol_previous = ocp.load(path_previous)
+
+    Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
+
+    # --- compute ground reaction forces difference ---
+    GRF = Affichage_resultat.compute_contact_forces_ref(grf_ref)
+    grf_simu = Affichage_resultat.compute_sum_forces_simu()
+
+    diff_grf_squared = np.zeros((3, 54))
+    diff_grf_squared[0, :] = np.sqrt((grf_simu[0, :54] - GRF["force_X_R"][:54])**2)
+    diff_grf_squared[1, :] = np.sqrt((grf_simu[1, :54] - GRF["force_Y_R"][:54])**2)
+    diff_grf_squared[2, :] = np.sqrt((grf_simu[2, :54] - GRF["force_Z_R"][:54])**2)
+
+    diff_grf_mean = np.zeros((3, 54))
+    diff_grf_mean[0, :] = np.sqrt((grf_simu[0, :54] - np.mean(GRF["force_X_R"][:54]))**2)
+    diff_grf_mean[1, :] = np.sqrt((grf_simu[1, :54] - np.mean(GRF["force_Y_R"][:54]))**2)
+    diff_grf_mean[2, :] = np.sqrt((grf_simu[2, :54] - np.mean(GRF["force_Z_R"][:54]))**2)
+
+    R2 = np.zeros((3,1))
+    R2[0] = 1 - sum(diff_grf_squared[0, :])/sum(diff_grf_mean[0, :])
+    R2[1] = 1 - sum(diff_grf_squared[1, :]) / sum(diff_grf_mean[1, :])
+    R2[2] = 1 - sum(diff_grf_squared[2, :]) / sum(diff_grf_mean[2, :])
+
+    # --- compute markers difference ---
+    states, controls = Data.get_data(ocp_previous, sol_previous)
+    q = states["q"]
+    symbolic_q = MX.sym("q", nb_q, 1)
+    markers_func = []
+    for m in range(nb_markers):
+        markers_func.append(Function(
+            "ForwardKin",
+            [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
+            ["q"],
+            ["markers"],
+        ).expand())
+    position_markers = np.zeros((3, nb_markers, q.shape[1]))
+    for n in range(q.shape[1]):
+        Q = q[:, n]
+        for m in range(nb_markers):
+            position_markers[:, m, n:n+1]=markers_func[m](Q)
+
+    complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
+    n_shoot=0
+    for p in range(len(biorbd_model)):
+        complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
+        n_shoot+=number_shooting_points[p]
+
+    diff_markers_squared = np.zeros((3, nb_markers - 4, sum(number_shooting_points) + 1))
+    mean_markers = 0
+    for m in range(nb_markers - 4):
+        diff_markers_squared[0, m, :] = np.sqrt((complete_markers_ref[0, m, :] - position_markers[0, m, :])**2)
+        diff_markers_squared[1, m, :] = np.sqrt((complete_markers_ref[1, m, :] - position_markers[1, m, :]) ** 2)
+        diff_markers_squared[2, m, :] = np.sqrt((complete_markers_ref[2, m, :] - position_markers[2, m, :]) ** 2)
+        mean_markers += np.mean(diff_markers_squared[0, m, :]) + np.mean(diff_markers_squared[1, m, :]) + np.mean(diff_markers_squared[2, m, :])
 
     # --- Solve the program --- #
     sol = ocp.solve(
@@ -414,11 +475,11 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    tau = controls_sol["tau"]
-    activation = controls_sol["muscles"]
+    # states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    # q = states_sol["q"]
+    # q_dot = states_sol["q_dot"]
+    # tau = controls_sol["tau"]
+    # activation = controls_sol["muscles"]
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
