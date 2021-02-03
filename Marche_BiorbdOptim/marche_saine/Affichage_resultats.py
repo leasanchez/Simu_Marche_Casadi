@@ -13,11 +13,11 @@ class Affichage:
         self.sol = sol
         states, controls = Data.get_data(ocp, sol)
         self.q = states["q"]
-        self.q_dot = states["q_dot"]
+        self.q_dot = states["qdot"]
         self.tau = controls["tau"]
         if self.muscles:
             self.activations = controls["muscles"]
-        self.nb_phases = ocp.nb_phases
+        self.nb_phases = ocp.n_phases
         self.nb_shooting = self.q.shape[1] - 1
         self.nb_q = ocp.nlp[0].model.nbQ()
         self.nb_markers = ocp.nlp[0].model.nbMarkers()
@@ -115,7 +115,7 @@ class Affichage:
                 if (len(cn) > 0):
                     states_p, controls_p = Data.get_data(self.ocp, self.sol["x"], phase_idx=p)
                     Q = states_p["q"]
-                    Qdot = states_p["q_dot"]
+                    Qdot = states_p["qdot"]
                     Tau = controls_p["tau"]
                     if self.muscles:
                         Activation = controls_p["muscles"]
