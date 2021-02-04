@@ -23,7 +23,15 @@ from bioptim import (
     ConstraintList,
     ConstraintFcn,
     Solver,
+    PenaltyNodes,
 )
+
+
+def custom_compute_CoM(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
+    com = compute_CoM(pn.x[0][:nq])
+    return com[2] + 0.25
 
 def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init, qdot_init, nb_threads):
 
@@ -45,11 +53,10 @@ def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init, qdot_init, nb_thr
     # --- Objective function --- #
     objective_functions = ObjectiveList()
     # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1)
-    # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-    #                         node=Node.MID,
-    #                         index=range(nb_q),
-    #                         target=np.array(position_low),
-    #                         weight=10)
+    objective_functions.add(custom_compute_CoM,
+                            custom_type=ObjectiveFcn.Mayer,
+                            node=Node.END,
+                            weight=10)
 
     # --- Dynamics --- #
     dynamics = DynamicsList()
@@ -73,7 +80,7 @@ def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init, qdot_init, nb_thr
     x_bounds = BoundsList()
     x_bounds.add(bounds=QAndQDotBounds(biorbd_model))
     x_bounds[0][:nb_q, 0] = 0
-    x_bounds[0][[11, 12, 17,18], -1] = np.pi/2
+    # x_bounds[0][[11, 12, 17,18], -1] = np.pi/2
 
     u_bounds = BoundsList()
     # u_bounds.add(
@@ -143,6 +150,17 @@ if __name__ == "__main__":
     qdot_init = np.gradient(q_init)[1]
     qddot_init = np.gradient(qdot_init)[1]
 
+    symbolic_q = MX.sym("q", nb_q, 1)
+    compute_CoM = Function(
+        "ComputeCoM",
+        [symbolic_q],
+        [model.CoM(symbolic_q).to_mx()],
+        ["q"],
+        ["CoM"],
+    ).expand()
+
+    CoM_high = compute_CoM(position_high)
+    CoM_low = compute_CoM(position_low)
     # b = bioviz.Viz(loaded_model=model)
     # # b.set_q(np.array(position_low))
     # # b.set_q(np.array(position_high))
