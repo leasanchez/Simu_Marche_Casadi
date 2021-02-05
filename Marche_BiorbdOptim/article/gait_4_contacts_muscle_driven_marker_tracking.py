@@ -1,3 +1,8 @@
+"""
+This is an example on gait biomechanics.
+Experimental data (markers trajectories, ground reaction forces and moments) are tracked.
+"""
+
 import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol, mmax
 import biorbd
@@ -30,10 +35,20 @@ from bioptim import (
 # --- force nul at last point ---
 def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
     """
-    Adds the constraint that the force at the specific contact point should be nul
+    Adds the constraint that the force at the specific contact point should be null
     at the last phase point.
     All contact forces can be set at 0 at the last node by using 'all' at contact_name.
 
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    contact_name: str
+        Name of the contacts that sould be null at the last node
+
+    Returns
+    -------
+    The value that should be constrained in the MX format
     """
 
     force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
@@ -53,10 +68,21 @@ def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
     return val
 
 # --- track grf ---
-def track_sum_contact_forces(pn: PenaltyNodes, grf: bytearray) -> MX:
+def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
     """
     Adds the objective that the mismatch between the
     sum of the contact forces and the reference ground reaction forces should be minimized.
+
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    grf: np.ndarray
+        Array of the measured ground reaction forces
+
+    Returns
+    -------
+    The cost that should be minimize in the MX format.
     """
 
     ns = pn.nlp.ns  # number of shooting points for the phase
@@ -91,15 +117,21 @@ def track_sum_contact_forces(pn: PenaltyNodes, grf: bytearray) -> MX:
 # --- track moments ---
 def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
     """
-
-    :param pn:
-    :param CoP:
-    :param M_ref:
-    :return:
-    """
-    """
     Adds the objective that the mismatch between the
     sum of the contact moments and the reference ground reaction moments should be minimized.
+
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    CoP: np.ndarray
+        Array of the measured center of pressure trajectory
+    M_ref: np.ndarray
+        Array of the measured ground reaction moments
+
+    Returns
+    -------
+    The cost that should be minimize in the MX format.
     """
 
     # --- aliases ---
@@ -157,6 +189,41 @@ def prepare_ocp(biorbd_model: tuple,
                 M_ref: list,
                 CoP: list,
                 nb_threads:int) -> OptimalControlProgram:
+    """
+    Prepare the ocp
+
+    Parameters
+    ----------
+    biorbd_model: tuple
+        Tuple of bioMod (1 bioMod for each phase)
+    final_time: list
+        List of the time at the final node.
+        The length of the list corresponds to the phase number
+    nb_shooting: list
+        List of the number of shooting points
+    markers_ref: list
+        List of the array of markers trajectories to track
+    grf_ref: list
+        List of the array of ground reaction forces to track
+    q_ref: list
+        List of the array of joint trajectories.
+        Those trajectories were computed using Kalman filter
+        They are used as initial guess
+    qdot_ref: list
+        List of the array of joint velocities.
+        Those velocities were computed using Kalman filter
+        They are used as initial guess
+    M_ref: list
+        List of the array of ground reaction moments to track
+    CoP: list
+        List of the array of the measured center of pressure trajectory
+    nb_threads:int
+        The number of threads used
+
+    Returns
+    -------
+    The OptimalControlProgram ready to be solved
+    """
 
     # Problem parameters
     nb_phases = len(biorbd_model)
