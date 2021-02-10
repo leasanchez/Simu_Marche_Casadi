@@ -1,9 +1,13 @@
+"""
+This is an example on gait biomechanics.
+Experimental data (markers trajectories, ground reaction forces and moments) are tracked.
+"""
+
 import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol, mmax
 import biorbd
 import bioviz
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from Marche_BiorbdOptim.LoadData import Data_to_track
 from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
 
@@ -22,74 +26,37 @@ from bioptim import (
     Node,
     ConstraintList,
     ConstraintFcn,
-    StateTransitionList,
-    StateTransitionFcn,
+    PhaseTransitionList,
+    PhaseTransitionFcn,
     Solver,
+    PenaltyNodes,
 )
 
-def plot_foot(ax, markers, idx_node, color="black", alpha=1.0):
-    ax.plot([markers[0, 19, idx_node], markers[0, 21, idx_node]],
-            [markers[1, 19, idx_node], markers[1, 21, idx_node]],
-            [markers[2, 19, idx_node], markers[2, 21, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 21, idx_node], markers[0, 20, idx_node]],
-            [markers[1, 21, idx_node], markers[1, 20, idx_node]],
-            [markers[2, 21, idx_node], markers[2, 20, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 20, idx_node], markers[0, 22, idx_node]],
-            [markers[1, 20, idx_node], markers[1, 22, idx_node]],
-            [markers[2, 20, idx_node], markers[2, 22, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 22, idx_node], markers[0, 24, idx_node]],
-            [markers[1, 22, idx_node], markers[1, 24, idx_node]],
-            [markers[2, 22, idx_node], markers[2, 24, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 24, idx_node], markers[0, 25, idx_node]],
-            [markers[1, 24, idx_node], markers[1, 25, idx_node]],
-            [markers[2, 24, idx_node], markers[2, 25, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 25, idx_node], markers[0, 19, idx_node]],
-            [markers[1, 25, idx_node], markers[1, 19, idx_node]],
-            [markers[2, 25, idx_node], markers[2, 19, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 19, idx_node], np.mean([markers[0, 17, idx_node], markers[0, 18, idx_node]])],
-            [markers[1, 19, idx_node], np.mean([markers[1, 17, idx_node], markers[1, 18, idx_node]])],
-            [markers[2, 19, idx_node], 0.2],
-            c=color, alpha=alpha, linestyle='dashed')
-
-# modified isometric forces in parameters
-def modify_isometric_force(biorbd_model, value, fiso_init):
-    n_muscle = 0
-    for nGrp in range(biorbd_model.nbMuscleGroups()):
-        for nMus in range(biorbd_model.muscleGroup(nGrp).nbMuscles()):
-            biorbd_model.muscleGroup(nGrp).muscle(nMus).characteristics().setForceIsoMax(
-                value[n_muscle] * fiso_init[n_muscle]
-            )
-            n_muscle += 1
-
-# --- minimize activation ---
-def minimize_activation(ocp, nlp, t, x, u, p, power):
-    nb_tau = nlp.model.nbGeneralizedTorque()
-    val = []
-    for control in u:
-        val = vertcat(val, control[nb_tau:]**power)
-    return val
-
-# --- minimize max activation ---
-def minimize_max_activation(ocp, nlp, t, x, u, p):
-    nb_tau = nlp.model.nbGeneralizedTorque()
-    val = []
-    for control in u:
-        val = vertcat(val, mmax(control[nb_tau:]))
-    return val
 
 # --- force nul at last point ---
-def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
-    force = nlp.contact_forces_func(x[-1], u[-1], p)
+def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
+    """
+    Adds the constraint that the force at the specific contact point should be null
+    at the last phase point.
+    All contact forces can be set at 0 at the last node by using 'all' at contact_name.
+
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    contact_name: str
+        Name of the contacts that sould be null at the last node
+
+    Returns
+    -------
+    The value that should be constrained in the MX format
+    """
+
+    force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
     if contact_name == 'all':
         val = force
     else:
-        cn = nlp.model.contactNames()
+        cn = pn.nlp.model.contactNames()
         val = []
         for i, c in enumerate(cn):
             if isinstance(contact_name, tuple):
@@ -102,10 +69,26 @@ def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
     return val
 
 # --- track grf ---
-def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
-    ns = nlp.ns  # number of shooting points for the phase
+def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
+    """
+    Adds the objective that the mismatch between the
+    sum of the contact forces and the reference ground reaction forces should be minimized.
+
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    grf: np.ndarray
+        Array of the measured ground reaction forces
+
+    Returns
+    -------
+    The cost that should be minimize in the MX format.
+    """
+
+    ns = pn.nlp.ns  # number of shooting points for the phase
     val = []     # init
-    cn = nlp.model.contactNames() # contact name for the model
+    cn = pn.nlp.model.contactNames() # contact name for the model
 
     # --- compute forces ---
     forces={} # define dictionnary with all the contact point possible
@@ -120,24 +103,42 @@ def track_sum_contact_forces(ocp, nlp, t, x, u, p, grf):
         for f in forces:
             forces[f].append(0.0) # init: put 0 if the contact point is not activated
 
-        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p) # compute force
         for i, c in enumerate(cn):
             if c.to_string() in forces: # check if contact point is activated
                 forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
 
         # --- tracking forces ---
-        val = vertcat(val, grf[0, t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
-        val = vertcat(val, grf[1, t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
-        val = vertcat(val, grf[2, t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
+        val = vertcat(val, grf[0, pn.t[n]] - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]))
+        val = vertcat(val, grf[1, pn.t[n]] - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]))
+        val = vertcat(val, grf[2, pn.t[n]] - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]))
     return val
 
 
 # --- track moments ---
-def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
+def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
+    """
+    Adds the objective that the mismatch between the
+    sum of the contact moments and the reference ground reaction moments should be minimized.
+
+    Parameters
+    ----------
+    pn: PenaltyNodes
+        The penalty node elements
+    CoP: np.ndarray
+        Array of the measured center of pressure trajectory
+    M_ref: np.ndarray
+        Array of the measured ground reaction moments
+
+    Returns
+    -------
+    The cost that should be minimize in the MX format.
+    """
+
     # --- aliases ---
-    ns = nlp.ns  # number of shooting points for the phase
-    nq = nlp.model.nbQ()  # number of dof
-    cn = nlp.model.contactNames() # contact name for the model
+    ns = pn.nlp.ns  # number of shooting points for the phase
+    nq = pn.nlp.model.nbQ()  # number of dof
+    cn = pn.nlp.model.contactNames() # contact name for the model
     val = []  # init
 
     # --- init forces ---
@@ -151,17 +152,17 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
 
     for n in range(ns):
         # --- compute contact point position ---
-        q = x[n][:nq]
-        markers = nlp.model.markers(q)  # compute markers positions
-        heel  = markers[-4].to_mx() - CoP[:, t[n]]
-        meta1 = markers[-3].to_mx() - CoP[:, t[n]]
-        meta5 = markers[-2].to_mx() - CoP[:, t[n]]
-        toe   = markers[-1].to_mx() - CoP[:, t[n]]
+        q = pn.x[n][:nq]
+        markers = pn.nlp.model.markers(q)  # compute markers positions
+        heel  = markers[-4].to_mx() - CoP[:, n]
+        meta1 = markers[-3].to_mx() - CoP[:, n]
+        meta5 = markers[-2].to_mx() - CoP[:, n]
+        toe   = markers[-1].to_mx() - CoP[:, n]
 
         # --- compute forces ---
         for f in forces:
             forces[f].append(0.0) # init: put 0 if the contact point is not activated
-        force = nlp.contact_forces_func(x[n], u[n], p) # compute force
+        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p) # compute force
         for i, c in enumerate(cn):
             if c.to_string() in forces: # check if contact point is activated
                 forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
@@ -173,15 +174,58 @@ def track_sum_contact_moments(ocp, nlp, t, x, u, p, CoP, M_ref):
              + meta1[0]*forces["Meta_1_r_Y"][n] - meta1[1]*forces["Meta_1_r_X"][n]\
              + meta5[0]*forces["Meta_5_r_Y"][n] - meta5[1]*forces["Meta_5_r_X"][n]\
              + toe[0]*forces["Toe_r_Y"][n] - toe[1]*forces["Toe_r_X"][n]
-        val = vertcat(val, M_ref[0, t[n]] - Mx)
-        val = vertcat(val, M_ref[1, t[n]] - My)
-        val = vertcat(val, M_ref[2, t[n]] - Mz)
+        val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
+        val = vertcat(val, M_ref[1, pn.t[n]] - My)
+        val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
     return val
 
 
-def prepare_ocp(
-    biorbd_model, final_time, nb_shooting, markers_ref, grf_ref, q_ref, qdot_ref, M_ref, CoP, excitations_ref, nb_threads,
-):
+def prepare_ocp(biorbd_model: tuple,
+                final_time: list,
+                nb_shooting: list,
+                markers_ref: list,
+                grf_ref: list,
+                q_ref: list,
+                qdot_ref: list,
+                excitations_ref:list,
+                M_ref: list,
+                CoP: list,
+                nb_threads:int) -> OptimalControlProgram:
+    """
+    Prepare the ocp
+
+    Parameters
+    ----------
+    biorbd_model: tuple
+        Tuple of bioMod (1 bioMod for each phase)
+    final_time: list
+        List of the time at the final node.
+        The length of the list corresponds to the phase number
+    nb_shooting: list
+        List of the number of shooting points
+    markers_ref: list
+        List of the array of markers trajectories to track
+    grf_ref: list
+        List of the array of ground reaction forces to track
+    q_ref: list
+        List of the array of joint trajectories.
+        Those trajectories were computed using Kalman filter
+        They are used as initial guess
+    qdot_ref: list
+        List of the array of joint velocities.
+        Those velocities were computed using Kalman filter
+        They are used as initial guess
+    M_ref: list
+        List of the array of ground reaction moments to track
+    CoP: list
+        List of the array of the measured center of pressure trajectory
+    nb_threads:int
+        The number of threads used
+
+    Returns
+    -------
+    The OptimalControlProgram ready to be solved
+  """
 
     # Problem parameters
     nb_phases = len(biorbd_model)
@@ -210,7 +254,7 @@ def prepare_ocp(
                                 phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100, index=markers_tissus, target=markers_ref[p][:, markers_tissus, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.001, index=(10), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.00001, index=(10), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10, phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.1, phase=p, quadratic=True)
@@ -231,7 +275,7 @@ def prepare_ocp(
                                 M_ref=M_ref[p],
                                 custom_type=ObjectiveFcn.Lagrange,
                                 node=Node.ALL,
-                                weight=0.01,
+                                weight=0.1,
                                 quadratic=True,
                                 phase=p)
 
@@ -330,10 +374,10 @@ def prepare_ocp(
         phase=2,
     )
 
-    # State Transitions
-    state_transitions = StateTransitionList()
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=0)
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=1)
+    # Phase Transitions
+    phase_transitions = PhaseTransitionList()
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=0)
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=1)
 
     # Path constraint
     x_bounds = BoundsList()
@@ -390,8 +434,8 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         constraints,
-        state_transitions=state_transitions,
-        nb_threads=nb_threads,
+        phase_transitions=phase_transitions,
+        n_threads=nb_threads,
     )
 
 
