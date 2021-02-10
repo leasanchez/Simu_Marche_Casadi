@@ -154,21 +154,28 @@ for c in contact_z_axes:
     )
 
 
-    # --- Path constraints --- #
-    x_bounds = BoundsList()
-    x_bounds.add(bounds=QAndQDotBounds(biorbd_model))
-    x_bounds[0][:nb_q, 0] = 0
-    # x_bounds[0][[11, 12, 17,18], -1] = np.pi/2
+# --- Path constraints --- #
+x_bounds = BoundsList()
+x_bounds.add(bounds=QAndQDotBounds(model))
+x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
+x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
+# x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
+# x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
 
-    u_bounds = BoundsList()
-    # u_bounds.add(
-    #             [torque_min] * nb_tau + [activation_min] * nb_mus,
-    #             [torque_max] * nb_tau + [activation_max] * nb_mus,
-    # )
-    u_bounds.add(
-                [torque_min] * nb_tau,
-                [torque_max] * nb_tau,
-    )
+x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
+x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
+# x_bounds[0].min[nb_q:, -1] = [0]*nb_qdot
+# x_bounds[0].max[nb_q:, -1] = [0]*nb_qdot
+
+u_bounds = BoundsList()
+# u_bounds.add(
+#             [torque_min] * nb_tau + [activation_min] * nb_mus,
+#             [torque_max] * nb_tau + [activation_max] * nb_mus,
+# )
+u_bounds.add(
+            [torque_min] * nb_tau,
+            [torque_max] * nb_tau,
+)
 
     # --- Initial guess --- #
     x_init = InitialGuessList()
