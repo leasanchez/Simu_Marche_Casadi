@@ -27,19 +27,27 @@ from bioptim import (
 )
 
 
-def custom_compute_CoM(pn: PenaltyNodes) -> MX:
+def custom_CoM_low(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
+    com = compute_CoM(pn.x[31][:nq])
+    return com[2] + 0.25
+
+def custom_CoM_variation(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
+    com_init = compute_CoM(pn.x[0][:nq])
+    val = []
+    for n in range(1, pn.nlp.ns):
+        val = vertcat(val, com_init[0] - compute_CoM(pn.x[pn.t[n]][:nq])[0])
+        val = vertcat(val, com_init[1] - compute_CoM(pn.x[pn.t[n]][:nq])[1])
+    return val
+
+def custom_CoM_high(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[0][:nq])
-    return com[2] + 0.25
-
-def prepare_ocp(biorbd_model, nb_shooting, final_time, q_init, qdot_init, nb_threads):
-
-    # Problem parameters
-    nb_q = biorbd_model.nbQ()
-    nb_qdot = biorbd_model.nbQdot()
-    nb_tau = biorbd_model.nbGeneralizedTorque()
-    nb_mus = biorbd_model.nbMuscleTotal()
+    return com[2]
 
     min_bound, max_bound = 0, np.inf
     torque_min, torque_max, torque_init = -1000, 1000, 0
