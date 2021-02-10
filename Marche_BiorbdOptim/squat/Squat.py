@@ -75,6 +75,51 @@ min_bound, max_bound = 0, np.inf
 torque_min, torque_max, torque_init = -1000, 1000, 0
 activation_min, activation_max, activation_init = 1e-3, 1.0, 0.1
 
+# --- Subject positions and initial trajectories --- #
+position_zeros = [0]*nb_q
+position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+                [0], [0], [0.37], [-0.13], [0], [0.11],
+                [0], [0], [0.37], [-0.13], [0], [0.11]]
+position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+                0, 0, 1.53, -1.55, 0, 0.68,
+                0, 0, 1.53, -1.55, 0, 0.68]
+
+# position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+#                 [0], [0], [0],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
+# position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+#                 0, 0, 0,
+#                 0, 0, 1.53, -1.55, 0, 0.68,
+#                 0, 0, 1.53, -1.55, 0, 0.68]
+q_init = np.zeros((nb_q, nb_shooting + 1))
+for i in range(nb_q):
+    q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2)).squeeze()
+    q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1).squeeze()
+    # q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
+qdot_init = np.gradient(q_init)[1]
+qddot_init = np.gradient(qdot_init)[1]
+
+# --- Compute CoM position --- #
+symbolic_q = MX.sym("q", nb_q, 1)
+compute_CoM = Function(
+    "ComputeCoM",
+    [symbolic_q],
+    [model.CoM(symbolic_q).to_mx()],
+    ["q"],
+    ["CoM"],
+).expand()
+
+CoM_high = compute_CoM(np.array(position_high))
+CoM_low = compute_CoM(np.array(position_low))
+
+# # --- Animate model --- #
+# b = bioviz.Viz(loaded_model=model, show_muscles=False, show_segments_center_of_mass=False, show_local_ref_frame=False)
+# b.set_q(np.array(position_high).squeeze())
+# # b.set_q(np.array(position_high))
+# b.load_movement(q_init)
+# b.exec()
+
     # --- Objective function --- #
     objective_functions = ObjectiveList()
     # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1)
