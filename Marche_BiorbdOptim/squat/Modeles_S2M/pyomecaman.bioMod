@@ -1,0 +1,1230 @@
+version   4
+
+// Informations about Pelvis segment
+    // Segment
+    segment    Pelvis
+        translations yz
+        rotations    x
+        rangesQ      -15 15
+                     -15 15
+                     -pi+1 pi+1
+        rangesQdot   -150 150
+                     -150 150
+                     -(pi+1)*10 (pi+1)*10
+        rangesQddot  -1500 1500
+                     -1500 1500
+                     -(pi+1)*100 (pi+1)*100
+        mass    9.03529
+        inertia
+            0.04664    0.00000    0.00000
+            0.00000    0.07178    0.00000
+            0.00000    0.00000    0.06989
+        com     0         0    0.0885
+        mesh   -0.1038    0.0821         0
+        mesh    0.1038    0.0850         0
+        mesh    0.1435    0.0072    0.0351
+        mesh    0.0514   -0.0833   -0.0020
+        mesh   -0.0514   -0.0838    0.0020
+        mesh   -0.1432   -0.0024    0.0344
+        mesh   -0.1038    0.0821         0
+    endsegment
+    
+    // Markers
+        marker  pelv1 //0
+            parent  Pelvis
+            position    -0.1038    0.0821         0
+        endmarker
+        
+        marker  pelv2 //1
+            parent  Pelvis
+            position    0.1038    0.0850         0
+        endmarker
+        
+        marker  pelv3 //2
+            parent  Pelvis
+            position    0.1435    0.0072    0.0351
+        endmarker
+        
+        marker  pelv4 //3
+            parent  Pelvis
+            position    0.0514   -0.0833   -0.0020
+        endmarker
+        
+        marker  pelv5 //4
+            parent  Pelvis
+            position    -0.0514   -0.0838    0.0020
+        endmarker
+        
+        marker  pelv6 //5
+            parent  Pelvis
+            position    -0.1432   -0.0024    0.0344
+        endmarker
+    
+
+    // Actuator
+        actuator    Pelvis
+            type    Constant
+            dof    TransY
+            direction    positive
+            Tmax    0.000000
+        endactuator
+        actuator    Pelvis
+            type    Constant
+            dof    TransZ
+            direction    positive
+            Tmax    0.000000
+        endactuator
+        actuator    Pelvis
+            type    Constant
+            dof    RotX
+            direction    positive
+            Tmax    0.000000
+        endactuator
+        actuator    Pelvis
+            type    Constant
+            dof    TransY
+            direction    negative
+            Tmax    0.000000
+        endactuator
+        actuator    Pelvis
+            type    Constant
+            dof    TransZ
+            direction    negative
+            Tmax    0.000000
+        endactuator
+        actuator    Pelvis
+            type    Constant
+            dof    RotX
+            direction    negative
+            Tmax    0.000000
+        endactuator
+
+
+
+
+// Informations about Tronc segment
+    // Segment
+    segment    Tronc
+        parent    Pelvis
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0
+            0.00000    1.00000    0.00000    0
+            0.00000    0.00000    1.00000    0
+            0.00000    0.00000    0.00000    1.00000
+        mass    12.61909
+        inertia
+            0.11886    0.00000    0.00000
+            0.00000    0.14601    0.00000
+            0.00000    0.00000    0.10288
+        com        0.00000        -0.06693        0.22007
+        mesh    0.00279    0.07657    0.14222
+        mesh    0.00000    -0.01810    0.08001
+        mesh    0.00228    -0.10029    0.08019
+        mesh    -0.00311    -0.18990    0.25862
+        mesh    -0.10683    -0.18364    0.34808
+        mesh    -0.00932    -0.18127    0.38131
+        mesh    -0.00311    -0.18990    0.25862
+        mesh    0.10683    -0.18364    0.34808
+        mesh    -0.00932    -0.18127    0.38131
+        mesh    0.10683    -0.18364    0.34808
+        mesh    0.16201    -0.12933    0.36322
+        mesh    0.14885    -0.08904    0.36408
+        mesh    0.10196    -0.08338    0.36282
+        mesh    0.06251    -0.08269    0.36618
+        mesh    0.04090    -0.05012    0.34934
+        mesh    -0.00075    -0.05573    0.35472
+        mesh    -0.00029    -0.00944    0.30907
+        mesh    0.04090    -0.05012    0.34934
+        mesh    -0.00029    -0.00944    0.30907
+        mesh    0.00279    0.07657    0.14222
+        mesh    -0.00029    -0.00944    0.30907
+        mesh    -0.04090    -0.05012    0.34934
+        mesh    -0.00075    -0.05573    0.35472
+        mesh    -0.04090    -0.05012    0.34934
+        mesh    -0.06251    -0.08269    0.36618
+        mesh    -0.10196    -0.08338    0.36282
+        mesh    -0.14885    -0.08904    0.36408
+        mesh    -0.16201    -0.12933    0.36322
+        mesh    -0.10683    -0.18364    0.34808
+    endsegment
+    
+    // Markers
+        marker  tronc1 //6
+            parent Tronc
+            position    0.00279    0.07657    0.14222
+        endmarker
+
+        marker  tronc2 //7
+            parent Tronc
+            position    0.00000    -0.01810    0.08001
+        endmarker
+
+        marker  tronc3 //8
+            parent Tronc
+            position    0.00228    -0.10029    0.08019
+        endmarker
+
+        marker  tronc4 //9
+            parent Tronc
+            position    -0.00311    -0.18990    0.25862
+        endmarker
+
+        marker  tronc5 //10
+            parent Tronc
+            position    -0.10683    -0.18364    0.34808
+        endmarker
+
+        marker  tronc6 //11
+            parent Tronc
+            position    -0.00932    -0.18127    0.38131
+        endmarker
+
+        marker  tronc7 //12
+            parent Tronc
+            position    0.16201    -0.12933    0.36322
+        endmarker
+
+        marker  tronc8 //13
+            parent Tronc
+            position    0.14885    -0.08904    0.36408
+        endmarker
+
+        marker  tronc9 //14
+            parent Tronc
+            position    0.10196    -0.08338    0.36282
+        endmarker
+
+        marker  tronc10 //15
+            parent Tronc
+            position    0.06251    -0.08269    0.36618
+        endmarker
+
+        marker  tronc11 //16
+            parent Tronc
+            position    0.04090    -0.05012    0.34934
+        endmarker
+
+        marker  tronc12 //17
+            parent Tronc
+            position    -0.00075    -0.05573    0.35472
+        endmarker
+
+        marker  tronc13 //18
+            parent Tronc
+            position    -0.00029    -0.00944    0.30907
+        endmarker
+
+    // Actuator
+        // No actuator for this segment
+
+
+
+
+// Informations about Tete segment
+    // Segment
+    segment    Tete
+        parent    Tronc
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0.00000
+            0.00000    1.00000    0.00000    -0.01810
+            0.00000    0.00000    1.00000    0.08001
+            0.00000    0.00000    0.00000    1.00000
+        mass    4.36806
+        inertia
+            0.02290    0.00000    0.00000
+            0.00000    0.02290    0.00000
+            0.00000    0.00000    0.01228
+        com        0.00000        -0.08719        0.46373
+        mesh    0.00000    -0.11016    0.34513
+        mesh    0.06129    -0.03875    0.41052
+        mesh    0.06494    -0.04624    0.45690
+        mesh    -0.00353    -0.00558    0.48201
+        mesh    -0.06937    -0.05485    0.46343
+        mesh    -0.07122    -0.04303    0.41862
+        mesh    0.00000    -0.11016    0.34513
+    endsegment
+
+    // Markers
+        marker  tete1 //19
+            parent Tete
+            position    0.00000    -0.11016    0.34513
+        endmarker
+
+        marker  tete2 //20
+            parent Tete
+            position    0.06129    -0.03875    0.41052
+        endmarker
+
+        marker  tete3 //21
+            parent Tete
+            position    0.06494    -0.04624    0.45690
+        endmarker
+
+        marker  tete4 //22
+            parent Tete
+            position    -0.00353    -0.00558    0.48201
+        endmarker
+
+        marker  tete5 //23
+            parent Tete
+            position    -0.06937    -0.05485    0.46343
+        endmarker
+
+        marker  tete6 //24
+            parent Tete
+            position    -0.07122    -0.04303    0.41862
+        endmarker
+
+    // Actuator
+        // No actuator for this segment
+
+
+
+// Informations about BrasD segment
+    // Segment
+    segment    BrasD
+        parent    Tronc
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0.16479
+            0.00000    1.00000    0.00000    -0.10658
+            0.00000    0.00000    1.00000    0.30485
+            0.00000    0.00000    0.00000    1.00000
+        rotations    zx
+        ranges  -pi pi
+                0 pi
+        mass    2.39085
+        inertia
+            0.06873    0.00000    0.00000
+            0.00000    0.06879    0.00000
+            0.00000    0.00000    0.00158
+        com        0.03653        0.06239        -0.23357
+        mesh    0.06167    0.03307    -0.23832
+        mesh    0.05967    0.04302    -0.15607
+        mesh    0.04582    0.00556    -0.06750
+        mesh    0.00000    0.00000    0.00000
+        mesh    0.04582    0.00556    -0.06750
+        mesh    0.02253    -0.01481    -0.14066
+        mesh    -0.00579    0.09093    -0.23307
+        mesh    0.01108    0.05121    -0.28232
+        mesh    0.06167    0.03307    -0.23832
+        mesh    0.08015    0.04722    -0.31073
+        mesh    0.02416    0.05529    -0.31175
+        mesh    0.07981    0.12049    -0.29966
+        mesh    0.08015    0.04722    -0.31073
+        mesh    0.10790    0.08098    -0.39544
+        mesh    0.09778    0.14432    -0.38695
+        mesh    0.09267    0.12714    -0.47113
+        mesh    0.14483    0.11092    -0.45125
+        mesh    0.10790    0.08098    -0.39544
+        mesh    0.14483    0.11092    -0.45125
+        mesh    0.13229    0.12429    -0.49310
+        mesh    0.16232    0.12952    -0.50661
+        mesh    0.10240    0.15441    -0.51431
+        mesh    0.13229    0.12429    -0.49310
+        mesh    0.09267    0.12714    -0.47113
+    endsegment
+
+    // Markers
+        marker    brasd1 //25
+            parent    BrasD
+            position    0.06167    0.03307    -0.23832
+        endmarker
+
+        marker    brasd2 //26
+            parent    BrasD
+            position    0.05967    0.04302    -0.15607
+        endmarker
+
+        marker    brasd3 //27
+            parent    BrasD
+            position    0.04582    0.00556    -0.06750
+        endmarker
+
+        marker    brasd4 //28
+            parent    BrasD
+            position    0.00000    0.00000    0.00000
+        endmarker
+
+        marker    brasd5 //29
+            parent    BrasD
+            position    0.02253    -0.01481    -0.14066
+        endmarker
+
+        marker    brasd6 //30
+            parent    BrasD
+            position    -0.00579    0.09093    -0.23307
+        endmarker
+
+        marker    brasd7 //31
+            parent    BrasD
+            position    0.01108    0.05121    -0.28232
+        endmarker
+
+        marker    brasd8 //32
+            parent    BrasD
+            position    0.08015    0.04722    -0.31073
+        endmarker
+
+        marker    brasd9 //33
+            parent    BrasD
+            position    0.02416    0.05529    -0.31175
+        endmarker
+
+        marker    brasd10 //34
+            parent    BrasD
+            position    0.07981    0.12049    -0.29966
+        endmarker
+
+        marker    brasd11 //35
+            parent    BrasD
+            position    0.10790    0.08098    -0.39544
+        endmarker
+
+        marker    brasd12 //36
+            parent    BrasD
+            position    0.09778    0.14432    -0.38695
+        endmarker
+
+        marker    brasd13 //37
+            parent    BrasD
+            position    0.09267    0.12714    -0.47113
+        endmarker
+
+        marker    brasd14 //38
+            parent    BrasD
+            position    0.14483    0.11092    -0.45125
+        endmarker
+
+        marker    brasd15 //39
+            parent    BrasD
+            position    0.13229    0.12429    -0.49310
+        endmarker
+
+        marker    brasd16 //40
+            parent    BrasD
+            position    0.16232    0.12952    -0.50661
+        endmarker
+
+        marker    brasd17 //41
+            parent    BrasD
+            position    0.10240    0.15441    -0.51431
+        endmarker
+
+    // Actuator
+        actuator    BrasD
+            type    constant
+            dof     RotZ
+            direction       positive
+            Tmax    15
+        endactuator
+        actuator        BrasD
+            type    constant
+            dof     RotZ
+            direction       negative
+            Tmax    15
+        endactuator
+        actuator    BrasD
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    112.8107
+            T0      89.0611
+            wmax    1000.0000
+            wc      400.0000
+            amin    0.8780
+            wr      40.0000
+            w1      -6.2750
+            r       109.6679
+            qopt    -41.0307
+        endactuator
+        actuator    BrasD
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    162.7655
+            T0      128.4991
+            wmax    812.5000
+            wc      325.0000
+            amin    0.9678
+            wr      40.0000
+            w1      -90.0000
+            r       103.9095
+            qopt    -101.6627
+        endactuator
+        
+
+
+
+// Informations about BrasG segment
+    // Segment
+    segment    BrasG
+        parent    Tronc
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    -0.16479
+            0.00000    1.00000    0.00000    -0.10658
+            0.00000    0.00000    1.00000    0.30485
+            0.00000    0.00000    0.00000    1.00000
+        rotations    zx
+        ranges  -pi pi
+                0 pi
+        mass    2.39085
+        inertia
+            0.06873    0.00000    0.00000
+            0.00000    0.06879    0.00000
+            0.00000    0.00000    0.00158
+        com        -0.03653        0.06239        -0.23357
+        mesh    -0.06167    0.03307    -0.23832
+        mesh    -0.05967    0.04302    -0.15607
+        mesh    -0.04582    0.00556    -0.06750
+        mesh    0.00000    0.00000    0.00000
+        mesh    -0.04582    0.00556    -0.06750
+        mesh    -0.02253    -0.01481    -0.14066
+        mesh    0.00579    0.09093    -0.23307
+        mesh    -0.01108    0.05121    -0.28232
+        mesh    -0.06167    0.03307    -0.23832
+        mesh    -0.08015    0.04722    -0.31073
+        mesh    -0.02416    0.05529    -0.31175
+        mesh    -0.07981    0.12049    -0.29966
+        mesh    -0.08015    0.04722    -0.31073
+        mesh    -0.10790    0.08098    -0.39544
+        mesh    -0.09778    0.14432    -0.38695
+        mesh    -0.09267    0.12714    -0.47113
+        mesh    -0.14483    0.11092    -0.45125
+        mesh    -0.10790    0.08098    -0.39544
+        mesh    -0.14483    0.11092    -0.45125
+        mesh    -0.13229    0.12429    -0.49310
+        mesh    -0.16232    0.12952    -0.50661
+        mesh    -0.10240    0.15441    -0.51431
+        mesh    -0.13229    0.12429    -0.49310
+        mesh    -0.09267    0.12714    -0.47113
+    endsegment
+
+    // Markers
+        marker    brasg1 //42
+            parent    BrasG
+            position    -0.06167    0.03307    -0.23832
+        endmarker
+
+        marker    brasg2 //43
+            parent    BrasG
+            position    -0.05967    0.04302    -0.15607
+        endmarker
+
+        marker    brasg3 //44
+            parent    BrasG
+            position    -0.04582    0.00556    -0.06750
+        endmarker
+
+        marker    brasg4 //45
+            parent    BrasG
+            position    0.00000    0.00000    0.00000
+        endmarker
+
+        marker    brasg5 //46
+            parent    BrasG
+            position    -0.02253    -0.01481    -0.14066
+        endmarker
+
+        marker    brasg6 //47
+            parent    BrasG
+            position    0.00579    0.09093    -0.23307
+        endmarker
+
+        marker    brasg7 //48
+            parent    BrasG
+            position    -0.01108    0.05121    -0.28232
+        endmarker
+
+        marker    brasg8 //49
+            parent    BrasG
+            position    -0.08015    0.04722    -0.31073
+        endmarker
+
+        marker    brasg9 //50
+            parent    BrasG
+            position    -0.02416    0.05529    -0.31175
+        endmarker
+
+        marker    brasg10 //51
+            parent    BrasG
+            position    -0.07981    0.12049    -0.29966
+        endmarker
+
+        marker    brasg11 //52
+            parent    BrasG
+            position    -0.10790    0.08098    -0.39544
+        endmarker
+
+        marker    brasg12 //53
+            parent    BrasG
+            position    -0.09778    0.14432    -0.38695
+        endmarker
+
+        marker    brasg13 //54
+            parent    BrasG
+            position    -0.09267    0.12714    -0.47113
+        endmarker
+
+        marker    brasg14 //55
+            parent    BrasG
+            position    -0.14483    0.11092    -0.45125
+        endmarker
+
+        marker    brasg15 //56
+            parent    BrasG
+            position    -0.13229    0.12429    -0.49310
+        endmarker
+
+        marker    brasg16 //57
+            parent    BrasG
+            position    -0.16232    0.12952    -0.50661
+        endmarker
+
+        marker    brasg17 //58
+            parent    BrasG
+            position    -0.10240    0.15441    -0.51431
+        endmarker
+
+    // Actuator
+        actuator    BrasG
+            type    constant
+            dof     RotZ
+            direction       positive
+            Tmax    15
+        endactuator
+        actuator    BrasG
+            type    constant
+            dof     RotZ
+            direction       negative
+            Tmax    15
+        endactuator
+        actuator    BrasG
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    112.8107
+            T0      89.0611
+            wmax    1000.0000
+            wc      400.0000
+            amin    0.8780
+            wr      40.0000
+            w1      -6.2750
+            r       109.6679
+            qopt    -41.0307
+        endactuator
+        actuator    BrasG
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    162.7655
+            T0      128.4991
+            wmax    812.5000
+            wc      325.0000
+            amin    0.9678
+            wr      40.0000
+            w1      -90.0000
+            r       103.9095
+            qopt    -101.6627
+        endactuator
+
+
+// Informations about CuisseD segment
+    // Segment
+    segment    CuisseD
+        parent    Pelvis
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0.08020
+            0.00000    1.00000    0.00000    0.01342
+            0.00000    0.00000    1.00000    -0.09895
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/12  pi/2+pi/3
+        mass    6.62882
+        inertia
+            0.07790    0.00000    0.00000
+            0.00000    0.07790    0.00000
+            0.00000    0.00000    0.01985
+        com        0.02797        0.02786        -0.14671
+        mesh    0.00000    0.00000    0.00000
+        mesh    0.10917    0.02169    -0.17854
+        mesh    0.10898    0.08260    -0.35937
+        mesh    0.00206    0.08093    -0.37628
+        mesh    0.02884    -0.02404    -0.28043
+        mesh    0.01361    -0.05144    -0.15273
+        mesh    0.00000    0.00000    0.00000
+    endsegment
+
+    // Markers
+        marker  cuissed1 //59
+            parent CuisseD
+            position    0.00000    0.00000    0.00000
+        endmarker
+        
+        marker  cuissed2 //60
+            parent CuisseD
+            position    0.10917    0.02169    -0.17854
+        endmarker
+        
+        marker  cuissed3 //61
+            parent CuisseD
+            position    0.10898    0.08260    -0.35937
+        endmarker
+        
+        marker  cuissed4 //62
+            parent CuisseD
+            position    0.00206    0.08093    -0.37628
+        endmarker
+        
+        marker  cuissed5 //63
+            parent CuisseD
+            position    0.02884    -0.02404    -0.28043
+        endmarker
+        
+        marker  cuissed6 //64
+            parent CuisseD
+            position    0.01361    -0.05144    -0.15273
+        endmarker
+        
+    
+    
+
+    // Actuator
+        actuator    CuisseD
+            type    Gauss3p
+            dof     RotX
+            direction   positive
+            Tmax    220.3831
+            T0      157.4165
+            wmax    475.0000
+            wc      190.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       56.4021
+            qopt    25.6939
+        endactuator
+        actuator    CuisseD
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    490.5938
+            T0      387.3109
+            wmax    562.5000
+            wc      225.0000
+            amin    0.9692
+            wr      40.0000
+            w1      -90.0000
+            r       48.6999
+            qopt    72.5836
+        endactuator
+
+
+    
+// Informations about JambeD segment
+    // Segment
+    segment    JambeD
+        parent    CuisseD
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0.07308
+            0.00000    1.00000    0.00000    0.07271
+            0.00000    0.00000    1.00000    -0.38304
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/2-pi/6 0
+        mass    3.40206
+        inertia
+            0.04318    0.00000    0.00000
+            0.00000    0.04318    0.00000
+            0.00000    0.00000    0.00443
+        com        0.00000        0.03743        -0.17186
+        mesh    0.00000    0.00000    0.00000
+        mesh    0.06309    0.00002    -0.12758
+        mesh    0.03513    0.06084    -0.34329
+        mesh    -0.04094    0.08715    -0.32000
+        mesh    -0.00767    -0.00022    -0.26361
+        mesh    -0.00642    0.06737    -0.14626
+        mesh    0.00952    0.04773    -0.02947
+        mesh    0.00000    0.00000    0.00000
+    endsegment
+    
+    // Markers
+        marker  jambed1 //65
+            parent JambeD
+            position    0.00000    0.00000    0.00000
+        endmarker
+
+        marker  jambed2 //66
+            parent JambeD
+            position    0.06309    0.00002    -0.12758
+        endmarker
+
+        marker  jambed3 //67
+            parent JambeD
+            position    0.03513    0.06084    -0.34329
+        endmarker
+
+        marker  jambed4 //68
+            parent JambeD
+            position    -0.04094    0.08715    -0.32000
+        endmarker
+
+        marker  jambed5 //69
+            parent JambeD
+            position    -0.00767    -0.00022    -0.26361
+        endmarker
+        
+        marker  jambed6 //70
+            parent JambeD
+            position    -0.00642    0.06737    -0.14626
+        endmarker
+        
+        marker  jambed7 //71
+            parent JambeD
+            position    0.00952    0.04773    -0.02947
+        endmarker
+
+    // Actuator
+        actuator    JambeD
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    367.6643
+            T0      275.0726
+            wmax    1437.5000
+            wc      575.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       31.7218
+            qopt    -61.7303
+        endactuator
+        actuator    JambeD
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    177.9694
+            T0      127.1210
+            wmax    950.0000
+            wc      380.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -89.9997
+            r       57.0370
+            qopt    -33.2908
+        endactuator
+
+
+// Informations about PiedG segment
+    // Segment
+    segment    PiedD
+        parent    JambeD
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    0.00132
+            0.00000    1.00000    0.00000    0.07374
+            0.00000    0.00000    1.00000    -0.33859
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/2 pi/2
+        mass    0.77311
+        inertia
+            0.00194    0.00000    0.00000
+            0.00000    0.00211    0.00000
+            0.00000    0.00000    0.00057
+        com        0.01311        0.06986        -0.00337
+        mesh    0.06379    0.09487    -0.01280
+        mesh    0.00379    0.07064    0.01668
+        mesh    0.01175    -0.03816    -0.02629
+        mesh    0.06379    0.09487    -0.01280
+        mesh    -0.00465    0.15809    0.00611
+        mesh    0.00379    0.07064    0.01668
+        mesh    -0.02264    0.12361    0.00225
+        mesh    -0.00465    0.15809    0.00611
+        mesh    -0.02264    0.12361    0.00225
+        mesh    -0.04091    -0.01479    -0.03150
+        mesh    0.00379    0.07064    0.01668
+        mesh    0.01175    -0.03816    -0.02629
+        mesh    -0.04091    -0.01479    -0.03150
+        mesh    0.01175    -0.03816    -0.02629
+        mesh    0.06379    0.09487    -0.01280
+    endsegment
+
+    // Markers
+        marker    piedd1 //72
+            parent    PiedD
+            position    0.06379    0.09487    -0.01280
+        endmarker
+
+        marker    piedd2 //73
+            parent    PiedD
+            position    0.00379    0.07064    0.01668
+        endmarker
+
+        marker    piedd3 //74
+            parent    PiedD
+            position    0.01175    -0.03816    -0.02629
+        endmarker
+
+        marker    piedd4 //75
+            parent    PiedD
+            position    -0.00465    0.15809    0.00611
+        endmarker
+
+        marker    piedd5 //76
+            parent    PiedD
+            position    -0.02264    0.12361    0.00225
+        endmarker
+
+        marker    piedd6 //77
+            parent    PiedD
+            position    -0.04091    -0.01479    -0.03150
+        endmarker
+
+    // Contact
+        contact    PiedG_1
+            parent    PiedD
+            position    -0.00465    0.15809    0.00611
+            axis    yz
+        endcontact
+        contact    PiedG_2
+            parent    PiedD
+            position    0.00757    0.01189    -0.01802
+            axis    z
+        endcontact
+
+
+    // Actuator
+        actuator    PiedD
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    53.8230
+            T0      37.2448
+            wmax    2375.0000
+            wc      375.0000
+            amin    0.9263
+            wr      40.0000
+            w1      -90.0000
+            r       58.9832
+            qopt    0.7442
+        endactuator
+        actuator    PiedD
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    171.9903
+            T0      122.8502
+            wmax    2000.0000
+            wc      800.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       21.8717
+            qopt    12.6824
+        endactuator
+
+
+
+// Informations about CuisseG segment
+    // Segment
+    segment    CuisseG
+        parent    Pelvis
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    -0.08020
+            0.00000    1.00000    0.00000    0.01342
+            0.00000    0.00000    1.00000    -0.09895
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/12  pi/2+pi/3
+        mass    6.62882
+        inertia
+            0.07790    0.00000    0.00000
+            0.00000    0.07790    0.00000
+            0.00000    0.00000    0.01985
+        com        -0.02797        0.02786        -0.14671
+        mesh    0.00000    0.00000    0.00000
+        mesh    -0.10917    0.02169    -0.17854
+        mesh    -0.10898    0.08260    -0.35937
+        mesh    -0.00206    0.08093    -0.37628
+        mesh    -0.02884    -0.02404    -0.28043
+        mesh    -0.01361    -0.05144    -0.15273
+        mesh    0.00000    0.00000    0.00000
+    endsegment
+
+    // Markers
+        marker cuisseg1 //78
+            parent CuisseG
+            position    0.00000    0.00000    0.00000
+        endmarker
+
+        marker cuisseg2 //79
+            parent CuisseG
+            position    -0.10917    0.02169    -0.17854
+        endmarker
+
+        marker cuisseg3 //80
+            parent CuisseG
+            position    -0.10898    0.08260    -0.35937
+        endmarker
+
+        marker cuisseg4 //81
+            parent CuisseG
+            position    -0.00206    0.08093    -0.37628
+        endmarker
+
+        marker cuisseg5 //82
+            parent CuisseG
+            position    -0.02884    -0.02404    -0.28043
+        endmarker
+
+        marker cuisseg6 //83
+            parent CuisseG
+            position    -0.01361    -0.05144    -0.15273
+        endmarker
+
+    // Actuator
+        actuator    CuisseG
+            type    Gauss3p
+            dof     RotX
+            direction   positive
+            Tmax    220.3831
+            T0      157.4165
+            wmax    475.0000
+            wc      190.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       56.4021
+            qopt    25.6939
+        endactuator
+        actuator    CuisseG
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    490.5938
+            T0      387.3109
+            wmax    562.5000
+            wc      225.0000
+            amin    0.9692
+            wr      40.0000
+            w1      -90.0000
+            r       48.6999
+            qopt    72.5836
+        endactuator
+    
+    
+
+
+// Informations about JambeG segment
+    // Segment
+    segment    JambeG
+        parent    CuisseG
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    -0.07308
+            0.00000    1.00000    0.00000    0.07271
+            0.00000    0.00000    1.00000    -0.38304
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/2-pi/6 0
+        mass    3.40206
+        inertia
+            0.04318    0.00000    0.00000
+            0.00000    0.04318    0.00000
+            0.00000    0.00000    0.00443
+        com        0.00000        0.03743        -0.17186
+        mesh    0.00000    0.00000    0.00000
+        mesh    -0.06309    0.00002    -0.12758
+        mesh    -0.03513    0.06084    -0.34329
+        mesh    0.04094    0.08715    -0.32000
+        mesh    0.00767    -0.00022    -0.26361
+        mesh    0.00642    0.06737    -0.14626
+        mesh    -0.00952    0.04773    -0.02947
+        mesh    0.00000    0.00000    0.00000
+    endsegment
+    
+    // Markers
+        marker jambeg1 //84
+            parent JambeG
+            position    0.00000    0.00000    0.00000
+        endmarker
+
+        marker jambeg2 //85
+            parent JambeG
+            position    -0.06309    0.00002    -0.12758
+        endmarker
+
+        marker jambeg3 //86
+            parent JambeG
+            position    -0.03513    0.06084    -0.34329
+        endmarker
+
+        marker jambeg4 //87
+            parent JambeG
+            position    0.04094    0.08715    -0.32000
+        endmarker
+
+        marker jambeg5 //88
+            parent JambeG
+            position    0.00767    -0.00022    -0.26361
+        endmarker
+
+        marker jambeg6 //89
+            parent JambeG
+            position    0.00642    0.06737    -0.14626
+        endmarker
+
+        marker jambeg7 //90
+            parent JambeG
+            position    -0.00952    0.04773    -0.02947
+        endmarker
+
+    // Actuator
+        actuator    JambeG
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    367.6643
+            T0      275.0726
+            wmax    1437.5000
+            wc      575.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       31.7218
+            qopt    -61.7303
+        endactuator
+        actuator    JambeG
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    177.9694
+            T0      127.1210
+            wmax    950.0000
+            wc      380.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -89.9997
+            r       57.0370
+            qopt    -33.2908
+        endactuator
+
+
+
+
+// Informations about PiedG segment
+    // Segment
+    segment    PiedG
+        parent    JambeG
+        RTinMatrix    1
+        RT
+            1.00000    0.00000    0.00000    -0.00132
+            0.00000    1.00000    0.00000    0.07374
+            0.00000    0.00000    1.00000    -0.33859
+            0.00000    0.00000    0.00000    1.00000
+        rotations    x
+        ranges  -pi/2 pi/2
+        mass    0.77311
+        inertia
+            0.00194    0.00000    0.00000
+            0.00000    0.00211    0.00000
+            0.00000    0.00000    0.00057
+        com        -0.01311        0.06986        -0.00337
+        mesh    -0.06379    0.09487    -0.01280
+        mesh    -0.00379    0.07064    0.01668
+        mesh    -0.01175    -0.03816    -0.02629
+        mesh    -0.06379    0.09487    -0.01280
+        mesh    0.00465    0.15809    0.00611
+        mesh    -0.00379    0.07064    0.01668
+        mesh    0.02264    0.12361    0.00225
+        mesh    0.00465    0.15809    0.00611
+        mesh    0.02264    0.12361    0.00225
+        mesh    0.04091    -0.01479    -0.03150
+        mesh    -0.00379    0.07064    0.01668
+        mesh    -0.01175    -0.03816    -0.02629
+        mesh    0.04091    -0.01479    -0.03150
+        mesh    -0.01175    -0.03816    -0.02629
+        mesh    -0.06379    0.09487    -0.01280
+    endsegment
+
+    // Markers
+        marker    piedg1 //91
+            parent    PiedG
+            position    -0.06379    0.09487    -0.01280
+        endmarker
+
+        marker    piedg2 //92
+            parent    PiedG
+            position    -0.00379    0.07064    0.01668
+        endmarker
+
+        marker    piedg3 //93
+            parent    PiedG
+            position    -0.01175    -0.03816    -0.02629
+        endmarker
+
+        marker    piedg4 //94
+            parent    PiedG
+            position    0.00465    0.15809    0.00611
+        endmarker
+
+        marker    piedg5 //95
+            parent    PiedG
+            position    0.02264    0.12361    0.00225
+        endmarker
+
+        marker    piedg6 //96
+            parent    PiedG
+            position    0.04091    -0.01479    -0.03150
+        endmarker
+
+    // Contact
+    contact    PiedG_1
+        parent    PiedG
+        position    0.00465    0.15809    0.00611
+        axis    yz
+    endcontact
+    contact    PiedG_2
+        parent    PiedG
+        position    -0.00757    0.01189    -0.01802
+        axis    z
+    endcontact
+
+
+    // Actuator
+        actuator    PiedG
+            type    Gauss3p
+            dof     RotX
+            direction    positive
+            Tmax    53.8230
+            T0      37.2448
+            wmax    2375.0000
+            wc      375.0000
+            amin    0.9263
+            wr      40.0000
+            w1      -90.0000
+            r       58.9832
+            qopt    0.7442
+        endactuator
+        actuator    PiedG
+            type    Gauss3p
+            dof     RotX
+            direction    negative
+            Tmax    171.9903
+            T0      122.8502
+            wmax    2000.0000
+            wc      800.0000
+            amin    0.9900
+            wr      40.0000
+            w1      -90.0000
+            r       21.8717
+            qopt    12.6824
+        endactuator
+
