@@ -49,14 +49,31 @@ def custom_CoM_high(pn: PenaltyNodes) -> MX:
     com = compute_CoM(pn.x[0][:nq])
     return com[2]
 
-    min_bound, max_bound = 0, np.inf
-    torque_min, torque_max, torque_init = -1000, 1000, 0
-    activation_min, activation_max, activation_init = 1e-3, 1.0, 0.1
-    position_high = [0]*nb_q
-    position_low = [[-0.06], [-0.34], [0], [0], [0], [-0.8],
-                    [0], [0], [0.16],
-                    [0], [0], [1.53], [-1.55], [0], [0.68],
-                    [0], [0], [1.53], [-1.55], [0], [0.68]]
+# OPTIMAL CONTROL PROBLEM
+model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
+# c = model.contactNames()
+# for (i, name) in enumerate(c):
+#     print(f"{i} : {name.to_string()}")
+
+# q_name = []
+# for s in range(model.nbSegment()):
+#     seg_name = model.segment(s).name().to_string()
+#     for d in range(model.segment(s).nbDof()):
+#         dof_name = model.segment(s).nameDof(d).to_string()
+#         q_name.append(seg_name + "_" + dof_name)
+# for (i, q) in enumerate(q_name):
+#     print(f"{i} : {q}")
+
+# --- Problem parameters --- #
+nb_q = model.nbQ()
+nb_qdot = model.nbQdot()
+nb_tau = model.nbGeneralizedTorque()
+nb_mus = model.nbMuscleTotal()
+nb_shooting = 62
+final_time=1.0
+min_bound, max_bound = 0, np.inf
+torque_min, torque_max, torque_init = -1000, 1000, 0
+activation_min, activation_max, activation_init = 1e-3, 1.0, 0.1
 
     # --- Objective function --- #
     objective_functions = ObjectiveList()
