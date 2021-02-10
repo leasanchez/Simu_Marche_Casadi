@@ -177,18 +177,31 @@ u_bounds.add(
             [torque_max] * nb_tau,
 )
 
-    # --- Initial guess --- #
-    x_init = InitialGuessList()
-    init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
-    init_x[:nb_q, :] = q_init
-    init_x[nb_q:, :] = qdot_init
-    x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+# --- Initial guess --- #
+# # Initial guess - simu
+# x_init = InitialGuessList()
+# init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
+# init_x[:nb_q, :] = q_init
+# init_x[nb_q:, :] = qdot_init
+# x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+#
+# u_init = InitialGuessList()
+# # u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
+# u_init.add([torque_init] * nb_tau)
 
-    u_init = InitialGuessList()
-    # u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
-    u_init.add([torque_init] * nb_tau)
+# Load previous solution
+save_path = './RES/torque_driven/'
+x_init = InitialGuessList()
+init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
+init_x[:nb_q, :] = np.load(save_path + "q.npy")
+init_x[nb_q:, :] = np.load(save_path + "qdot.npy")
+x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-    # ------------- #
+u_init = InitialGuessList()
+init_u = np.load(save_path + "tau.npy")[:, :-1]
+u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
+
+# ------------- #
 
     return OptimalControlProgram(
         biorbd_model,
