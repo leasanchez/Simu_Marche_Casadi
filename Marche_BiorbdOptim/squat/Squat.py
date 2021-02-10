@@ -203,96 +203,73 @@ u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
 # ------------- #
 
-    return OptimalControlProgram(
-        biorbd_model,
-        dynamics,
-        nb_shooting,
-        final_time,
-        x_init,
-        u_init,
-        x_bounds,
-        u_bounds,
-        objective_functions,
-        constraints,
-        n_threads=nb_threads,
-    )
+ocp = OptimalControlProgram(
+    model,
+    dynamics,
+    nb_shooting,
+    final_time,
+    x_init,
+    u_init,
+    x_bounds,
+    u_bounds,
+    objective_functions,
+    constraints,
+    n_threads=4,
+)
 
-if __name__ == "__main__":
-    model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
+# --- Get Previous Results --- #
+path_previous = './RES/torque_driven/cycle.bo'
+ocp_previous, sol_previous = ocp.load(path_previous)
+states_previous, controls_previous = Data.get_data(ocp_previous, sol_previous["x"])
+q_previous = states_previous["q"]
 
-    # c = model.contactNames()
-    # for (i, name) in enumerate(c):
-    #     print(f"{i} : {name.to_string()}")
-    #
-    q_name = []
-    for s in range(model.nbSegment()):
-        seg_name = model.segment(s).name().to_string()
-        for d in range(model.segment(s).nbDof()):
-            dof_name = model.segment(s).nameDof(d).to_string()
-            q_name.append(seg_name + "_" + dof_name)
-    for (i, q) in enumerate(q_name):
-        print(f"{i} : {q}")
+# --- Show results --- #
+ShowResult(ocp_previous, sol_previous).animate(show_muscles=False)
+ShowResult(ocp_previous, sol_previous).animate(show_muscles=False, show_segments_center_of_mass=False, show_local_ref_frame=False)
+ShowResult(ocp_previous, sol_previous).graphs()
 
-    nb_q = model.nbQ()
-    nb_shooting = 31
-    position_high = [0]*nb_q
-    position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
-                    0, 0, 0.2,
-                    0, 0, 1.53, -1.55, 0, 0.68,
-                    0, 0, 1.53, -1.55, 0, 0.68]
-    q_init = np.zeros((nb_q, nb_shooting + 1))
-    for i in range(nb_q):
-        # q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2))
-        # q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1)
-        q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1)
-    qdot_init = np.gradient(q_init)[1]
-    qddot_init = np.gradient(qdot_init)[1]
+# --- Plot CoM --- #
+CoM = np.zeros((3, q_previous.shape[1]))
+for n in range(nb_shooting + 1):
+    CoM[:, n:n+1] = compute_CoM(q_previous[:, n])
+plt.figure()
+plt.plot(CoM[2, :])
 
-    symbolic_q = MX.sym("q", nb_q, 1)
-    compute_CoM = Function(
-        "ComputeCoM",
-        [symbolic_q],
-        [model.CoM(symbolic_q).to_mx()],
-        ["q"],
-        ["CoM"],
-    ).expand()
+# --- Solve the program --- #
+sol = ocp.solve(
+    solver=Solver.IPOPT,
+    solver_options={
+        "ipopt.tol": 1e-6,
+        "ipopt.max_iter": 5000,
+        "ipopt.hessian_approximation": "exact",
+        "ipopt.limited_memory_max_history": 50,
+        "ipopt.linear_solver": "ma57",
+    },
+    show_online_optim=False,
+)
 
-    CoM_high = compute_CoM(position_high)
-    CoM_low = compute_CoM(position_low)
-    # b = bioviz.Viz(loaded_model=model)
-    # # b.set_q(np.array(position_low))
-    # # b.set_q(np.array(position_high))
-    # b.load_movement(q_init)
-    # b.exec()
+# --- Get Results --- #
+states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+q = states_sol["q"]
+q_dot = states_sol["qdot"]
+tau = controls_sol["tau"]
 
-    ocp = prepare_ocp(biorbd_model=model,
-                      nb_shooting=31,
-                      final_time=0.4,
-                      q_init=q_init,
-                      qdot_init=qdot_init,
-                      nb_threads=4,)
+# --- Save results ---
+save_path = './RES/torque_driven/'
+ocp.save(sol, save_path + 'cycle.bo')
+np.save(save_path + 'qdot', q_dot)
+np.save(save_path + 'q', q)
+np.save(save_path + 'tau', tau)
 
-    # --- Solve the program --- #
-    sol = ocp.solve(
-        solver=Solver.IPOPT,
-        solver_options={
-            "ipopt.tol": 1e-4,
-            "ipopt.max_iter": 5000,
-            "ipopt.hessian_approximation": "exact",
-            "ipopt.limited_memory_max_history": 50,
-            "ipopt.linear_solver": "ma57",
-        },
-        show_online_optim=False,
-    )
+# --- Plot CoM --- #
+CoM = np.zeros((3, q.shape[1]))
+for n in range(nb_shooting + 1):
+    CoM[:, n:n+1] = compute_CoM(q[:, n])
+plt.figure()
+plt.plot(CoM[2, :])
 
-    # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    tau = controls_sol["tau"]
-    activation = controls_sol["muscles"]
-
-    # --- Show results --- #
-    ShowResult(ocp, sol).animate()
+# --- Show results --- #
+ShowResult(ocp, sol).animate()
+ShowResult(ocp, sol).graphs()
 
 
