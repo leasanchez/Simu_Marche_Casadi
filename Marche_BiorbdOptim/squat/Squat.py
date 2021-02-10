@@ -120,13 +120,22 @@ CoM_low = compute_CoM(np.array(position_low))
 # b.load_movement(q_init)
 # b.exec()
 
-    # --- Objective function --- #
-    objective_functions = ObjectiveList()
-    # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1)
-    objective_functions.add(custom_compute_CoM,
-                            custom_type=ObjectiveFcn.Mayer,
-                            node=Node.END,
-                            weight=10)
+
+# --- Objective function --- #
+objective_functions = ObjectiveList()
+objective_functions.add(custom_CoM_low,
+                        custom_type=ObjectiveFcn.Mayer,
+                        node=Node.ALL,
+                        quadratic=True,
+                        weight=1000)
+objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                        quadratic=True,
+                        weight=0.001)
+# objective_functions.add(custom_CoM_variation,
+#                         custom_type=ObjectiveFcn.Lagrange,
+#                         node=Node.ALL,
+#                         quadratic=True,
+#                         weight=10)
 
     # --- Dynamics --- #
     dynamics = DynamicsList()
