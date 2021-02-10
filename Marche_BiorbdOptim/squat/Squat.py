@@ -137,22 +137,21 @@ objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
 #                         quadratic=True,
 #                         weight=10)
 
-    # --- Dynamics --- #
-    dynamics = DynamicsList()
-    dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
+# --- Dynamics --- #
+dynamics = DynamicsList()
+dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
 
-    # --- Constraints --- #
-    constraints = ConstraintList()
-    # contact forces constraint
-    contact_z_axes = (1, 2, 5, 7, 8, 11)
-    for c in contact_z_axes:
-        constraints.add( # positive vertical forces
-            ConstraintFcn.CONTACT_FORCE,
-            min_bound=0,
-            max_bound=np.inf,
-            node=Node.ALL,
-            contact_force_idx=c,
-        )
+# --- Constraints --- #
+constraints = ConstraintList()
+contact_z_axes = (2, 3, 5, 8, 9, 11)
+for c in contact_z_axes:
+    constraints.add( # positive vertical forces
+        ConstraintFcn.CONTACT_FORCE,
+        min_bound=0,
+        max_bound=np.inf,
+        node=Node.ALL,
+        contact_force_idx=c,
+    )
 
 
     # --- Path constraints --- #
