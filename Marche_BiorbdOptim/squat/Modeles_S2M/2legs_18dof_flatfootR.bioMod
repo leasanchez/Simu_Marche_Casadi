@@ -117,13 +117,13 @@ segment torso
 		0	1	0	 -0.028679
 		0	0	1	  0.0
 		0	0	0	  1
-	rotations	xyz
-        rangesQ -pi/2 pi/2 
-                -pi/4 pi/4 
-                -pi/4 pi/4
-        rangesQdot -5.2360 5.2360 
-                   -5.2360 5.2360 
-                   -5.2360 5.2360
+        //rotations	xyz
+        //rangesQ    -pi/2  pi/2
+        //           -pi/2  pi/2
+        //           -pi/2  pi/2
+        //rangesQdot -4    4.5
+        //           -4    4.5
+        //           -4    4.5
         mass 34.285424253511501
         inertia
             2.34257    0.0        0.0
@@ -439,7 +439,7 @@ endmarker
 contact    Heel_r   //FCC decale
 	parent      foot_marker_r
 	position    0.0254278	 -0.02	   0.00220395
-	axis    xz
+	axis    xyz
 endcontact
 contact    Meta_1_r //FM1
 	parent      foot_marker_r
@@ -449,7 +449,7 @@ endcontact
 contact    Meta_5_r //FM5
 	parent     foot_marker_r
 	position   0.156485	 -0.02	   0.0638694
-	axis    xyz
+	axis    xz
 endcontact
 
 // --------------------------------------------------------------------------------------------------------
@@ -736,7 +736,7 @@ endmarker
 contact    Heel_l   //FCC decale
 	parent      foot_marker_l
 	position    0.0254278	 -0.02	   -0.00220395
-	axis    xz
+	axis    xyz
 endcontact
 contact    Meta_1_l //FM1
 	parent      foot_marker_l
@@ -746,7 +746,7 @@ endcontact
 contact    Meta_5_l //FM5
 	parent     foot_marker_l
 	position   0.156485	 -0.02	   -0.0638694
-	axis    xyz
+	axis    xz
 endcontact
 
 // --------------------------------------------------------------------------------------------------------
