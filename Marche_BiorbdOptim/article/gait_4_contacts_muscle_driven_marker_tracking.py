@@ -252,7 +252,7 @@ def prepare_ocp(biorbd_model: tuple,
                                 phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100, index=markers_tissus, target=markers_ref[p][:, markers_tissus, :],
                                 phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.001, index=(10), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.000001, index=(10), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10, phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.1, phase=p, quadratic=True)
@@ -472,61 +472,72 @@ if __name__ == "__main__":
         CoP=cop_ref,
         nb_threads=4,
     )
-    path_previous = 'gait.bo'
-    ocp_previous, sol_previous = ocp.load(path_previous)
-
-    Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
-
-    # --- compute ground reaction forces difference ---
-    GRF = Affichage_resultat.compute_contact_forces_ref(grf_ref)
-    grf_simu = Affichage_resultat.compute_sum_forces_simu()
-
-    diff_grf_squared = np.zeros((3, 54))
-    diff_grf_squared[0, :] = np.sqrt((grf_simu[0, :54] - GRF["force_X_R"][:54])**2)
-    diff_grf_squared[1, :] = np.sqrt((grf_simu[1, :54] - GRF["force_Y_R"][:54])**2)
-    diff_grf_squared[2, :] = np.sqrt((grf_simu[2, :54] - GRF["force_Z_R"][:54])**2)
-
-    diff_grf_mean = np.zeros((3, 54))
-    diff_grf_mean[0, :] = np.sqrt((grf_simu[0, :54] - np.mean(GRF["force_X_R"][:54]))**2)
-    diff_grf_mean[1, :] = np.sqrt((grf_simu[1, :54] - np.mean(GRF["force_Y_R"][:54]))**2)
-    diff_grf_mean[2, :] = np.sqrt((grf_simu[2, :54] - np.mean(GRF["force_Z_R"][:54]))**2)
-
-    R2 = np.zeros((3,1))
-    R2[0] = 1 - sum(diff_grf_squared[0, :])/sum(diff_grf_mean[0, :])
-    R2[1] = 1 - sum(diff_grf_squared[1, :]) / sum(diff_grf_mean[1, :])
-    R2[2] = 1 - sum(diff_grf_squared[2, :]) / sum(diff_grf_mean[2, :])
-
-    # --- compute markers difference ---
-    states, controls = Data.get_data(ocp_previous, sol_previous)
-    q = states["q"]
-    symbolic_q = MX.sym("q", nb_q, 1)
-    markers_func = []
-    for m in range(nb_markers):
-        markers_func.append(Function(
-            "ForwardKin",
-            [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
-            ["q"],
-            ["markers"],
-        ).expand())
-    position_markers = np.zeros((3, nb_markers, q.shape[1]))
-    for n in range(q.shape[1]):
-        Q = q[:, n]
-        for m in range(nb_markers):
-            position_markers[:, m, n:n+1]=markers_func[m](Q)
-
-    complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
-    n_shoot=0
-    for p in range(len(biorbd_model)):
-        complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
-        n_shoot+=number_shooting_points[p]
-
-    diff_markers_squared = np.zeros((3, nb_markers - 4, sum(number_shooting_points) + 1))
-    mean_markers = 0
-    for m in range(nb_markers - 4):
-        diff_markers_squared[0, m, :] = np.sqrt((complete_markers_ref[0, m, :] - position_markers[0, m, :])**2)
-        diff_markers_squared[1, m, :] = np.sqrt((complete_markers_ref[1, m, :] - position_markers[1, m, :]) ** 2)
-        diff_markers_squared[2, m, :] = np.sqrt((complete_markers_ref[2, m, :] - position_markers[2, m, :]) ** 2)
-        mean_markers += np.mean(diff_markers_squared[0, m, :]) + np.mean(diff_markers_squared[1, m, :]) + np.mean(diff_markers_squared[2, m, :])
+    # path_previous = 'gait.bo'
+    # ocp_previous, sol_previous = ocp.load(path_previous)
+    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
+    # q = states_sol["q"]
+    # q_dot = states_sol["qdot"]
+    # tau = controls_sol["tau"]
+    # activation = controls_sol["muscles"]
+    #
+    # # --- Save results ---
+    # np.save('activation', activation)
+    # np.save('qdot', q_dot)
+    # np.save('q', q)
+    # np.save('tau', tau)
+    #
+    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
+    #
+    # # --- compute ground reaction forces difference ---
+    # GRF = Affichage_resultat.compute_contact_forces_ref(grf_ref)
+    # grf_simu = Affichage_resultat.compute_sum_forces_simu()
+    #
+    # diff_grf_squared = np.zeros((3, 54))
+    # diff_grf_squared[0, :] = np.sqrt((grf_simu[0, :54] - GRF["force_X_R"][:54])**2)
+    # diff_grf_squared[1, :] = np.sqrt((grf_simu[1, :54] - GRF["force_Y_R"][:54])**2)
+    # diff_grf_squared[2, :] = np.sqrt((grf_simu[2, :54] - GRF["force_Z_R"][:54])**2)
+    #
+    # diff_grf_mean = np.zeros((3, 54))
+    # diff_grf_mean[0, :] = np.sqrt((grf_simu[0, :54] - np.mean(GRF["force_X_R"][:54]))**2)
+    # diff_grf_mean[1, :] = np.sqrt((grf_simu[1, :54] - np.mean(GRF["force_Y_R"][:54]))**2)
+    # diff_grf_mean[2, :] = np.sqrt((grf_simu[2, :54] - np.mean(GRF["force_Z_R"][:54]))**2)
+    #
+    # R2 = np.zeros((3,1))
+    # R2[0] = 1 - sum(diff_grf_squared[0, :])/sum(diff_grf_mean[0, :])
+    # R2[1] = 1 - sum(diff_grf_squared[1, :]) / sum(diff_grf_mean[1, :])
+    # R2[2] = 1 - sum(diff_grf_squared[2, :]) / sum(diff_grf_mean[2, :])
+    #
+    # # --- compute markers difference ---
+    # states, controls = Data.get_data(ocp_previous, sol_previous)
+    # q = states["q"]
+    # symbolic_q = MX.sym("q", nb_q, 1)
+    # markers_func = []
+    # for m in range(nb_markers):
+    #     markers_func.append(Function(
+    #         "ForwardKin",
+    #         [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
+    #         ["q"],
+    #         ["markers"],
+    #     ).expand())
+    # position_markers = np.zeros((3, nb_markers, q.shape[1]))
+    # for n in range(q.shape[1]):
+    #     Q = q[:, n]
+    #     for m in range(nb_markers):
+    #         position_markers[:, m, n:n+1]=markers_func[m](Q)
+    #
+    # complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
+    # n_shoot=0
+    # for p in range(len(biorbd_model)):
+    #     complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
+    #     n_shoot+=number_shooting_points[p]
+    #
+    # diff_markers_squared = np.zeros((3, nb_markers - 4, sum(number_shooting_points) + 1))
+    # mean_markers = 0
+    # for m in range(nb_markers - 4):
+    #     diff_markers_squared[0, m, :] = np.sqrt((complete_markers_ref[0, m, :] - position_markers[0, m, :])**2)
+    #     diff_markers_squared[1, m, :] = np.sqrt((complete_markers_ref[1, m, :] - position_markers[1, m, :]) ** 2)
+    #     diff_markers_squared[2, m, :] = np.sqrt((complete_markers_ref[2, m, :] - position_markers[2, m, :]) ** 2)
+    #     mean_markers += np.mean(diff_markers_squared[0, m, :]) + np.mean(diff_markers_squared[1, m, :]) + np.mean(diff_markers_squared[2, m, :])
 
     # --- Solve the program --- #
     sol = ocp.solve(
@@ -542,11 +553,11 @@ if __name__ == "__main__":
     )
 
     # --- Get Results --- #
-    # states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    # q = states_sol["q"]
-    # q_dot = states_sol["q_dot"]
-    # tau = controls_sol["tau"]
-    # activation = controls_sol["muscles"]
+    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
+    q = states_sol["q"]
+    q_dot = states_sol["qdot"]
+    tau = controls_sol["tau"]
+    activation = controls_sol["muscles"]
 
     # --- Show results --- #
     ShowResult(ocp, sol).animate()
