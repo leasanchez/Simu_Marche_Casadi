@@ -22,8 +22,8 @@ from bioptim import (
     Node,
     ConstraintList,
     ConstraintFcn,
-    StateTransitionList,
-    StateTransitionFcn,
+    PhaseTransitionList,
+    PhaseTransitionFcn,
     Solver,
 )
 
@@ -331,9 +331,9 @@ def prepare_ocp(
     )
 
     # State Transitions
-    state_transitions = StateTransitionList()
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=0)
-    state_transitions.add(StateTransitionFcn.IMPACT, phase_pre_idx=1)
+    phase_transitions = PhaseTransitionList()
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=0)
+    phase_transitions.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=1)
 
     # Path constraint
     x_bounds = BoundsList()
@@ -390,7 +390,7 @@ def prepare_ocp(
         u_bounds,
         objective_functions,
         constraints,
-        state_transitions=state_transitions,
+        phase_transitions=phase_transitions,
         nb_threads=nb_threads,
     )
 
@@ -451,100 +451,100 @@ if __name__ == "__main__":
         excitations_ref=excitations_ref,
         nb_threads=4,
     )
-
-    # --- Get Previous Results --- #
-    path_previous = '/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/article/cycle.bo'
-    ocp_previous, sol_previous = ocp.load(path_previous)
-    states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["q_dot"]
-    tau = controls_sol["tau"]
-    activation = controls_sol["muscles"]
-
-    # --- Plot Results --- #
-    Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
-
-    # plot states and controls
-    # Affichage_resultat.plot_q(q_ref=q_ref, R2=False, RMSE=True)
-    # # Affichage_resultat.plot_tau()
-    # # Affichage_resultat.plot_qdot()
-    # Affichage_resultat.plot_activation(excitations_ref=excitations_ref)
-
-    # plot Forces
-    Affichage_resultat.plot_individual_forces()
-    Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
-
-    # plot CoP and moments
-    Affichage_resultat.plot_CoP(CoP_ref=CoP)
-    Affichage_resultat.plot_sum_moments(M_ref=M_ref)
-
-    # plot foot and CoP
-    CoP_simu = Affichage_resultat.compute_CoP()
-    grf_simu = Affichage_resultat.compute_sum_forces_simu()
-
-    symbolic_q = MX.sym("q", nb_q, 1)
-    markers_func = []
-    for m in range(nb_markers):
-        markers_func.append(Function(
-            "ForwardKin",
-            [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
-            ["q"],
-            ["markers"],
-        ).expand())
-    position_markers = np.zeros((3, nb_markers, q.shape[1]))
-    for n in range(q.shape[1]):
-        Q = q[:, n]
-        for m in range(nb_markers):
-            position_markers[:, m, n:n+1]=markers_func[m](Q)
-
-    complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
-    n_shoot=0
-    for p in range(len(biorbd_model)):
-        complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
-        n_shoot+=number_shooting_points[p]
-
-    # plot markers differences
-    RMSE_markers = np.sqrt((complete_markers_ref - position_markers)**2)
-
-    markers_name = ["LIAS","LIPS","RIPS","RIAS","RFTC", "R Thigh Top", "R Thigh down", "R Thigh Front", "R Thigh Back",
-                    "RFLE", "RFME", "RFAX", "RTTC", "R Shank Top", "R Shank Down", "R Shank Front", "R Shank Tibia",
-                    "RFAL", "RFAM", "FCC", "FM1", "FMP1", "FM2", "FMP2", "FM5", "FMP5"]
-    shooting_nodes = range(position_markers.shape[2])
-
-    fig, ax = plt.subplots()
-    im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[0, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    plt.title("x differences markers")
-
-    fig, ax = plt.subplots()
-    im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[1, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    plt.title("y differences markers")
-
-    fig, ax = plt.subplots()
-    im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[2, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    plt.title("z differences markers")
-
-    # plot movements
-    Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, :markers_ref[0].shape[2]],
-                                         CoP=CoP_simu[:, :markers_ref[0].shape[2]],
-                                         grf=grf_simu[:, :markers_ref[0].shape[2]],
-                                         markers_ref=markers_ref[0],
-                                         CoP_ref=CoP[0],
-                                         grf_ref=grf_ref[0])
-    Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-                                         CoP=CoP_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-                                         grf=grf_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-                                         markers_ref=markers_ref[1],
-                                         CoP_ref=CoP[1],
-                                         grf_ref=grf_ref[1])
-    Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-                                         CoP=CoP_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-                                         grf=grf_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-                                         markers_ref=markers_ref[2],
-                                         CoP_ref=CoP[2],
-                                         grf_ref=grf_ref[2])
-
-    # --- Show results --- #
-    ShowResult(ocp_previous, sol_previous).animate()
+    #
+    # # --- Get Previous Results --- #
+    # path_previous = '/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/article/cycle.bo'
+    # ocp_previous, sol_previous = ocp.load(path_previous)
+    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
+    # q = states_sol["q"]
+    # q_dot = states_sol["q_dot"]
+    # tau = controls_sol["tau"]
+    # activation = controls_sol["muscles"]
+    #
+    # # --- Plot Results --- #
+    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
+    #
+    # # plot states and controls
+    # # Affichage_resultat.plot_q(q_ref=q_ref, R2=False, RMSE=True)
+    # # # Affichage_resultat.plot_tau()
+    # # # Affichage_resultat.plot_qdot()
+    # # Affichage_resultat.plot_activation(excitations_ref=excitations_ref)
+    #
+    # # plot Forces
+    # Affichage_resultat.plot_individual_forces()
+    # Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
+    #
+    # # plot CoP and moments
+    # Affichage_resultat.plot_CoP(CoP_ref=CoP)
+    # Affichage_resultat.plot_sum_moments(M_ref=M_ref)
+    #
+    # # plot foot and CoP
+    # CoP_simu = Affichage_resultat.compute_CoP()
+    # grf_simu = Affichage_resultat.compute_sum_forces_simu()
+    #
+    # symbolic_q = MX.sym("q", nb_q, 1)
+    # markers_func = []
+    # for m in range(nb_markers):
+    #     markers_func.append(Function(
+    #         "ForwardKin",
+    #         [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
+    #         ["q"],
+    #         ["markers"],
+    #     ).expand())
+    # position_markers = np.zeros((3, nb_markers, q.shape[1]))
+    # for n in range(q.shape[1]):
+    #     Q = q[:, n]
+    #     for m in range(nb_markers):
+    #         position_markers[:, m, n:n+1]=markers_func[m](Q)
+    #
+    # complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
+    # n_shoot=0
+    # for p in range(len(biorbd_model)):
+    #     complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
+    #     n_shoot+=number_shooting_points[p]
+    #
+    # # plot markers differences
+    # RMSE_markers = np.sqrt((complete_markers_ref - position_markers)**2)
+    #
+    # markers_name = ["LIAS","LIPS","RIPS","RIAS","RFTC", "R Thigh Top", "R Thigh down", "R Thigh Front", "R Thigh Back",
+    #                 "RFLE", "RFME", "RFAX", "RTTC", "R Shank Top", "R Shank Down", "R Shank Front", "R Shank Tibia",
+    #                 "RFAL", "RFAM", "FCC", "FM1", "FMP1", "FM2", "FMP2", "FM5", "FMP5"]
+    # shooting_nodes = range(position_markers.shape[2])
+    #
+    # fig, ax = plt.subplots()
+    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[0, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
+    # plt.title("x differences markers")
+    #
+    # fig, ax = plt.subplots()
+    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[1, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
+    # plt.title("y differences markers")
+    #
+    # fig, ax = plt.subplots()
+    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[2, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
+    # plt.title("z differences markers")
+    #
+    # # plot movements
+    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, :markers_ref[0].shape[2]],
+    #                                      CoP=CoP_simu[:, :markers_ref[0].shape[2]],
+    #                                      grf=grf_simu[:, :markers_ref[0].shape[2]],
+    #                                      markers_ref=markers_ref[0],
+    #                                      CoP_ref=CoP[0],
+    #                                      grf_ref=grf_ref[0])
+    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
+    #                                      CoP=CoP_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
+    #                                      grf=grf_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
+    #                                      markers_ref=markers_ref[1],
+    #                                      CoP_ref=CoP[1],
+    #                                      grf_ref=grf_ref[1])
+    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
+    #                                      CoP=CoP_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
+    #                                      grf=grf_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
+    #                                      markers_ref=markers_ref[2],
+    #                                      CoP_ref=CoP[2],
+    #                                      grf_ref=grf_ref[2])
+    #
+    # # --- Show results --- #
+    # ShowResult(ocp_previous, sol_previous).animate()
 
     # --- Solve the program --- #
     sol = ocp.solve(
