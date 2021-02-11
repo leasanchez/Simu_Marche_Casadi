@@ -30,7 +30,7 @@ from bioptim import (
 def custom_CoM_low(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
-    com = compute_CoM(pn.x[31][:nq])
+    com = compute_CoM(pn.x[15][:nq])
     return com[2] + 0.25
 
 def custom_CoM_variation(pn: PenaltyNodes) -> MX:
@@ -69,7 +69,7 @@ nb_q = model.nbQ()
 nb_qdot = model.nbQdot()
 nb_tau = model.nbGeneralizedTorque()
 nb_mus = model.nbMuscleTotal()
-nb_shooting = 62
+nb_shooting = 30
 final_time=1.0
 min_bound, max_bound = 0, np.inf
 torque_min, torque_max, torque_init = -1000, 1000, 0
@@ -131,11 +131,12 @@ objective_functions.add(custom_CoM_low,
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
                         node=Node.ALL,
+                        index=(0,1,2,5,8,9,11,14,15,17),
                         weight=0.001)
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
                         node=Node.ALL,
-                        index=(3,4,5),
+                        index=(3,4,6,7,10,12,13,16),
                         weight=0.01)
 
 # --- Dynamics --- #
@@ -154,15 +155,15 @@ for c in contact_z_axes:
         contact_force_idx=c,
     )
 
-contact_tangential_component_idx = (0,1,4)
-for c in contact_tangential_component_idx:
-    constraints.add( # non slipping heel
-        ConstraintFcn.NON_SLIPPING,
-        node=Node.ALL,
-        normal_component_idx=(2,3,5),
-        tangential_component_idx=c,
-        static_friction_coefficient=0.5,
-    )
+# contact_tangential_component_idx = (0,1,4)
+# for c in contact_tangential_component_idx:
+#     constraints.add( # non slipping heel
+#         ConstraintFcn.NON_SLIPPING,
+#         node=Node.ALL,
+#         normal_component_idx=(2,3,5),
+#         tangential_component_idx=c,
+#         static_friction_coefficient=0.5,
+#     )
 
 
 # --- Path constraints --- #
@@ -170,8 +171,8 @@ x_bounds = BoundsList()
 x_bounds.add(bounds=QAndQDotBounds(model))
 x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
-x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
-x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
+# x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
+# x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
 
 x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
@@ -189,28 +190,28 @@ u_bounds.add(
 )
 
 # --- Initial guess --- #
-# # Initial guess - simu
-# x_init = InitialGuessList()
-# init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
-# init_x[:nb_q, :] = q_init
-# init_x[nb_q:, :] = qdot_init
-# x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-#
-# u_init = InitialGuessList()
-# # u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
-# u_init.add([torque_init] * nb_tau)
-
-# Load previous solution
-save_path = './RES/torque_driven/'
+# Initial guess - simu
 x_init = InitialGuessList()
 init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
-init_x[:nb_q, :] = np.load(save_path + "q.npy")
-init_x[nb_q:, :] = np.load(save_path + "qdot.npy")
+init_x[:nb_q, :] = q_init
+init_x[nb_q:, :] = qdot_init
 x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
 u_init = InitialGuessList()
-init_u = np.load(save_path + "tau.npy")[:, :-1]
-u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
+# u_init.add([torque_init]*nb_tau + [activation_init]*nb_mus)
+u_init.add([torque_init] * nb_tau)
+
+# # Load previous solution
+# save_path = './RES/torque_driven/'
+# x_init = InitialGuessList()
+# init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
+# init_x[:nb_q, :] = np.load(save_path + "q.npy")
+# init_x[nb_q:, :] = np.load(save_path + "qdot.npy")
+# x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+#
+# u_init = InitialGuessList()
+# init_u = np.load(save_path + "tau.npy")[:, :-1]
+# u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
 
 # ------------- #
 
@@ -280,7 +281,7 @@ plt.figure()
 plt.plot(CoM[2, :])
 
 # --- Show results --- #
-ShowResult(ocp, sol).animate()
+ShowResult(ocp, sol).animate(show_muscles=False)
 ShowResult(ocp, sol).graphs()
 
 
