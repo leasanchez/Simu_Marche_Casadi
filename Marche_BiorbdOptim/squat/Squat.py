@@ -130,12 +130,13 @@ objective_functions.add(custom_CoM_low,
                         weight=1000)
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
+                        node=Node.ALL,
                         weight=0.001)
-# objective_functions.add(custom_CoM_variation,
-#                         custom_type=ObjectiveFcn.Lagrange,
-#                         node=Node.ALL,
-#                         quadratic=True,
-#                         weight=10)
+objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                        quadratic=True,
+                        node=Node.ALL,
+                        index=(3,4,5),
+                        weight=0.01)
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
@@ -153,14 +154,24 @@ for c in contact_z_axes:
         contact_force_idx=c,
     )
 
+contact_tangential_component_idx = (0,1,4)
+for c in contact_tangential_component_idx:
+    constraints.add( # non slipping heel
+        ConstraintFcn.NON_SLIPPING,
+        node=Node.ALL,
+        normal_component_idx=(2,3,5),
+        tangential_component_idx=c,
+        static_friction_coefficient=0.5,
+    )
+
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
 x_bounds.add(bounds=QAndQDotBounds(model))
 x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
-# x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
-# x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
+x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
+x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
 
 x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
@@ -217,23 +228,23 @@ ocp = OptimalControlProgram(
     n_threads=4,
 )
 
-# --- Get Previous Results --- #
-path_previous = './RES/torque_driven/cycle.bo'
-ocp_previous, sol_previous = ocp.load(path_previous)
-states_previous, controls_previous = Data.get_data(ocp_previous, sol_previous["x"])
-q_previous = states_previous["q"]
-
-# --- Show results --- #
-ShowResult(ocp_previous, sol_previous).animate(show_muscles=False)
-ShowResult(ocp_previous, sol_previous).animate(show_muscles=False, show_segments_center_of_mass=False, show_local_ref_frame=False)
-ShowResult(ocp_previous, sol_previous).graphs()
-
-# --- Plot CoM --- #
-CoM = np.zeros((3, q_previous.shape[1]))
-for n in range(nb_shooting + 1):
-    CoM[:, n:n+1] = compute_CoM(q_previous[:, n])
-plt.figure()
-plt.plot(CoM[2, :])
+# # --- Get Previous Results --- #
+# path_previous = './RES/torque_driven/cycle.bo'
+# ocp_previous, sol_previous = ocp.load(path_previous)
+# states_previous, controls_previous = Data.get_data(ocp_previous, sol_previous["x"])
+# q_previous = states_previous["q"]
+#
+# # --- Show results --- #
+# ShowResult(ocp_previous, sol_previous).animate(show_muscles=False)
+# ShowResult(ocp_previous, sol_previous).animate(show_muscles=False, show_segments_center_of_mass=False, show_local_ref_frame=False)
+# ShowResult(ocp_previous, sol_previous).graphs()
+#
+# # --- Plot CoM --- #
+# CoM = np.zeros((3, q_previous.shape[1]))
+# for n in range(nb_shooting + 1):
+#     CoM[:, n:n+1] = compute_CoM(q_previous[:, n])
+# plt.figure()
+# plt.plot(CoM[2, :])
 
 # --- Solve the program --- #
 sol = ocp.solve(
