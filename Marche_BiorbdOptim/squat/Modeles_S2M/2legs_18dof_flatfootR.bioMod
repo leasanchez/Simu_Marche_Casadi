@@ -183,7 +183,7 @@ segment femur_r
 	rotations	xyz
         rangesQ    -pi/2  pi/2
                    -pi/2  pi/2
-                   -pi/2  pi/2
+                   -pi/2  pi/2+pi/3
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -246,7 +246,7 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-        rangesQ    -pi/2  pi/6
+        rangesQ    -pi/2-pi/6  pi/6
         rangesQdot -7     7
 	mass	3.0385
 	inertia
@@ -488,7 +488,7 @@ segment femur_l
 	rotations	xyz
         rangesQ    -pi/2  pi/2
                    -pi/2  pi/2
-                   -pi/2  pi/2
+                   -pi/2  pi/2+pi/3
         rangesQdot -4    4.5 
                    -4    4.5  
                    -4    4.5
@@ -552,7 +552,7 @@ segment tibia_l
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-	rangesQ    -pi/2 pi/6
+	rangesQ    -pi/2-pi/6  pi/6
 	rangesQdot -7 7
 	mass	3.0385
 	inertia
