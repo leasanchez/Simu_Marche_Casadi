@@ -31,7 +31,7 @@ def custom_CoM_low(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[15][:nq])
-    return com[2] + 0.25
+    return com[2] + 0.30
 
 def custom_CoM_variation(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
@@ -127,7 +127,7 @@ objective_functions.add(custom_CoM_low,
                         custom_type=ObjectiveFcn.Mayer,
                         node=Node.ALL,
                         quadratic=True,
-                        weight=1000)
+                        weight=10000)
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
                         node=Node.ALL,
