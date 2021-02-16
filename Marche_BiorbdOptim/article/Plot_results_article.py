@@ -75,7 +75,7 @@ activations = np.load("activation.npy")
 
 # --- Plot muscles activity --- #
 
-list_idx = (1,9,53,60,80,90)
+list_idx = (1,9,53,70,80,90)
 for i in list_idx:
     plot_muscles_2(activations[:, i])  # Test 2
 plt.show()
