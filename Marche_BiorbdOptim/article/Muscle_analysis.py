@@ -254,24 +254,74 @@ muscle_name = get_muscle_name(model)
 # ax_tau_talus_Z.set_title("Torque flexion/extension cheville")
 # ax_tau_talus_Z.legend(leg)
 
+# --- find gastroc saturation --- #
+idx = np.where(activations[13, :]>0.99)
+start = idx[0][0]
+stop = idx[0][-1]
+
 # --- plot muscles activation --- #
 fig, ax = plt.subplots(4, 1)
 ax = ax.flatten()
 ax[0].plot(activations[13, :], color="r")
 ax[0].set_title("Activation Gastocnemien Medial")
 ax[0].set_xlim([0.0, activations.shape[1]])
+ax[0].set_ylim([0.0, 1.0])
+ax[0].plot([start, start], [0, 1], color="k")
+ax[0].plot([stop, stop], [0, 1], color="k")
 
 ax[1].plot(activations[14, :], color="r")
 ax[1].set_title("Activation Gastocnemien Lateral")
 ax[1].set_xlim([0.0, activations.shape[1]])
+ax[1].set_ylim([0.0, 1.0])
+ax[1].plot([start, start], [0, 1], color="k")
+ax[1].plot([stop, stop], [0, 1], color="k")
 
 ax[2].plot(activations[15, :], color="r")
 ax[2].set_title("Activation Soleaire")
 ax[2].set_xlim([0.0, activations.shape[1]])
+ax[2].set_ylim([0.0, 1.0])
+ax[2].plot([start, start], [0, 1], color="k")
+ax[2].plot([stop, stop], [0, 1], color="k")
 
 ax[3].plot(activations[16, :], color="r")
 ax[3].set_title("Activation Tibial Anterieur")
 ax[3].set_xlim([0.0, activations.shape[1]])
+ax[3].set_ylim([0.0, 1.0])
+ax[3].plot([start, start], [0, 1], color="k")
+ax[3].plot([stop, stop], [0, 1], color="k")
+
+
+# --- plot muscles force --- #
+fig, ax = plt.subplots(4, 1)
+ax = ax.flatten()
+ax[0].plot(muscularForce[13, :], color="r")
+ax[0].set_title("Force Gastocnemien Medial")
+ax[0].set_xlim([0.0, muscularForce.shape[1]])
+ax[0].set_ylim([0.0, int(fiso[13])])
+ax[0].plot([start, start], [0, int(fiso[13])], color="k")
+ax[0].plot([stop, stop], [0, int(fiso[13])], color="k")
+
+ax[1].plot(muscularForce[14, :], color="r")
+ax[1].set_title("Force Gastocnemien Lateral")
+ax[1].set_xlim([0.0, muscularForce.shape[1]])
+ax[1].set_ylim([0.0, int(fiso[14])])
+ax[1].plot([start, start], [0, int(fiso[14])], color="k")
+ax[1].plot([stop, stop], [0, int(fiso[14])], color="k")
+
+ax[2].plot(muscularForce[15, :], color="r")
+ax[2].set_title("Force Soleaire")
+ax[2].set_xlim([0.0, muscularForce.shape[1]])
+ax[2].set_ylim([0.0, int(fiso[15])])
+ax[2].plot([start, start], [0, int(fiso[15])], color="k")
+ax[2].plot([stop, stop], [0, int(fiso[15])], color="k")
+
+ax[3].plot(muscularForce[16, :], color="r")
+ax[3].set_title("Force Tibial Anterieur")
+ax[3].set_xlim([0.0, muscularForce.shape[1]])
+ax[3].set_ylim([0.0, int(fiso[16])])
+ax[3].plot([start, start], [0, int(fiso[16])], color="k")
+ax[3].plot([stop, stop], [0, int(fiso[16])], color="k")
+
 
 # --- plot torque --- #
 fig, ax = plt.subplots(3, 1)
@@ -288,6 +338,8 @@ for j in range(13, nb_mus):
     leg.append(muscle_name[j])
 ax[0].set_title("Torque flexion genou")
 ax[0].set_xlim([0.0, activations.shape[1]])
+ax[0].plot([start, start], [min(muscularTorque[9, :] + tau_residual[9, :]), max(muscularTorque[9, :] + tau_residual[9, :])], color="k")
+ax[0].plot([stop, stop], [min(muscularTorque[9, :] + tau_residual[9, :]), max(muscularTorque[9, :] + tau_residual[9, :])], color="k")
 
 ax[1].plot(muscularTorque[10, :], color="r", linestyle="--")
 ax[1].plot(tau_residual[10, :], color="b", linestyle="--")
@@ -296,6 +348,8 @@ for j in range(13, nb_mus):
     ax[1].plot(muscularIndividualTorque[j, 10, :])
 ax[1].set_title("Torque inversion/eversion cheville")
 ax[1].set_xlim([0.0, activations.shape[1]])
+ax[1].plot([start, start], [min(tau_residual[10, :]), max(muscularTorque[10, :])], color="k")
+ax[1].plot([stop, stop], [min(tau_residual[10, :]), max(muscularTorque[10, :])], color="k")
 
 ax[2].plot(muscularTorque[11, :], color="r", linestyle="--")
 ax[2].plot(tau_residual[11, :], color="b", linestyle="--")
@@ -303,6 +357,50 @@ ax[2].plot(muscularTorque[11, :] + tau_residual[11, :], color="k", linestyle="--
 for j in range(13, nb_mus):
     ax[2].plot(muscularIndividualTorque[j, 11, :])
 ax[2].set_title("Torque flexion/extension cheville")
+ax[2].set_xlim([0.0, activations.shape[1]])
+ax[2].plot([start, start], [min(muscularTorque[11, :] + tau_residual[11, :]), max(muscularIndividualTorque[j, 11, :])], color="k")
+ax[2].plot([stop, stop], [min(muscularTorque[11, :] + tau_residual[11, :]), max(muscularIndividualTorque[j, 11, :])], color="k")
+plt.legend(leg)
+
+# --- plot power --- #
+fig, ax = plt.subplots(3, 1)
+ax = ax.flatten()
+leg = []
+for j in range(13, nb_mus):
+    ax[0].plot(muscularIndividualPower[j, 9, :])
+    leg.append(muscle_name[j])
+ax[0].set_title("Power flexion genou")
+ax[0].set_xlim([0.0, activations.shape[1]])
+
+for j in range(13, nb_mus):
+    ax[1].plot(muscularIndividualPower[j, 10, :])
+ax[1].set_title("Power inversion/eversion cheville")
+ax[1].set_xlim([0.0, activations.shape[1]])
+
+for j in range(13, nb_mus):
+    ax[2].plot(muscularIndividualPower[j, 11, :])
+ax[2].set_title("Power flexion/extension cheville")
+ax[2].set_xlim([0.0, activations.shape[1]])
+plt.legend(leg)
+
+# --- plot jacobian --- #
+fig, ax = plt.subplots(3, 1)
+ax = ax.flatten()
+leg = []
+for j in range(13, nb_mus):
+    ax[0].plot(jacobian[j, 9, :])
+    leg.append(muscle_name[j])
+ax[0].set_title("Jacobian flexion genou")
+ax[0].set_xlim([0.0, activations.shape[1]])
+
+for j in range(13, nb_mus):
+    ax[1].plot(jacobian[j, 10, :])
+ax[1].set_title("Jacobian inversion/eversion cheville")
+ax[1].set_xlim([0.0, activations.shape[1]])
+
+for j in range(13, nb_mus):
+    ax[2].plot(jacobian[j, 11, :])
+ax[2].set_title("Jacobian flexion/extension cheville")
 ax[2].set_xlim([0.0, activations.shape[1]])
 plt.legend(leg)
 plt.show()
