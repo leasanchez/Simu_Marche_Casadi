@@ -78,7 +78,76 @@ qdot = np.load("qdot.npy")
 qddot = np.diff(qdot)
 tau_residual = np.load("tau.npy")
 activations = np.load("activation.npy")
+activations_hip = np.load("muscle_hip/hip2/activation_hip.npy")
 nb_shooting = q.shape[1] - 1
+
+# --- find gastroc saturation --- #
+phase_shooting = [4, 38, 53, 90]
+
+# --- plot muscles activation --- #
+fig, ax = plt.subplots(4, 1, sharex=True)
+ax = ax.flatten()
+ax[0].plot(activations[13, :], color="r")
+ax[0].plot(activations_hip[15, :], color="b")
+ax[0].set_title("Activation Gastocnemien Medial")
+ax[0].set_xlim([0.0, activations.shape[1]])
+ax[0].set_ylim([0.0, 1.0])
+for p in phase_shooting:
+    ax[0].plot([p, p], [0, 1], "k--")
+
+ax[1].plot(activations[14, :], color="r")
+ax[1].plot(activations_hip[16, :], color="b")
+ax[1].set_title("Activation Gastocnemien Lateral")
+ax[1].set_xlim([0.0, activations.shape[1]])
+ax[1].set_ylim([0.0, 1.0])
+for p in phase_shooting:
+    ax[1].plot([p, p], [0, 1], "k--")
+
+ax[2].plot(activations[15, :], color="r")
+ax[2].plot(activations_hip[17, :], color="b")
+ax[2].set_title("Activation Soleaire")
+ax[2].set_xlim([0.0, activations.shape[1]])
+ax[2].set_ylim([0.0, 1.0])
+for p in phase_shooting:
+    ax[2].plot([p, p], [0, 1], "k--")
+
+ax[3].plot(activations[16, :], color="r")
+ax[3].plot(activations_hip[18, :], color="b")
+ax[3].set_title("Activation Tibial Anterieur")
+ax[3].set_xlim([0.0, activations.shape[1]])
+ax[3].set_ylim([0.0, 1.0])
+ax[3].set_xlabel("noeuds de shooting")
+for p in phase_shooting:
+    ax[3].plot([p, p], [0, 1], "k--")
+
+# --- plot muscles activation --- #
+fig, ax = plt.subplots(3, 1, sharex=True)
+ax = ax.flatten()
+# ax[0].plot(activations[13, :], color="r")
+ax[0].plot(activations_hip[6, :], color="b")
+ax[0].set_title("Activation Iliacus")
+ax[0].set_xlim([0.0, activations.shape[1]])
+ax[0].set_ylim([0.0, 1.0])
+for p in phase_shooting:
+    ax[0].plot([p, p], [0, 1], "k--")
+
+# ax[1].plot(activations[14, :], color="r")
+ax[1].plot(activations_hip[7, :], color="b")
+ax[1].set_title("Activation Psoas")
+ax[1].set_xlim([0.0, activations.shape[1]])
+ax[1].set_ylim([0.0, 1.0])
+for p in phase_shooting:
+    ax[1].plot([p, p], [0, 1], "k--")
+
+ax[2].plot(activations[9, :], color="r")
+ax[2].plot(activations_hip[11, :], color="b")
+ax[2].set_title("Activation Rectus Femoris")
+ax[2].set_xlim([0.0, activations.shape[1]])
+ax[2].set_ylim([0.0, 1.0])
+ax[2].set_xlabel("noeuds de shooting")
+for p in phase_shooting:
+    ax[2].plot([p, p], [0, 1], "k--")
+
 
 # --- Casadi function --- #
 get_muscle_torque = muscular_torque(model)
@@ -263,6 +332,7 @@ stop = idx[0][-1]
 fig, ax = plt.subplots(4, 1)
 ax = ax.flatten()
 ax[0].plot(activations[13, :], color="r")
+ax[0].plot(activations[15, :], color="b")
 ax[0].set_title("Activation Gastocnemien Medial")
 ax[0].set_xlim([0.0, activations.shape[1]])
 ax[0].set_ylim([0.0, 1.0])
@@ -270,6 +340,7 @@ ax[0].plot([start, start], [0, 1], color="k")
 ax[0].plot([stop, stop], [0, 1], color="k")
 
 ax[1].plot(activations[14, :], color="r")
+ax[1].plot(activations[16, :], color="b")
 ax[1].set_title("Activation Gastocnemien Lateral")
 ax[1].set_xlim([0.0, activations.shape[1]])
 ax[1].set_ylim([0.0, 1.0])
@@ -277,6 +348,7 @@ ax[1].plot([start, start], [0, 1], color="k")
 ax[1].plot([stop, stop], [0, 1], color="k")
 
 ax[2].plot(activations[15, :], color="r")
+ax[2].plot(activations[17, :], color="b")
 ax[2].set_title("Activation Soleaire")
 ax[2].set_xlim([0.0, activations.shape[1]])
 ax[2].set_ylim([0.0, 1.0])
@@ -284,6 +356,7 @@ ax[2].plot([start, start], [0, 1], color="k")
 ax[2].plot([stop, stop], [0, 1], color="k")
 
 ax[3].plot(activations[16, :], color="r")
+ax[3].plot(activations[18, :], color="b")
 ax[3].set_title("Activation Tibial Anterieur")
 ax[3].set_xlim([0.0, activations.shape[1]])
 ax[3].set_ylim([0.0, 1.0])
