@@ -12,33 +12,37 @@ gravity 0 0 -9.8
 // segment masses adjusted based on the regression table proposed by Dumas et al. 2018
 // the model has been scaled using Opensim 3.3 based on demographic parameters of a 35-old man, 166cm, 66kg
 // root is defined with X along walkway, Z vertical, Y perpendicular to Z and X
+//
+// Adjusted muscles value based on OpenSim model "Walk armless" by Arnold, Hamner, Ward, Lieber and Delp
 
 // for each segment :
-// flexion/extension -> z axis 
-// abduction/adduction -> x axis 
-// rotation interne/externe -> y axis 
+// flexion/extension -> z axis
+// abduction/adduction -> x axis
+// rotation interne/externe -> y axis
 
 // --------------------------------------------------------------------------------------------------------
 // Variables
 // --------------------------------------------------------------------------------------------------------
 variables
-	$fiso_01 573 //382
-	$fiso_02 819 //546
-	$fiso_03 552 //368
-	$fiso_04 1119 //546
-	$fiso_05 873 //382
-	$fiso_06 1000 //435
-	$fiso_07 1288 //1030
-	$fiso_08 410  //328
-	$fiso_09 2700 //717
-	$fiso_10 1169 //779
-	$fiso_11 1294 //1294
-	$fiso_12 1365 //1365
-	$fiso_13 1871 //1871
-	$fiso_14 1600 //1113
-	$fiso_15 700 //488
-	$fiso_16 4000 //2839
-	$fiso_17 3000 //603
+	$fiso_01 573 //1047 //glut_max_1
+	$fiso_02 819 //1496 //glut_max_2
+	$fiso_03 552 //1008 //glut_max_3
+	$fiso_04 1119 //1163 //glut_med_1
+	$fiso_05 873 //814 //glut_med_2
+	$fiso_06 1000 //927 //glut_med_3
+	$fiso_07 1288 //2342 // semimem
+	$fiso_08 410 //629 //semiten
+	$fiso_09 2700 //1397 // bi fem lh
+	$fiso_10 1169 //1397 //rectus fem
+	$fiso_11 1294 //2924 //vaste med
+	$fiso_12 1365 //1806 //vaste int
+	$fiso_13 1871 //5479 //vaste lat
+	$fiso_14 1600 //3315 //gas med
+	$fiso_15 700 //1676 //gas lat
+	$fiso_16 4000 //6593 //soleus
+	$fiso_17 3000 //1306 //tib ant
+	$fiso_18 2000 //1086 //iliacus
+	$fiso_19 3000 //1518 //psoas
 endvariables
 
 // --------------------------------------------------------------------------------------------------------
@@ -230,10 +234,10 @@ segment patella_r
 	parent tibia_r
     RTinMatrix	1
 	RT
-		0.99916	0.041062	0	0.0496
-		-0.041062	0.99916	0	-0.022712
-		0	0	1	0.0024
-		0	0	0	1
+		 0.99916	            0.040979194721223106	0	 0.0496
+		-0.040979194721223106	0.99916	                0	-0.022712
+		 0	                    0	                    1	 0.0024
+		 0	                    0	                    0	 1
 	mass	0.091226
 	inertia
 		2.3335e-06	0	0
@@ -936,4 +940,63 @@ viapoint tib_ant_r
 	muscle		tib_ant_r
 	musclegroup	group16
 	position	0.032739 -0.39317 -0.017613
+endviapoint
+
+
+// --------------------------------------------------------------------------------------------------------
+// Informations about iliacus_r
+// --------------------------------------------------------------------------------------------------------
+// ---- Muscle
+muscle    iliacus_r
+    Type                  hillthelen
+    statetype             degroote
+    musclegroup           group1
+    OriginPosition       -0.075300199999999998  0.0309515            0.100937
+    InsertionPosition    -0.011687599999999999 -0.061024599999999998 0.0187768
+    optimalLength         0.11124308006189799
+    maximalForce          $fiso_18
+    tendonSlackLength     0.100307351406767
+    pennationAngle        0.27991397000000001
+endmuscle
+// ---- Via points
+viapoint    iliacus_r-P2
+    parent    pelvis
+    muscle    iliacus_r
+    musclegroup    group1
+    position    -0.016802500000000001 -0.055792899999999999 0.090520299999999998
+endviapoint
+viapoint    iliacus_r-P3
+    parent    femur_r
+    muscle         iliacus_r
+    musclegroup    group1
+    position    -0.0022033999999999999 -0.054127000000000002 0.0133162
+endviapoint
+
+
+// --------------------------------------------------------------------------------------------------------
+// Informations about psoas_r
+// --------------------------------------------------------------------------------------------------------
+muscle    psoas_r
+    Type    hillthelen
+    statetype    degroote
+    musclegroup    group1
+    OriginPosition    -0.075424699999999997 0.062103400000000003 0.046697000000000002
+    InsertionPosition    -0.022512999999999998 -0.050199199999999999 0.0084303999999999994
+    optimalLength    0.12095597858541
+    maximalForce    $fiso_19
+    tendonSlackLength    0.102996929320297
+    pennationAngle    0.21552513000000001
+endmuscle
+// ---- Via points
+viapoint    psoas_r-P2
+    parent    pelvis
+    muscle    psoas_r
+    musclegroup    group1
+    position    -0.025514999999999999 -0.065509100000000001 0.078546699999999997
+endviapoint
+viapoint    psoas_r-P3
+    parent    femur_r
+    muscle    psoas_r
+    musclegroup    group1
+    position    -0.0126456 -0.044738600000000003 0.0044067999999999998
 endviapoint
