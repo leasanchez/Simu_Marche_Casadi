@@ -9,7 +9,6 @@ import biorbd
 import bioviz
 from matplotlib import pyplot as plt
 import Load_exp_data
-from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
 
 from bioptim import (
     OptimalControlProgram,
@@ -18,11 +17,9 @@ from bioptim import (
     BoundsList,
     QAndQDotBounds,
     InitialGuessList,
-    ShowResult,
     ObjectiveList,
     ObjectiveFcn,
     InterpolationType,
-    Data,
     Node,
     ConstraintList,
     ConstraintFcn,
@@ -30,7 +27,9 @@ from bioptim import (
     PhaseTransitionFcn,
     Solver,
     PenaltyNodes,
+    Shooting,
 )
+
 
 # --- force nul at last point ---
 def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
@@ -485,13 +484,9 @@ if __name__ == "__main__":
         CoP=cop_ref,
         nb_threads=4,
     )
-    path_previous = 'muscle_hip/hip2/gait_muscles_3.bo'
-    ocp_previous, sol_previous = ocp.load(path_previous)
-    states_sol, controls_sol = Data.get_data(ocp, sol_previous["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["qdot"]
-    tau = controls_sol["tau"]
-    activation = controls_sol["muscles"]
+    # path_previous = 'muscle_hip/hip2/gait_muscles_3.bo'
+    # ocp_previous, sol_previous = ocp.load(path_previous)
+    # sol_previous.animate()
 
     # from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
     # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
@@ -504,10 +499,10 @@ if __name__ == "__main__":
     # ShowResult(ocp_previous, sol_previous).graphs()
     # ShowResult(ocp_previous, sol_previous).animate()
 
-
+    solver = Solver.IPOPT
     # --- Solve the program --- #
     sol = ocp.solve(
-        solver=Solver.IPOPT,
+        solver=solver,
         solver_options={
             "ipopt.tol": 1e-3,
             "ipopt.max_iter": 5000,
@@ -518,15 +513,18 @@ if __name__ == "__main__":
         show_online_optim=False,
     )
 
-    # --- Get Results --- #
-    states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-    q = states_sol["q"]
-    q_dot = states_sol["qdot"]
-    tau = controls_sol["tau"]
-    activation = controls_sol["muscles"]
+    sol_ss = sol.integrate(shooting_type=Shooting.SINGLE, merge_phases=False)
+    ss_err = []
+    for p in range(nb_phases):
+        ss_err+=[np.sqrt(np.mean((sol_ss.states[p]["q"][:, 0::ocp.nlp[p].n_integration_steps] - sol.states[p]["q"]) ** 2))]
+
+    print("*********************************************")
+    print(f"Problem solved with {solver.value}")
+    print(f"Solving time : {sol.time_to_optimize}s")
+    print(f"Single shooting error : {np.mean(ss_err)}")
 
     # --- Show results --- #
-    ShowResult(ocp, sol).animate()
-
-    # --- Save results --- #
-    ocp.save(sol, 'gait_muscles_3.bo')
+    sol.animate(show_meshes=True,
+                background_color=(1, 1, 1),
+                show_local_ref_frame=False,)
+    # sol.graphs()
