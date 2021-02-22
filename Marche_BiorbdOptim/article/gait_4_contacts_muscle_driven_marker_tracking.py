@@ -7,6 +7,7 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol, mmax
 import biorbd
 import bioviz
+from time import time
 from matplotlib import pyplot as plt
 import Load_exp_data
 
@@ -484,22 +485,16 @@ if __name__ == "__main__":
         CoP=cop_ref,
         nb_threads=4,
     )
-    # path_previous = 'muscle_hip/hip2/gait_muscles_3.bo'
-    # ocp_previous, sol_previous = ocp.load(path_previous)
+
+    path_previous = 'gait_hip.bo'
+    ocp_previous, sol_previous = ocp.load(path_previous)
+    sol_previous_ss = sol_previous.integrate(shooting_type=Shooting.SINGLE_CONTINUOUS, merge_phases=False)
+    ss_err_trans_previous = np.sqrt(np.mean((sol_previous_ss.states[-1]["q"][:3, -1] - sol_previous.states[-1]["q"][:3, -1]) ** 2))
+    ss_err_rot_previous = np.sqrt(np.mean((sol_previous_ss.states[-1]["q"][3:, -1] - sol_previous.states[-1]["q"][3:, -1]) ** 2))
     # sol_previous.animate()
 
-    # from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
-    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
-    # Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
-    # Affichage_resultat.plot_CoP(CoP_ref=cop_ref)
-    # Affichage_resultat.plot_sum_moments(M_ref=moments_ref)
-    # Affichage_resultat.plot_individual_forces()
-    #
-    # # --- Show results --- #
-    # ShowResult(ocp_previous, sol_previous).graphs()
-    # ShowResult(ocp_previous, sol_previous).animate()
-
     solver = Solver.IPOPT
+    tic = time()
     # --- Solve the program --- #
     sol = ocp.solve(
         solver=solver,
@@ -512,19 +507,23 @@ if __name__ == "__main__":
         },
         show_online_optim=False,
     )
+    toc = time() - tic
+    sol_ss = sol.integrate(shooting_type=Shooting.SINGLE_CONTINUOUS, merge_phases=False)
 
-    sol_ss = sol.integrate(shooting_type=Shooting.SINGLE, merge_phases=False)
-    ss_err = []
-    for p in range(nb_phases):
-        ss_err+=[np.sqrt(np.mean((sol_ss.states[p]["q"][:, 0::ocp.nlp[p].n_integration_steps] - sol.states[p]["q"]) ** 2))]
+    ss_err_trans = np.sqrt(np.mean((sol_ss.states[-1]["q"][:3, -1] - sol.states[-1]["q"][:3, -1]) ** 2))
+    ss_err_rot = np.sqrt(np.mean((sol_ss.states[-1]["q"][3:, -1] - sol.states[-1]["q"][3:, -1]) ** 2))
 
     print("*********************************************")
     print(f"Problem solved with {solver.value}")
-    print(f"Solving time : {sol.time_to_optimize}s")
-    print(f"Single shooting error : {np.mean(ss_err)}")
+    print(f"Solving time : {toc} s")
+    print(f"Single shooting error for translation : {ss_err_trans} m")
+    print(f"Single shooting error for rotation : {ss_err_rot * 180/np.pi} degrees")
 
     # --- Show results --- #
     sol.animate(show_meshes=True,
                 background_color=(1, 1, 1),
                 show_local_ref_frame=False,)
     # sol.graphs()
+
+    # --- Save results --- #
+    ocp.save(sol, "gait_hip.bo")
