@@ -2,23 +2,20 @@ import numpy as np
 from casadi import dot, Function, vertcat, MX, mtimes, nlpsol, mmax
 import biorbd
 import bioviz
+from time import time
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from Plot_results import Affichage
 
 from bioptim import (
     OptimalControlProgram,
     DynamicsList,
     DynamicsFcn,
     BoundsList,
-    Bounds,
     QAndQDotBounds,
     InitialGuessList,
-    InitialGuess,
-    ShowResult,
     ObjectiveList,
     ObjectiveFcn,
     InterpolationType,
-    Data,
     Node,
     ConstraintList,
     ConstraintFcn,
@@ -30,14 +27,9 @@ from bioptim import (
 def custom_CoM_low(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
-    com = compute_CoM(pn.x[15][:nq])
-    return com[2] + 0.35
-
-def custom_CoM_high(pn: PenaltyNodes) -> MX:
-    nq = pn.nlp.shape["q"]
-    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[0][:nq])
     return com[2]
+
 
 # OPTIMAL CONTROL PROBLEM
 model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
@@ -92,20 +84,40 @@ CoM_low = compute_CoM(np.array(position_low))
 
 # --- Objective function --- #
 objective_functions = ObjectiveList()
-objective_functions.add(custom_CoM_low,
-                        custom_type=ObjectiveFcn.Mayer,
-                        node=Node.ALL,
-                        quadratic=True,
-                        weight=1000)
+# objective_functions.add(custom_CoM_low,
+#                         custom_type=ObjectiveFcn.Mayer,
+#                         node=Node.ALL,
+#                         quadratic=True,
+#                         weight=1000)
+# objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+#                         quadratic=True,
+#                         node=Node.ALL,
+#                         index=(0,1,2,5,8,9,11,14,15,17),
+#                         weight=0.1)
+# objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+#                         quadratic=True,
+#                         node=Node.ALL,
+#                         index=(3,4,6,7,10,12,13,16),
+#                         weight=1)
+# symmetry
+idx_minus = (6,7,10)
+for i in idx_minus:
+    objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+                            node=Node.ALL,
+                            first_dof=i,
+                            second_dof=i+6,
+                            coef=-1)
+idx_plus = (8,9,11)
+for i in idx_plus:
+    objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+                            node=Node.ALL,
+                            first_dof=i,
+                            second_dof=i+6,
+                            coef=1)
+
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
                         node=Node.ALL,
-                        index=(0,1,2,5,8,9,11,14,15,17),
-                        weight=0.1)
-objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                        quadratic=True,
-                        node=Node.ALL,
-                        index=(3,4,6,7,10,12,13,16),
                         weight=1)
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
                         quadratic=True,
@@ -127,6 +139,12 @@ for c in contact_z_axes:
         node=Node.ALL,
         contact_force_idx=c,
     )
+constraints.add(
+    custom_CoM_low,
+    min_bound=-0.35,
+    max_bound=-0.25,
+    node=Node.MID,
+)
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
@@ -182,7 +200,18 @@ ocp = OptimalControlProgram(
     n_threads=4,
 )
 
+# path_previous = './RES/muscle_driven/cycle.bo'
+# ocp_previous, sol_previous = ocp.load(path_previous)
+# # --- Plot Results --- #
+# Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True)
+# Affichage_resultat.plot_q_symetry()
+# Affichage_resultat.plot_tau_symetry()
+# Affichage_resultat.plot_qdot_symetry()
+# Affichage_resultat.plot_forces()
+
+
 # --- Solve the program --- #
+tic = time()
 sol = ocp.solve(
     solver=Solver.IPOPT,
     solver_options={
@@ -194,13 +223,26 @@ sol = ocp.solve(
     },
     show_online_optim=False,
 )
+toc = time() - tic
 
 # --- Get Results --- #
-states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-q = states_sol["q"]
-q_dot = states_sol["qdot"]
-tau = controls_sol["tau"]
-muscle = controls_sol["muscles"]
+q = sol.states["q"]
+q_dot = sol.states["qdot"]
+tau = sol.controls["tau"]
+muscle = sol.controls["muscles"]
+
+# --- Plot CoM --- #
+CoM = np.zeros((3, q.shape[1]))
+for n in range(nb_shooting + 1):
+    CoM[:, n:n+1] = compute_CoM(q[:, n])
+plt.figure()
+plt.plot(CoM[2, :])
+
+# --- Plot Results --- #
+Affichage_resultat = Affichage(ocp, sol, muscles=True)
+Affichage_resultat.plot_q_symetry()
+Affichage_resultat.plot_forces()
+
 
 # --- Save results ---
 save_path = './RES/muscle_driven/'
@@ -210,15 +252,9 @@ np.save(save_path + 'q', q)
 np.save(save_path + 'tau', tau)
 np.save(save_path + 'muscle', muscle)
 
-# --- Plot CoM --- #
-CoM = np.zeros((3, q.shape[1]))
-for n in range(nb_shooting + 1):
-    CoM[:, n:n+1] = compute_CoM(q[:, n])
-plt.figure()
-plt.plot(CoM[2, :])
-
 # --- Show results --- #
-ShowResult(ocp, sol).animate()
-ShowResult(ocp, sol).graphs()
+sol.animate()
+sol.print()
+sol.graphs()
 
 
