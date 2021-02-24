@@ -267,8 +267,8 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/4 
-		-pi/6 pi/4
+    	rangesQ -pi/6 pi/4
+		        -pi/6 pi/4
     	rangesQdot -7  7
 		           -7  7
 	inertia
