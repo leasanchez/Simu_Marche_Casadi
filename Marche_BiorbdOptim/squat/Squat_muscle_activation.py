@@ -30,6 +30,9 @@ def custom_CoM_low(pn: PenaltyNodes) -> MX:
     com = compute_CoM(pn.x[0][:nq])
     return com[2]
 
+def get_last_contact_force(pn: PenaltyNodes, contact_force_idx) -> MX:
+    force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
+    return force[contact_force_idx]
 
 # OPTIMAL CONTROL PROBLEM
 model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
@@ -100,20 +103,20 @@ objective_functions = ObjectiveList()
 #                         index=(3,4,6,7,10,12,13,16),
 #                         weight=1)
 # symmetry
-idx_minus = (6,7,10)
-for i in idx_minus:
-    objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
-                            node=Node.ALL,
-                            first_dof=i,
-                            second_dof=i+6,
-                            coef=-1)
-idx_plus = (8,9,11)
-for i in idx_plus:
-    objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
-                            node=Node.ALL,
-                            first_dof=i,
-                            second_dof=i+6,
-                            coef=1)
+# idx_minus = (6,7,10)
+# for i in idx_minus:
+#     objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+#                             node=Node.ALL,
+#                             first_dof=i,
+#                             second_dof=i+6,
+#                             coef=-1)
+# idx_plus = (8,9,11)
+# for i in idx_plus:
+#     objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+#                             node=Node.ALL,
+#                             first_dof=i,
+#                             second_dof=i+6,
+#                             coef=1)
 
 objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                         quadratic=True,
@@ -123,6 +126,11 @@ objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
                         quadratic=True,
                         node=Node.ALL,
                         weight=10)
+objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+                        quadratic=True,
+                        node=Node.ALL,
+                        index=(3,4),
+                        weight=1000)
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
@@ -144,6 +152,13 @@ constraints.add(
     min_bound=-0.35,
     max_bound=-0.25,
     node=Node.MID,
+)
+constraints.add(
+    get_last_contact_force,
+    contact_force_idx=contact_z_axes,
+    min_bound=0,
+    max_bound=np.inf,
+    node=Node.ALL,
 )
 
 # --- Path constraints --- #
@@ -208,6 +223,7 @@ ocp = OptimalControlProgram(
 # Affichage_resultat.plot_tau_symetry()
 # Affichage_resultat.plot_qdot_symetry()
 # Affichage_resultat.plot_forces()
+# Affichage_resultat.plot_muscles_symetry()
 
 
 # --- Solve the program --- #
@@ -241,7 +257,10 @@ plt.plot(CoM[2, :])
 # --- Plot Results --- #
 Affichage_resultat = Affichage(ocp, sol, muscles=True)
 Affichage_resultat.plot_q_symetry()
+Affichage_resultat.plot_tau_symetry()
+Affichage_resultat.plot_qdot_symetry()
 Affichage_resultat.plot_forces()
+Affichage_resultat.plot_muscles_symetry()
 
 
 # --- Save results ---
