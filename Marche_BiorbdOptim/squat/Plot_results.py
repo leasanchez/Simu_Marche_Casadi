@@ -51,6 +51,17 @@ class Affichage:
                 q_min.append(r.min())
         return q_max, q_min
 
+    def get_qdot_range(self):
+        model = self.ocp.nlp[0].model
+        qdot_max = []
+        qdot_min = []
+        for s in range(model.nbSegment()):
+            qdot_range = model.segment(s).QDotRanges()
+            for r in qdot_range:
+                qdot_max.append(r.max())
+                qdot_min.append(r.min())
+        return qdot_max, qdot_min
+
     def get_contact_name(self):
         model = self.ocp.nlp[0].model
         contact_name=[]
@@ -89,6 +100,7 @@ class Affichage:
     def plot_forces(self):
         forces = self.compute_individual_forces()
         figure, axes = plt.subplots(3, 3, sharey=True, sharex=True)
+        figure.suptitle('Contact forces')
 
         # --- plot heel --- #
         axes[0, 0].set_title("Heel")
@@ -135,10 +147,11 @@ class Affichage:
 
 
     def plot_q_symetry(self):
-        q_range = self.get_q_range()
+        q_max, q_min = self.get_q_range()
 
         # --- plot pelvis --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Q pelvis')
         pelvis_label = ["Pelvis translation X",
                         "Pelvis translation Y",
                         "Pelvis translation Z",
@@ -150,16 +163,19 @@ class Affichage:
             axes[i].set_title(pelvis_label[i])
             if (i<3):
                 axes[i].plot(self.t, self.q[i, :], color="red")
-                axes[i].set_ylim([q_range[1][i], q_range[0][i]])
+                axes[i].set_ylim([q_min[i], q_max[i]])
                 axes[i].set_ylabel("distance (m)")
+                axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q[i, :] * 180/np.pi, color="red")
-                axes[i].set_ylim([q_range[1][i] * 180/np.pi, q_range[0][i] * 180/np.pi])
+                axes[i].set_ylim([q_min[i] * 180/np.pi, q_max[i] * 180/np.pi])
                 axes[i].set_ylabel("rotation (degrees)")
+                axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
 
         # --- plot leg Dofs --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Q legs')
         leg_label = ["Hip Abduction/Adduction",
                         "Hip Rotation interne/externe",
                         "Hip Flexion/Extension",
@@ -171,15 +187,18 @@ class Affichage:
             axes[i].set_title(leg_label[i])
             axes[i].plot(self.t, self.q[i + 6, :] * 180/np.pi, color="red")
             axes[i].plot(self.t, self.q[i + 12, :] * 180 / np.pi, color="blue")
-            axes[i].set_ylim([q_range[1][i + 6] * 180/np.pi, q_range[0][i + 6] * 180/np.pi])
+            axes[i].set_ylim([q_min[i + 6] * 180/np.pi, q_max[i + 6] * 180/np.pi])
+            axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("rotation (degrees)")
         axes[4].set_xlabel("time (s)")
         axes[-1].legend(["Right", "Left"])
 
 
     def plot_qdot_symetry(self):
+        qdot_max, qdot_min = self.get_qdot_range()
         # --- plot pelvis --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Qdot pelvis')
         pelvis_label = ["Pelvis translation X",
                         "Pelvis translation Y",
                         "Pelvis translation Z",
@@ -192,13 +211,18 @@ class Affichage:
             if (i < 3):
                 axes[i].plot(self.t, self.q_dot[i, :], color="red")
                 axes[i].set_ylabel("speed (m/s)")
+                axes[i].set_ylim([qdot_min[i], qdot_max[i]])
+                axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q_dot[i, :] * 180 / np.pi, color="red")
                 axes[i].set_ylabel("rotation speed (degrees/s)")
+                axes[i].set_ylim([qdot_min[i] * 180 / np.pi, qdot_max[i] * 180 / np.pi])
+                axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
 
         # --- plot leg Dofs --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Qdot legs')
         leg_label = ["Hip Abduction/Adduction",
                      "Hip Rotation interne/externe",
                      "Hip Flexion/Extension",
@@ -211,6 +235,8 @@ class Affichage:
             axes[i].plot(self.t, self.q_dot[i + 6, :] * 180 / np.pi, color="red")
             axes[i].plot(self.t, self.q_dot[i + 12, :] * 180 / np.pi, color="blue")
             axes[i].set_ylabel("rotation speed (degrees/s)")
+            axes[i].set_ylim([qdot_min[i + 6] * 180 / np.pi, qdot_max[i + 6] * 180 / np.pi])
+            axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
         axes[-1].legend(["Right", "Left"])
 
@@ -218,6 +244,7 @@ class Affichage:
     def plot_tau_symetry(self):
         # --- plot pelvis --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Residual torque pelvis')
         pelvis_label = ["Pelvis translation X",
                         "Pelvis translation Y",
                         "Pelvis translation Z",
@@ -230,13 +257,16 @@ class Affichage:
             if (i<3):
                 axes[i].plot(self.t, self.tau[i, :], color="red")
                 axes[i].set_ylabel("Force (N)")
+                axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.tau[i, :], color="red")
                 axes[i].set_ylabel("Torque (N.m)")
+                axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
 
         # --- plot leg Dofs --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
+        figure.suptitle('Residual torque legs')
         leg_label = ["Hip Abduction/Adduction",
                         "Hip Rotation interne/externe",
                         "Hip Flexion/Extension",
@@ -248,6 +278,22 @@ class Affichage:
             axes[i].set_title(leg_label[i])
             axes[i].plot(self.t, self.tau[i + 6, :], color="red")
             axes[i].plot(self.t, self.tau[i + 12, :], color="blue")
+            axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("Torque (N.m)")
         axes[4].set_xlabel("time (s)")
         axes[-1].legend(["Right", "Left"])
+
+    def plot_muscles_symetry(self):
+        figure, axes = plt.subplots(4, 5, sharex=True, sharey=True)
+        figure.suptitle("Muscle activity")
+        axes = axes.flatten()
+        for i in range(len(axes) - 1):
+            axes[i].set_title(self.ocp.nlp[0].model.muscle(i).name().to_string())
+            axes[i].plot(self.t, self.activations[i, :], color="red")
+            axes[i].plot(self.t, self.activations[i + 19, :], color="blue")
+            axes[i].set_xlim([self.t[0], self.t[-1]])
+            axes[i].set_ylim([0.0, 1.0])
+        axes[-2].legend(["Right", "Left"])
+        for i in range(4):
+            axes[i*5].set_ylabel("activation")
+            axes[15 + i].set_xlabel("time (s)")
