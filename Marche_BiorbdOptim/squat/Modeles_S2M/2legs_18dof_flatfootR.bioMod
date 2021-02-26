@@ -41,6 +41,8 @@ variables
 	$fiso_17 603
 	$fiso_18 976
 	$fiso_19 1187
+	$fiso_20 1086 //iliacus
+	$fiso_21 1518 //psoas
 endvariables
 
 // --------------------------------------------------------------------------------------------------------
@@ -436,21 +438,39 @@ endmarker
 // --------------------------------------------------------------------------------------------------------
 // Informations about contact point 
 // --------------------------------------------------------------------------------------------------------
-contact    Heel_r   //FCC decale
+contact    Heel_r
 	parent      foot_marker_r
 	position    0.0254278	 -0.02	   0.00220395
 	axis    xyz
 endcontact
-contact    Meta_1_r //FM1
+contact    Meta_1_r
 	parent      foot_marker_r
 	position    0.19973	 -0.02	  -0.0323195
 	axis    z
 endcontact
-contact    Meta_5_r //FM5
+contact    Meta_5_r
 	parent     foot_marker_r
 	position   0.156485	 -0.02	   0.0638694
 	axis    xz
 endcontact
+
+// ---- Markers
+marker    Heel_r   //31
+	parent      foot_marker_r
+	position    0.0254278	 -0.02	   0.00220395
+	technical	1
+endmarker
+marker    Meta_1_r //32
+	parent      foot_marker_r
+	position    0.19973	 -0.02	  -0.0323195
+	technical	1
+endmarker
+marker    Meta_5_r //33
+	parent     foot_marker_r
+	position   0.156485	 -0.02	   0.0638694
+	technical	1
+endmarker
+
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment
@@ -503,37 +523,37 @@ segment femur_l
 endsegment
 
 // ---- Markers
-marker	L_TC //31
+marker	L_TC //34
 	parent	femur_l
 	position	-0.013006	-0.025906	-0.081625
 	anatomical	1
 endmarker
-marker	L_FUP //32
+marker	L_FUP //35
 	parent	femur_l
 	position	0.01451	        -0.1373	        -0.075053
 	anatomical	1
 endmarker
-marker	L_FDOWN //33
+marker	L_FDOWN //36
 	parent	femur_l
 	position	0.023087	-0.20578	-0.065
 	anatomical	1
 endmarker
-marker	L_FANT //34
+marker	L_FANT //37
 	parent	femur_l
 	position	0.049445	-0.16781	-0.067705
 	anatomical	1
 endmarker
-marker	L_FPOST //35
+marker	L_FPOST //38
 	parent	femur_l
 	position	-0.015012	-0.17638	-0.071602
 	anatomical	1
 endmarker
-marker	L_KNL //36
+marker	L_KNL //39
 	parent	femur_l
 	position	-0.00023683	-0.37117	-0.053452
 	anatomical	1
 endmarker
-marker	L_KNM //37
+marker	L_KNM //40
 	parent	femur_l
 	position	-0.0038077	-0.37454	0.052836
 	anatomical	1
@@ -565,42 +585,42 @@ segment tibia_l
 endsegment
 
 // ---- Markers
-marker	L_PER //38
+marker	L_PER //41
 	parent	tibia_l
 	position	-0.011332	-0.08518	-0.05617
 	anatomical	1
 endmarker
-marker	L_TTC //39
+marker	L_TTC //42
 	parent	tibia_l
 	position	0.047765	-0.067362	0.0016557
 	anatomical	1
 endmarker
-marker	L_TIB //40
+marker	L_TIB //43
 	parent	tibia_l
 	position	0.0350151	-0.216442	0.00246147
 	anatomical	1
 endmarker
-marker	L_TUP //41
+marker	L_TUP //44
 	parent	tibia_l
 	position	-0.0325225	-0.190916	-0.0504195
 	anatomical	1
 endmarker
-marker	L_TDOWN //42
+marker	L_TDOWN //45
 	parent	tibia_l
 	position	-0.0251773	-0.26157	-0.0481634
 	anatomical	1
 endmarker
-marker	L_TANT //43
+marker	L_TANT //46
 	parent	tibia_l
 	position	0.0110749	-0.221199	-0.0498432
 	anatomical	1
 endmarker
-marker	L_ANKL //44
+marker	L_ANKL //47
 	parent	tibia_l
 	position	-0.0110108	-0.41033	-0.0507917
 	anatomical	1
 endmarker
-marker	L_ANKM //45
+marker	L_ANKM //48
 	parent	tibia_l
 	position	0.00917708	-0.384122	0.0353354
 	anatomical	1
@@ -699,32 +719,32 @@ segment foot_marker_l
 endsegment
 
 // ---- Markers
-marker	L_FCC //46
+marker	L_FCC //49
 	parent	foot_marker_l
 	position	0.0054278	0.00177226	-0.00220395
 	technical	1
 endmarker
-marker	L_FMP1 //47
+marker	L_FMP1 //50
 	parent	foot_marker_l
 	position	0.19973	       -0.00594403	0.0323195
 	technical	1
 endmarker
-marker	L_HAL //48
+marker	L_HAL //51
 	parent	foot_marker_l
 	position	0.24	       -0.00594403	0.0323195
 	technical	1
 endmarker
-marker	L_FMP2 //49
+marker	L_FMP2 //52
 	parent	foot_marker_l
 	position	0.200778	-0.00525585	-0.0127656
 	technical	1
 endmarker
-marker	L_FMP5 //50
+marker	L_FMP5 //53
 	parent	foot_marker_l
 	position	0.156485	-0.00712829	-0.0638694
 	technical	1
 endmarker
-marker	L_FOOT
+marker	L_FOOT //54
 	parent	foot_marker_l
 	position	0.135043	0.0244291	-0.00583628
 	technical	1
@@ -748,6 +768,23 @@ contact    Meta_5_l //FM5
 	position   0.156485	 -0.02	   -0.0638694
 	axis    xz
 endcontact
+
+// ---- Markers
+marker    Heel_l   //55
+	parent      foot_marker_l
+	position    0.0254278	 -0.02	   -0.00220395
+    technical	1
+endmarker
+marker    Meta_1_l //56
+	parent      foot_marker_l
+	position    0.19973	 -0.02	    0.0323195
+	technical	1
+endmarker
+marker    Meta_5_l //57
+	parent     foot_marker_l
+	position   0.156485	 -0.02	   -0.0638694
+	technical	1
+endmarker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about toes_r segment
@@ -1321,14 +1358,12 @@ muscle    perlong_r
         tendonSlackLength      0.40516848141592698
         pennationAngle         0.24795247000000001
 endmuscle
-// ---- Via points
 viapoint    perlong_r-P
     parent         foot_r
     muscle         perlong_r
     musclegroup    group16
     position       0.05007    0.0381975  0.0330954
 endviapoint
-
 
 // --- Left Leg 
 musclegroup group29
@@ -1874,12 +1909,9 @@ muscle    perlong_l
         tendonSlackLength      0.40516848141592698
         pennationAngle         0.24795247000000001
 endmuscle
-
 viapoint    perlong_l-P
     parent         foot_l
     muscle         perlong_l
     musclegroup    group44
     position       0.05007    0.0381975  -0.0330954
 endviapoint
-
-
