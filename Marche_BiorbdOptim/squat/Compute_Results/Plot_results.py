@@ -1,8 +1,8 @@
 import numpy as np
 import seaborn
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from casadi import MX, Function
+from .Utils_start import utils
+from .Contact_Forces import contact
 
 class Affichage:
     def __init__(self, ocp, sol, muscles=False):
@@ -29,76 +29,18 @@ class Affichage:
         self.nb_markers = ocp.nlp[0].model.nbMarkers()
         self.t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
 
+        # params model
+        self.model=ocp.nlp[0].model
+        self.q_name=utils.get_q_name(self.model)
+        self.q_min, self.q_max = utils.get_q_range(self.model)
+        self.qdot_min, self.qdot_max = utils.get_qdot_range(self.model)
+        self.contact_name = utils.get_contact_name(self.model)
 
-    def get_q_name(self):
-        model = self.ocp.nlp[0].model
-        q_name = []
-        for s in range(model.nbSegment()):
-            seg_name = model.segment(s).name().to_string()
-            for d in range(model.segment(s).nbDof()):
-                dof_name = model.segment(s).nameDof(d).to_string()
-                q_name.append(seg_name + "_" + dof_name)
-        return q_name
+        # contact
+        self.contact_data = contact(self.ocp, self.sol, muscles=False)
 
-    def get_q_range(self):
-        model = self.ocp.nlp[0].model
-        q_max = []
-        q_min = []
-        for s in range(model.nbSegment()):
-            q_range = model.segment(s).QRanges()
-            for r in q_range:
-                q_max.append(r.max())
-                q_min.append(r.min())
-        return q_max, q_min
-
-    def get_qdot_range(self):
-        model = self.ocp.nlp[0].model
-        qdot_max = []
-        qdot_min = []
-        for s in range(model.nbSegment()):
-            qdot_range = model.segment(s).QDotRanges()
-            for r in qdot_range:
-                qdot_max.append(r.max())
-                qdot_min.append(r.min())
-        return qdot_max, qdot_min
-
-    def get_contact_name(self):
-        model = self.ocp.nlp[0].model
-        contact_name=[]
-        C_names = model.contactNames()
-        for name in C_names:
-            contact_name.append(name.to_string())
-        return contact_name
-
-    def compute_individual_forces(self):
-        labels_forces = ['Heel_r_X', 'Heel_r_Y', 'Heel_r_Z',
-                         'Meta_1_r_X', 'Meta_1_r_Y', 'Meta_1_r_Z',
-                         'Meta_5_r_X', 'Meta_5_r_Y', 'Meta_5_r_Z',
-                         'Heel_l_X', 'Heel_l_Y', 'Heel_l_Z',
-                         'Meta_1_l_X', 'Meta_1_l_Y', 'Meta_1_l_Z',
-                         'Meta_5_l_X', 'Meta_5_l_Y', 'Meta_5_l_Z'
-                         ]
-        # --- dictionary for forces ---
-        forces = {}
-        for label in labels_forces:
-            forces[label] = np.zeros(self.nb_shooting + 1)
-
-        # --- COMPUTE FORCES FOR EACH PHASE ---
-        contact_name = self.get_contact_name()
-        for n in range(self.ocp.nlp[0].ns + 1):
-            x = np.concatenate([self.q[:, n], self.q_dot[:, n]])
-            if self.muscles:
-                u = np.concatenate([self.tau[:, n], self.activations[:, n]])
-            else:
-                u = self.tau[:, n]
-            forces_sim = self.ocp.nlp[0].contact_forces_func(x, u, 0)
-            for (i, name) in enumerate(contact_name):
-                if name in forces:
-                    forces[name][n] = forces_sim[i]
-        return forces
-
-    def plot_forces(self):
-        forces = self.compute_individual_forces()
+    def plot_individual_forces(self):
+        forces = self.contact_data.individual_forces
         figure, axes = plt.subplots(3, 3, sharey=True, sharex=True)
         figure.suptitle('Contact forces')
 
@@ -145,10 +87,56 @@ class Affichage:
         axes[2, 2].set_xlabel("Time (s)")
         axes[2, 2].legend(["Right", "Left"])
 
+    def plot_sum_forces(self):
+        figure, axes = plt.subplots(1, 3, sharey=True)
+        figure.suptitle('Contact forces')
+
+        # --- plot x --- #
+        axes[0, 0].set_title("forces X")
+        axes[0, 0].plot(self.t, self.contact_data.forces["forces_r_X"], color="red")
+        axes[0, 0].plot(self.t, self.contact_data.forces["forces_l_X"], color="blue")
+        axes[0, 0].set_xlim([self.t[0], self.t[-1]])
+        axes[0, 0].set_ylabel("Forces (N)")
+        axes[0, 0].set_xlabel("Time (s)")
+
+        # --- plot y --- #
+        axes[0, 1].set_title("forces Y")
+        axes[0, 1].plot(self.t, self.contact_data.forces["forces_r_Y"], color="red")
+        axes[0, 1].plot(self.t, self.contact_data.forces["forces_l_Y"], color="blue")
+        axes[0, 1].set_xlim([self.t[0], self.t[-1]])
+        axes[0, 1].set_ylabel("Forces (N)")
+        axes[0, 1].set_xlabel("Time (s)")
+
+        # --- plot z --- #
+        axes[0, 2].set_title("forces Z")
+        axes[0, 2].plot(self.t, self.contact_data.forces["forces_r_Z"], color="red")
+        axes[0, 2].plot(self.t, self.contact_data.forces["forces_l_Z"], color="blue")
+        axes[0, 2].set_xlim([self.t[0], self.t[-1]])
+        axes[0, 2].set_ylabel("Forces (N)")
+        axes[0, 2].set_xlabel("Time (s)")
+        axes[0, 2].legend(["Right", "Left"])
+
+    def plot_cop(self):
+        figure=plt.figure()
+        figure.suptitle('Center of pressure')
+
+        # --- pied droit --- #
+        plt.scatter(self.contact_data.position["Heel_r"][0, :], self.contact_data.position["Heel_r"][1, :], marker='+', color="red")
+        plt.scatter(self.contact_data.position["Meta_1_r"][0, :], self.contact_data.position["Meta_1_r"][1, :], marker='+',color="red")
+        plt.scatter(self.contact_data.position["Meta_5_r"][0, :], self.contact_data.position["Meta_5_r"][1, :], marker='+', color="red")
+        plt.scatter(self.contact_data.cop["cop_r_X"], self.contact_data.cop["cop_r_Y"], marker='o', color="red")
+
+        # --- pied gauche --- #
+        plt.scatter(self.contact_data.position["Heel_l"][0, :], self.contact_data.position["Heel_l"][1, :], marker='+', color="blue")
+        plt.scatter(self.contact_data.position["Meta_1_l"][0, :], self.contact_data.position["Meta_1_l"][1, :], marker='+', color="blue")
+        plt.scatter(self.contact_data.position["Meta_5_l"][0, :], self.contact_data.position["Meta_5_l"][1, :], marker='+', color="blue")
+        plt.scatter(self.contact_data.cop["cop_l_X"], self.contact_data.cop["cop_l_Y"], marker='o', color="blue")
+
+        plt.xlabel("x (m)")
+        plt.ylabel("y (m)")
+        plt.axis("equal")
 
     def plot_q_symetry(self):
-        q_max, q_min = self.get_q_range()
-
         # --- plot pelvis --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
         figure.suptitle('Q pelvis')
@@ -163,12 +151,12 @@ class Affichage:
             axes[i].set_title(pelvis_label[i])
             if (i<3):
                 axes[i].plot(self.t, self.q[i, :], color="red")
-                axes[i].set_ylim([q_min[i], q_max[i]])
+                axes[i].set_ylim([self.q_min[i], self.q_max[i]])
                 axes[i].set_ylabel("distance (m)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q[i, :] * 180/np.pi, color="red")
-                axes[i].set_ylim([q_min[i] * 180/np.pi, q_max[i] * 180/np.pi])
+                axes[i].set_ylim([self.q_min[i] * 180/np.pi, self.q_max[i] * 180/np.pi])
                 axes[i].set_ylabel("rotation (degrees)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
@@ -187,7 +175,7 @@ class Affichage:
             axes[i].set_title(leg_label[i])
             axes[i].plot(self.t, self.q[i + 6, :] * 180/np.pi, color="red")
             axes[i].plot(self.t, self.q[i + 12, :] * 180 / np.pi, color="blue")
-            axes[i].set_ylim([q_min[i + 6] * 180/np.pi, q_max[i + 6] * 180/np.pi])
+            axes[i].set_ylim([self.q_min[i + 6] * 180/np.pi, self.q_max[i + 6] * 180/np.pi])
             axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("rotation (degrees)")
         axes[4].set_xlabel("time (s)")
@@ -195,7 +183,6 @@ class Affichage:
 
 
     def plot_qdot_symetry(self):
-        qdot_max, qdot_min = self.get_qdot_range()
         # --- plot pelvis --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
         figure.suptitle('Qdot pelvis')
@@ -211,12 +198,12 @@ class Affichage:
             if (i < 3):
                 axes[i].plot(self.t, self.q_dot[i, :], color="red")
                 axes[i].set_ylabel("speed (m/s)")
-                axes[i].set_ylim([qdot_min[i], qdot_max[i]])
+                axes[i].set_ylim([self.qdot_min[i], self.qdot_max[i]])
                 axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q_dot[i, :] * 180 / np.pi, color="red")
                 axes[i].set_ylabel("rotation speed (degrees/s)")
-                axes[i].set_ylim([qdot_min[i] * 180 / np.pi, qdot_max[i] * 180 / np.pi])
+                axes[i].set_ylim([self.qdot_min[i] * 180 / np.pi, self.qdot_max[i] * 180 / np.pi])
                 axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
 
@@ -235,7 +222,7 @@ class Affichage:
             axes[i].plot(self.t, self.q_dot[i + 6, :] * 180 / np.pi, color="red")
             axes[i].plot(self.t, self.q_dot[i + 12, :] * 180 / np.pi, color="blue")
             axes[i].set_ylabel("rotation speed (degrees/s)")
-            axes[i].set_ylim([qdot_min[i + 6] * 180 / np.pi, qdot_max[i + 6] * 180 / np.pi])
+            axes[i].set_ylim([self.qdot_min[i + 6] * 180 / np.pi, self.qdot_max[i + 6] * 180 / np.pi])
             axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
         axes[-1].legend(["Right", "Left"])
