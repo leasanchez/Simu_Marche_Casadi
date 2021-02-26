@@ -51,7 +51,7 @@ class C3dData:
         self.forces = self.get_forces(self.c3d)
         self.moments = self.get_moment(self.c3d)
         self.cop = self.get_cop(self.c3d)
-        self.emg = self.get_emg(self.c3d)
+        self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
         self.indices = self.get_indices()
         self.phase_time = self.get_time()
@@ -81,8 +81,8 @@ class C3dData:
 
         emg = np.zeros((len(muscle_names), len(points[0, 0, :])))
 
-        for i, name in enumerate(muscle_names):
-            emg[i, :] = points[labels_muscles.index(name), :]
+        for (i, name) in enumerate(muscle_names):
+            emg[i, :] = points[0,labels_muscles.index(name), :].squeeze()
         return emg
 
     @staticmethod
