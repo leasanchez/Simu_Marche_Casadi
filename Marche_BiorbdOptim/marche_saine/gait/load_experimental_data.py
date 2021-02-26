@@ -201,6 +201,7 @@ class LoadData:
         self.c3d_data = C3dData(c3d_file)
         self.q = load_txt_file(q_file, self.nb_q)
         self.qdot = load_txt_file(qdot_file, self.nb_qdot)
+        self.emg=self.dispatch_muscle_activation(self.c3d_data.emg)
 
     def dispatch_data(self, data, nb_shooting):
         """
@@ -238,7 +239,10 @@ class LoadData:
         for (i, time) in enumerate(phase_time):
             t = np.linspace(0, time, (index[i + 1] - index[i]) + 1)
             node_t = np.linspace(0, time, nb_shooting[i] + 1)
-            f = interp1d(t, data[:, index[i]: (index[i + 1] + 1)], kind="cubic")
+            if len(data.shape)==3:
+                f = interp1d(t, data[:, :, index[i]: (index[i + 1] + 1)], kind="cubic")
+            else:
+                f = interp1d(t, data[:, index[i]: (index[i + 1] + 1)], kind="cubic")
             out.append(f(node_t))
         return out
 
