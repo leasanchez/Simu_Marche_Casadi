@@ -9,7 +9,7 @@ import biorbd
 from bioptim import Solver, Shooting
 
 from gait.load_experimental_data import LoadData
-from gait.ocp import gait_torque_driven
+from gait.ocp import gait_torque_driven, gait_muscle_driven
 
 def get_phase_time_shooting_numbers(data, dt):
     phase_time = data.c3d_data.get_time()
@@ -20,13 +20,8 @@ def get_phase_time_shooting_numbers(data, dt):
 
 
 def get_experimental_data(data, number_shooting_points):
-    q_ref = data.dispatch_data_interpolation(data=data.q, nb_shooting=number_shooting_points)
-    qdot_ref = data.dispatch_data_interpolation(data=data.qdot, nb_shooting=number_shooting_points)
-    markers_ref = data.dispatch_data_interpolation(data=data.c3d_data.trajectories, nb_shooting=number_shooting_points)
-    grf_ref = data.dispatch_data_interpolation(data=data.c3d_data.forces, nb_shooting=number_shooting_points)
-    moments_ref = data.dispatch_data_interpolation(data=data.c3d_data.moments, nb_shooting=number_shooting_points)
-    cop_ref = data.dispatch_data_interpolation(data=data.c3d_data.cop, nb_shooting=number_shooting_points)
-    return q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref
+
+    return q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, emg_ref
 
 
 
@@ -55,9 +50,26 @@ data = LoadData(biorbd_model[0], c3d_file, q_kalman_filter_file, qdot_kalman_fil
 # --- phase time and number of shooting ---
 phase_time, number_shooting_points = get_phase_time_shooting_numbers(data, 0.01)
 # --- get experimental data ---
-q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref = get_experimental_data(data, number_shooting_points)
+q_ref = data.dispatch_data_interpolation(data=data.q, nb_shooting=number_shooting_points)
+qdot_ref = data.dispatch_data_interpolation(data=data.qdot, nb_shooting=number_shooting_points)
+markers_ref = data.dispatch_data_interpolation(data=data.c3d_data.trajectories, nb_shooting=number_shooting_points)
+grf_ref = data.dispatch_data_interpolation(data=data.c3d_data.forces, nb_shooting=number_shooting_points)
+moments_ref = data.dispatch_data_interpolation(data=data.c3d_data.moments, nb_shooting=number_shooting_points)
+cop_ref = data.dispatch_data_interpolation(data=data.c3d_data.cop, nb_shooting=number_shooting_points)
+emg_ref = data.dispatch_data_interpolation(data=data.emg, nb_shooting=number_shooting_points)
 
-gait_torque_driven = gait_torque_driven(biorbd_model,
+# gait_torque_driven = gait_torque_driven(biorbd_model,
+#                                         number_shooting_points,
+#                                         phase_time,
+#                                         q_ref,
+#                                         qdot_ref,
+#                                         markers_ref,
+#                                         grf_ref,
+#                                         moments_ref,
+#                                         cop_ref,
+#                                         n_threads=4,
+#                                         four_contact=True)
+gait_muscle_driven = gait_muscle_driven(biorbd_model,
                                         number_shooting_points,
                                         phase_time,
                                         q_ref,
@@ -70,7 +82,7 @@ gait_torque_driven = gait_torque_driven(biorbd_model,
                                         four_contact=True)
 tic = time()
 # --- Solve the program --- #
-sol = gait_torque_driven.solve()
+sol = gait_muscle_driven.solve()
 toc = time() - tic
 
 # --- Show results --- #
