@@ -1,5 +1,6 @@
 import numpy as np
 from casadi import vertcat, MX
+from .dynamics_function import dynamics
 
 from bioptim import (
     OptimalControlProgram,
@@ -510,10 +511,7 @@ class gait_torque_driven:
                                          phase=p)
 
     def set_dynamics(self):
-        self.dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.TORQUE_DRIVEN)
+        dynamics.set_torque_driven_dynamics(self.dynamics)
 
     def set_constraint_four_contact(self):
         self.constraints.add(  # null speed for the first phase --> non sliding contact point
@@ -882,10 +880,7 @@ class gait_muscle_driven:
                                          phase=p)
 
     def set_dynamics(self):
-        self.dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
-        self.dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN)
+        dynamics.set_muscle_driven_dynamics(self.dynamics)
 
     def set_constraint_four_contact(self):
         self.constraints.add(  # null speed for the first phase --> non sliding contact point
