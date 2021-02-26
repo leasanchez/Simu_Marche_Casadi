@@ -27,36 +27,6 @@ from bioptim import (
     Solver,
 )
 
-def plot_foot(ax, markers, idx_node, color="black", alpha=1.0):
-    ax.plot([markers[0, 19, idx_node], markers[0, 21, idx_node]],
-            [markers[1, 19, idx_node], markers[1, 21, idx_node]],
-            [markers[2, 19, idx_node], markers[2, 21, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 21, idx_node], markers[0, 20, idx_node]],
-            [markers[1, 21, idx_node], markers[1, 20, idx_node]],
-            [markers[2, 21, idx_node], markers[2, 20, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 20, idx_node], markers[0, 22, idx_node]],
-            [markers[1, 20, idx_node], markers[1, 22, idx_node]],
-            [markers[2, 20, idx_node], markers[2, 22, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 22, idx_node], markers[0, 24, idx_node]],
-            [markers[1, 22, idx_node], markers[1, 24, idx_node]],
-            [markers[2, 22, idx_node], markers[2, 24, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 24, idx_node], markers[0, 25, idx_node]],
-            [markers[1, 24, idx_node], markers[1, 25, idx_node]],
-            [markers[2, 24, idx_node], markers[2, 25, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 25, idx_node], markers[0, 19, idx_node]],
-            [markers[1, 25, idx_node], markers[1, 19, idx_node]],
-            [markers[2, 25, idx_node], markers[2, 19, idx_node]],
-            c=color, alpha=alpha, linestyle='dashed')
-    ax.plot([markers[0, 19, idx_node], np.mean([markers[0, 17, idx_node], markers[0, 18, idx_node]])],
-            [markers[1, 19, idx_node], np.mean([markers[1, 17, idx_node], markers[1, 18, idx_node]])],
-            [markers[2, 19, idx_node], 0.2],
-            c=color, alpha=alpha, linestyle='dashed')
-
 # modified isometric forces in parameters
 def modify_isometric_force(biorbd_model, value, fiso_init):
     n_muscle = 0
@@ -66,22 +36,6 @@ def modify_isometric_force(biorbd_model, value, fiso_init):
                 value[n_muscle] * fiso_init[n_muscle]
             )
             n_muscle += 1
-
-# --- minimize activation ---
-def minimize_activation(ocp, nlp, t, x, u, p, power):
-    nb_tau = nlp.model.nbGeneralizedTorque()
-    val = []
-    for control in u:
-        val = vertcat(val, control[nb_tau:]**power)
-    return val
-
-# --- minimize max activation ---
-def minimize_max_activation(ocp, nlp, t, x, u, p):
-    nb_tau = nlp.model.nbGeneralizedTorque()
-    val = []
-    for control in u:
-        val = vertcat(val, mmax(control[nb_tau:]))
-    return val
 
 # --- force nul at last point ---
 def get_last_contact_force_null(ocp, nlp, t, x, u, p, contact_name):
@@ -200,10 +154,6 @@ def prepare_ocp(
     markers_anat = [4,9,10,11,12,17,18]
     markers_tissus = [5,6,7,8,13,14,15,16]
     markers_pied = [19,20,21,22,23,24,25]
-
-    # --- torques_idx ---
-    tau_2D = [8,9,11]
-    tau_3D = [6,7,10]
 
     objective_functions = ObjectiveList()
     for p in range(nb_phases):
@@ -332,14 +282,6 @@ def prepare_ocp(
         static_friction_coefficient=0.2,
         phase=2,
     )
-    # # constraints.add( # non slipping x toes
-    # #     Constraint.NON_SLIPPING,
-    # #     instant=Instant.ALL,
-    # #     normal_component_idx=5,
-    # #     tangential_component_idx=4,
-    # #     static_friction_coefficient=0.2,
-    # #     phase=2,
-    # # )
     constraints.add(
         get_last_contact_force_null,
         node=Node.ALL,
@@ -415,11 +357,10 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem -- model path
     biorbd_model = (
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_heel.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_flatfoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_forefoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_0contact.bioMod")
-    )
+        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),)
 
     # Problem parameters
     dt = 0.01
@@ -446,14 +387,6 @@ if __name__ == "__main__":
     for p in range(nb_phases):
         excitations_ref.append(Data_to_track.load_muscularExcitation(EMG_ref[p]))
 
-    biorbd_model = (
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_heel.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_flatfoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_forefoot.bioMod"),
-        biorbd.Model("../../ModelesS2M/Marche_saine/Florent_1leg_12dof_0contact.bioMod")
-    )
-
-
     ocp = prepare_ocp(
         biorbd_model=biorbd_model,
         final_time= phase_time,
@@ -467,107 +400,6 @@ if __name__ == "__main__":
         excitations_ref=excitations_ref,
         nb_threads=4,
     )
-
-    # # --- Get Previous Results --- #
-    # path_previous = './RES/1leg/cycle/muscles/4_contacts/markers_tracking/adjusted_weight/cycle.bo'
-    # ocp_previous, sol_previous = ocp.load(path_previous)
-    # states_sol, controls_sol = Data.get_data(ocp_previous, sol_previous["x"])
-    # q = states_sol["q"]
-    # q_dot = states_sol["q_dot"]
-    # tau = controls_sol["tau"]
-    # activation = controls_sol["muscles"]
-    #
-    # # --- Plot Results --- #
-    # Affichage_resultat = Affichage(ocp_previous, sol_previous, muscles=True, two_leg=False)
-    #
-    # # plot states and controls
-    # Affichage_resultat.plot_q(q_ref=q_ref, R2=False, RMSE=True)
-    # # Affichage_resultat.plot_tau()
-    # # Affichage_resultat.plot_qdot()
-    # Affichage_resultat.plot_activation(excitations_ref=excitations_ref)
-    #
-    # # plot Forces
-    # Affichage_resultat.plot_individual_forces()
-    # Affichage_resultat.plot_sum_forces(grf_ref=grf_ref)
-    #
-    # # plot CoP and moments
-    # Affichage_resultat.plot_CoP(CoP_ref=CoP)
-    # Affichage_resultat.plot_sum_moments(M_ref=M_ref)
-    #
-    # # plot foot and CoP
-    # CoP_simu = Affichage_resultat.compute_CoP()
-    # grf_simu = Affichage_resultat.compute_sum_forces_simu()
-    #
-    # symbolic_q = MX.sym("q", nb_q, 1)
-    # markers_func = []
-    # for m in range(nb_markers):
-    #     markers_func.append(Function(
-    #         "ForwardKin",
-    #         [symbolic_q], [biorbd_model[0].marker(symbolic_q, m).to_mx()],
-    #         ["q"],
-    #         ["markers"],
-    #     ).expand())
-    # position_markers = np.zeros((3, nb_markers, q.shape[1]))
-    # for n in range(q.shape[1]):
-    #     Q = q[:, n]
-    #     for m in range(nb_markers):
-    #         position_markers[:, m, n:n+1]=markers_func[m](Q)
-    #
-    # complete_markers_ref = np.zeros((3, nb_markers, q.shape[1]))
-    # complete_grf_ref = np.zeros((3, q.shape[1]))
-    # complete_CoP_ref = np.zeros((3, q.shape[1]))
-    # n_shoot=0
-    # for p in range(len(biorbd_model)):
-    #     complete_markers_ref[:, :, n_shoot:n_shoot+q_ref[p].shape[1]] = markers_ref[p]
-    #     complete_grf_ref[:, n_shoot:n_shoot + q_ref[p].shape[1]] = grf_ref[p]
-    #     complete_CoP_ref[:, n_shoot:n_shoot + q_ref[p].shape[1]] = CoP[p]
-    #     n_shoot+=number_shooting_points[p]
-    #
-    # # plot markers differences
-    # RMSE_markers = np.sqrt((complete_markers_ref - position_markers)**2)
-    #
-    # markers_name = ["LIAS","LIPS","RIPS","RIAS","RFTC", "R Thigh Top", "R Thigh down", "R Thigh Front", "R Thigh Back",
-    #                 "RFLE", "RFME", "RFAX", "RTTC", "R Shank Top", "R Shank Down", "R Shank Front", "R Shank Tibia",
-    #                 "RFAL", "RFAM", "FCC", "FM1", "FMP1", "FM2", "FMP2", "FM5", "FMP5"]
-    # shooting_nodes = range(position_markers.shape[2])
-    #
-    # fig, ax = plt.subplots()
-    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[0, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    # plt.title("x differences markers")
-    #
-    # fig, ax = plt.subplots()
-    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[1, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    # plt.title("y differences markers")
-    #
-    # fig, ax = plt.subplots()
-    # im, cbar = Affichage_resultat.heatmap(data=RMSE_markers[2, :26, :], row_labels=markers_name, col_labels=shooting_nodes)
-    # plt.title("z differences markers")
-    #
-    # # plot movements
-    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, :markers_ref[0].shape[2]],
-    #                                      CoP=CoP_simu[:, :markers_ref[0].shape[2]],
-    #                                      grf=grf_simu[:, :markers_ref[0].shape[2]],
-    #                                      markers_ref=markers_ref[0],
-    #                                      CoP_ref=CoP[0],
-    #                                      grf_ref=grf_ref[0]
-    #                                      )
-    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-    #                                      CoP=CoP_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-    #                                      grf=grf_simu[:, markers_ref[0].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2]],
-    #                                      markers_ref=markers_ref[1],
-    #                                      CoP_ref=CoP[1],
-    #                                      grf_ref=grf_ref[1]
-    #                                      )
-    # Affichage_resultat.plot_stance_phase(markers=position_markers[:, :, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-    #                                      CoP=CoP_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-    #                                      grf=grf_simu[:, markers_ref[0].shape[2] + markers_ref[1].shape[2]:markers_ref[0].shape[2] + markers_ref[1].shape[2] + markers_ref[2].shape[2]],
-    #                                      markers_ref=markers_ref[2],
-    #                                      CoP_ref=CoP[2],
-    #                                      grf_ref=grf_ref[2]
-    #                                      )
-    #
-    # # --- Show results --- #
-    # ShowResult(ocp_previous, sol_previous).animate()
 
     # --- Solve the program --- #
     sol = ocp.solve(

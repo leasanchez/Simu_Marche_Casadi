@@ -29,3 +29,5 @@ Marche_BiorbdOptim/contact/test_3contacts.py
 *.c3d
 
 Marche_BiorbdOptim/Plot/plot_bioviz.py
+
+Marche_BiorbdOptim/squat/graph
