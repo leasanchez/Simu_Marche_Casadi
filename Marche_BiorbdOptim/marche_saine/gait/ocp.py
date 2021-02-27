@@ -1,6 +1,7 @@
 import numpy as np
 from casadi import vertcat, MX
 from .dynamics_function import dynamics
+from .objective_function import objective
 
 from bioptim import (
     OptimalControlProgram,
@@ -59,313 +60,6 @@ def get_last_contact_force_null(pn: PenaltyNodes, contact_name: str) -> MX:
     return val
 
 
-# --- track grf ---
-def track_sum_contact_forces_three_contacts(pn: PenaltyNodes, grf: np.ndarray) -> MX:
-    """
-    Adds the objective that the mismatch between the
-    sum of the contact forces and the reference ground reaction forces should be minimized.
-
-    Parameters
-    ----------
-    pn: PenaltyNodes
-        The penalty node elements
-    grf: np.ndarray
-        Array of the measured ground reaction forces
-
-    Returns
-    -------
-    The cost that should be minimize in the MX format.
-    """
-
-    ns = pn.nlp.ns  # number of shooting points for the phase
-    val = []  # init
-    cn = pn.nlp.model.contactNames()  # contact name for the model
-
-    # --- compute forces ---
-    forces = {}  # define dictionnary with all the contact point possible
-    labels_forces = [
-        "Heel_r_X",
-        "Heel_r_Y",
-        "Heel_r_Z",
-        "Meta_1_r_X",
-        "Meta_1_r_Y",
-        "Meta_1_r_Z",
-        "Meta_5_r_X",
-        "Meta_5_r_Y",
-        "Meta_5_r_Z",
-    ]
-    for label in labels_forces:
-        forces[label] = []  # init
-
-    for n in range(ns):
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
-
-        # --- tracking forces ---
-        val = vertcat(
-            val,
-            grf[0, pn.t[n]]
-            - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n]),
-        )
-        val = vertcat(
-            val,
-            grf[1, pn.t[n]]
-            - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n]),
-        )
-        val = vertcat(
-            val,
-            grf[2, pn.t[n]]
-            - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n]),
-        )
-    return val
-
-def track_sum_contact_forces_four_contacts(pn: PenaltyNodes, grf: np.ndarray) -> MX:
-    """
-    Adds the objective that the mismatch between the
-    sum of the contact forces and the reference ground reaction forces should be minimized.
-
-    Parameters
-    ----------
-    pn: PenaltyNodes
-        The penalty node elements
-    grf: np.ndarray
-        Array of the measured ground reaction forces
-
-    Returns
-    -------
-    The cost that should be minimize in the MX format.
-    """
-
-    ns = pn.nlp.ns  # number of shooting points for the phase
-    val = []  # init
-    cn = pn.nlp.model.contactNames()  # contact name for the model
-
-    # --- compute forces ---
-    forces = {}  # define dictionnary with all the contact point possible
-    labels_forces = [
-        "Heel_r_X",
-        "Heel_r_Y",
-        "Heel_r_Z",
-        "Meta_1_r_X",
-        "Meta_1_r_Y",
-        "Meta_1_r_Z",
-        "Meta_5_r_X",
-        "Meta_5_r_Y",
-        "Meta_5_r_Z",
-        "Toe_r_X",
-        "Toe_r_Y",
-        "Toe_r_Z",
-    ]
-    for label in labels_forces:
-        forces[label] = []  # init
-
-    for n in range(ns):
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
-
-        # --- tracking forces ---
-        val = vertcat(
-            val,
-            grf[0, pn.t[n]]
-            - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]),
-        )
-        val = vertcat(
-            val,
-            grf[1, pn.t[n]]
-            - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]),
-        )
-        val = vertcat(
-            val,
-            grf[2, pn.t[n]]
-            - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]),
-        )
-    return val
-
-
-# --- track moments ---
-def track_sum_contact_moments_three_contacts(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
-    """
-    Adds the objective that the mismatch between the
-    sum of the contact moments and the reference ground reaction moments should be minimized.
-
-    Parameters
-    ----------
-    pn: PenaltyNodes
-        The penalty node elements
-    CoP: np.ndarray
-        Array of the measured center of pressure trajectory
-    M_ref: np.ndarray
-        Array of the measured ground reaction moments
-
-    Returns
-    -------
-    The cost that should be minimize in the MX format.
-
-    """
-
-    # --- aliases ---
-    ns = pn.nlp.ns  # number of shooting points for the phase
-    nq = pn.nlp.model.nbQ()  # number of dof
-    cn = pn.nlp.model.contactNames()  # contact name for the model
-    val = []  # init
-
-    # --- init forces ---
-    forces = {}  # define dictionnary with all the contact point possible
-    labels_forces = [
-        "Heel_r_X",
-        "Heel_r_Y",
-        "Heel_r_Z",
-        "Meta_1_r_X",
-        "Meta_1_r_Y",
-        "Meta_1_r_Z",
-        "Meta_5_r_X",
-        "Meta_5_r_Y",
-        "Meta_5_r_Z",
-    ]
-    for label in labels_forces:
-        forces[label] = []  # init
-
-    for n in range(ns):
-        # --- compute contact point position ---
-        q = pn.x[n][:nq]
-        markers = pn.nlp.model.markers(q)  # compute markers positions
-        heel = markers[-4].to_mx() - CoP[:, n]
-        meta1 = markers[-3].to_mx() - CoP[:, n]
-        meta5 = markers[-2].to_mx() - CoP[:, n]
-
-        # --- compute forces ---
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
-
-        # --- tracking moments ---
-        Mx = (
-            heel[1] * forces["Heel_r_Z"][n]
-            + meta1[1] * forces["Meta_1_r_Z"][n]
-            + meta5[1] * forces["Meta_5_r_Z"][n]
-        )
-        My = (
-            -heel[0] * forces["Heel_r_Z"][n]
-            - meta1[0] * forces["Meta_1_r_Z"][n]
-            - meta5[0] * forces["Meta_5_r_Z"][n]
-        )
-        Mz = (
-            heel[0] * forces["Heel_r_Y"][n]
-            - heel[1] * forces["Heel_r_X"][n]
-            + meta1[0] * forces["Meta_1_r_Y"][n]
-            - meta1[1] * forces["Meta_1_r_X"][n]
-            + meta5[0] * forces["Meta_5_r_Y"][n]
-            - meta5[1] * forces["Meta_5_r_X"][n]
-        )
-        val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
-        val = vertcat(val, M_ref[1, pn.t[n]] - My)
-        val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
-    return val
-
-
-def track_sum_contact_moments_four_contacts(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
-    """
-    Adds the objective that the mismatch between the
-    sum of the contact moments and the reference ground reaction moments should be minimized.
-
-    Parameters
-    ----------
-    pn: PenaltyNodes
-        The penalty node elements
-    CoP: np.ndarray
-        Array of the measured center of pressure trajectory
-    M_ref: np.ndarray
-        Array of the measured ground reaction moments
-
-    Returns
-    -------
-    The cost that should be minimize in the MX format.
-
-    """
-
-    # --- aliases ---
-    ns = pn.nlp.ns  # number of shooting points for the phase
-    nq = pn.nlp.model.nbQ()  # number of dof
-    cn = pn.nlp.model.contactNames()  # contact name for the model
-    val = []  # init
-
-    # --- init forces ---
-    forces = {}  # define dictionnary with all the contact point possible
-    labels_forces = [
-        "Heel_r_X",
-        "Heel_r_Y",
-        "Heel_r_Z",
-        "Meta_1_r_X",
-        "Meta_1_r_Y",
-        "Meta_1_r_Z",
-        "Meta_5_r_X",
-        "Meta_5_r_Y",
-        "Meta_5_r_Z",
-        "Toe_r_X",
-        "Toe_r_Y",
-        "Toe_r_Z",
-    ]
-    for label in labels_forces:
-        forces[label] = []  # init
-
-    for n in range(ns):
-        # --- compute contact point position ---
-        q = pn.x[n][:nq]
-        markers = pn.nlp.model.markers(q)  # compute markers positions
-        heel = markers[-4].to_mx() - CoP[:, n]
-        meta1 = markers[-3].to_mx() - CoP[:, n]
-        meta5 = markers[-2].to_mx() - CoP[:, n]
-        toe = markers[-1].to_mx() - CoP[:, n]
-
-        # --- compute forces ---
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
-
-        # --- tracking moments ---
-        Mx = (
-            heel[1] * forces["Heel_r_Z"][n]
-            + meta1[1] * forces["Meta_1_r_Z"][n]
-            + meta5[1] * forces["Meta_5_r_Z"][n]
-            + toe[1] * forces["Toe_r_Z"][n]
-        )
-        My = (
-            -heel[0] * forces["Heel_r_Z"][n]
-            - meta1[0] * forces["Meta_1_r_Z"][n]
-            - meta5[0] * forces["Meta_5_r_Z"][n]
-            - toe[0] * forces["Toe_r_Z"][n]
-        )
-        Mz = (
-            heel[0] * forces["Heel_r_Y"][n]
-            - heel[1] * forces["Heel_r_X"][n]
-            + meta1[0] * forces["Meta_1_r_Y"][n]
-            - meta1[1] * forces["Meta_1_r_X"][n]
-            + meta5[0] * forces["Meta_5_r_Y"][n]
-            - meta5[1] * forces["Meta_5_r_X"][n]
-            + toe[0] * forces["Toe_r_Y"][n]
-            - toe[1] * forces["Toe_r_X"][n]
-        )
-        val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
-        val = vertcat(val, M_ref[1, pn.t[n]] - My)
-        val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
-    return val
-
 
 class gait_torque_driven:
     def __init__(self, models, nb_shooting, phase_time, q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, n_threads=1, four_contact=False):
@@ -395,10 +89,6 @@ class gait_torque_driven:
         # objective functions
         self.objective_functions = ObjectiveList()
         self.set_objective_function()
-        if self.four_contact:
-            self.set_objective_function_four_contacts()
-        else:
-            self.set_objective_function_three_contacts()
 
         # dynamics
         self.dynamics = DynamicsList()
@@ -445,70 +135,16 @@ class gait_torque_driven:
 
 
     def set_objective_function(self):
-        # --- markers_idx ---
-        markers_pelvis = [0, 1, 2, 3]
-        markers_anat = [4, 9, 10, 11, 12, 17, 18]
-        markers_tissus = [5, 6, 7, 8, 13, 14, 15, 16]
-        markers_pied = [19, 20, 21, 22, 23, 24, 25]
-        markers_idx = (markers_anat, markers_pelvis, markers_pied, markers_tissus)
-        weigth_markers = (1000, 10000000, 10000000, 100)
-
         for p in range(self.n_phases):
-            self.objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
-                                         weight=1,
-                                         index=range(self.nb_q),
-                                         target=self.q_ref[p],
-                                         phase=p,
-                                         quadratic=True)
-            for (i, m_idx) in enumerate(markers_idx):
-                self.objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
-                                             weight=weigth_markers[i],
-                                             index=m_idx,
-                                             target=self.markers_ref[p][:, m_idx, :],
-                                             phase=p,
-                                             quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e-2, phase=p,quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=1e-1, phase=p,quadratic=True)
+            objective.set_objective_function_markers(self.objective_functions, self.markers_ref[p], p)
 
-    def set_objective_function_four_contacts(self):
-        for p in range(self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_forces_four_contacts,
-                                         grf=self.grf_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.1,
-                                         quadratic=True,
-                                         phase=p)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[0], 0)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[1], 1)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[2], 2)
 
-        for p in range(1, self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_moments_four_contacts,
-                                         CoP=self.cop_ref[p],
-                                         M_ref=self.moments_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.01,
-                                         quadratic=True,
-                                         phase=p)
+        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[1], self.cop_ref[1], 1)
+        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[2], self.cop_ref[2], 2)
 
-    def set_objective_function_three_contacts(self):
-        for p in range(self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_forces_three_contacts,
-                                         grf=self.grf_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.1,
-                                         quadratic=True,
-                                         phase=p)
-
-        for p in range(1, self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_moments_three_contacts,
-                                         CoP=self.cop_ref[p],
-                                         M_ref=self.moments_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.01,
-                                         quadratic=True,
-                                         phase=p)
 
     def set_dynamics(self):
         dynamics.set_torque_driven_dynamics(self.dynamics)
@@ -730,7 +366,7 @@ class gait_torque_driven:
 
 
 class gait_muscle_driven:
-    def __init__(self, models, nb_shooting, phase_time, q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, n_threads=1, four_contact=False):
+    def __init__(self, models, nb_shooting, phase_time, q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, n_threads=1):
         self.models=models
 
         # Element for the optimization
@@ -752,17 +388,12 @@ class gait_muscle_driven:
         self.nb_qdot=models[0].nbQdot()
         self.nb_tau=models[0].nbGeneralizedTorque()
         self.nb_mus=models[0].nbMuscleTotal()
-        self.four_contact=four_contact
         self.torque_min, self.torque_max, self.torque_init = -1000, 1000, 0
         self.activation_min, self.activation_max, self.activation_init = 1e-3, 1.0, 0.1
 
         # objective functions
         self.objective_functions = ObjectiveList()
         self.set_objective_function()
-        if self.four_contact:
-            self.set_objective_function_four_contacts()
-        else:
-            self.set_objective_function_three_contacts()
 
         # dynamics
         self.dynamics = DynamicsList()
@@ -807,77 +438,18 @@ class gait_muscle_driven:
         )
 
 
-
     def set_objective_function(self):
-        # --- markers_idx ---
-        markers_pelvis = [0, 1, 2, 3]
-        markers_anat = [4, 9, 10, 11, 12, 17, 18]
-        markers_tissus = [5, 6, 7, 8, 13, 14, 15, 16]
-        markers_pied = [19, 20, 21, 22, 23, 24, 25]
-        markers_idx = (markers_anat, markers_pelvis, markers_pied, markers_tissus)
-        weigth_markers = (1000, 10000000, 10000000, 100)
-
         for p in range(self.n_phases):
-            self.objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
-                                         weight=1,
-                                         index=range(self.nb_q),
-                                         target=self.q_ref[p],
-                                         phase=p,
-                                         quadratic=True)
-            for (i, m_idx) in enumerate(markers_idx):
-                self.objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
-                                             weight=weigth_markers[i],
-                                             index=m_idx,
-                                             target=self.markers_ref[p][:, m_idx, :],
-                                             phase=p,
-                                             quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e-2, index=(10), phase=p,
-                                    quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e1, index=(6, 7, 8, 9, 11), phase=p,
-                                    quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=1e2, phase=p, quadratic=True)
-            self.objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=1e-1, phase=p,
-                                    quadratic=True)
+            objective.set_objective_function_markers(self.objective_functions, self.markers_ref[p], p)
+            objective.set_objective_function_controls(self.objective_functions, p)
 
-    def set_objective_function_four_contacts(self):
-        for p in range(self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_forces_four_contacts,
-                                         grf=self.grf_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.1,
-                                         quadratic=True,
-                                         phase=p)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[0], 0)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[1], 1)
+        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[2], 2)
 
-        for p in range(1, self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_moments_four_contacts,
-                                         CoP=self.cop_ref[p],
-                                         M_ref=self.moments_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.01,
-                                         quadratic=True,
-                                         phase=p)
+        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[1], self.cop_ref[1], 1)
+        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[2], self.cop_ref[2], 2)
 
-    def set_objective_function_three_contacts(self):
-        for p in range(self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_forces_three_contacts,
-                                         grf=self.grf_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.1,
-                                         quadratic=True,
-                                         phase=p)
-
-        for p in range(1, self.n_phases - 1):
-            self.objective_functions.add(track_sum_contact_moments_three_contacts,
-                                         CoP=self.cop_ref[p],
-                                         M_ref=self.moments_ref[p],
-                                         custom_type=ObjectiveFcn.Lagrange,
-                                         node=Node.ALL,
-                                         weight=0.01,
-                                         quadratic=True,
-                                         phase=p)
 
     def set_dynamics(self):
         dynamics.set_muscle_driven_dynamics(self.dynamics)
