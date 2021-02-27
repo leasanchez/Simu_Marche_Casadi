@@ -163,7 +163,6 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
 
 
 class objective:
-
     @staticmethod
     def set_objective_function_markers(objective_functions, markers_ref, p):
         # --- markers_idx ---
