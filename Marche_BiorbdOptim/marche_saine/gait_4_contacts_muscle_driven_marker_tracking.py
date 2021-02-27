@@ -4,8 +4,7 @@ import biorbd
 import bioviz
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from Marche_BiorbdOptim.LoadData import Data_to_track
-from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
+# from Marche_BiorbdOptim.marche_saine.Affichage_resultats import Affichage
 
 from bioptim import (
     OptimalControlProgram,
@@ -14,16 +13,12 @@ from bioptim import (
     BoundsList,
     QAndQDotBounds,
     InitialGuessList,
-    ShowResult,
     ObjectiveList,
     ObjectiveFcn,
     InterpolationType,
-    Data,
     Node,
     ConstraintList,
     ConstraintFcn,
-    StateTransitionList,
-    StateTransitionFcn,
     Solver,
 )
 
@@ -357,10 +352,10 @@ def prepare_ocp(
 if __name__ == "__main__":
     # Define the problem -- model path
     biorbd_model = (
-        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
-        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
-        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),
-        biorbd.Model(".models/Gait_1leg_12dof_heel.bioMod"),)
+        biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),
+        biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),)
 
     # Problem parameters
     dt = 0.01
