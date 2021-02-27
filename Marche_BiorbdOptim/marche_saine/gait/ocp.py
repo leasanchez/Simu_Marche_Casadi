@@ -6,12 +6,10 @@ from .objective_function import objective
 from bioptim import (
     OptimalControlProgram,
     DynamicsList,
-    DynamicsFcn,
     BoundsList,
     QAndQDotBounds,
     InitialGuessList,
     ObjectiveList,
-    ObjectiveFcn,
     InterpolationType,
     Node,
     ConstraintList,
