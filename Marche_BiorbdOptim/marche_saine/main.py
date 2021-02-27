@@ -58,17 +58,6 @@ moments_ref = data.dispatch_data_interpolation(data=data.c3d_data.moments, nb_sh
 cop_ref = data.dispatch_data_interpolation(data=data.c3d_data.cop, nb_shooting=number_shooting_points)
 emg_ref = data.dispatch_data_interpolation(data=data.emg, nb_shooting=number_shooting_points)
 
-# gait_torque_driven = gait_torque_driven(biorbd_model,
-#                                         number_shooting_points,
-#                                         phase_time,
-#                                         q_ref,
-#                                         qdot_ref,
-#                                         markers_ref,
-#                                         grf_ref,
-#                                         moments_ref,
-#                                         cop_ref,
-#                                         n_threads=4,
-#                                         four_contact=True)
 gait_muscle_driven = gait_muscle_driven(biorbd_model,
                                         number_shooting_points,
                                         phase_time,
@@ -78,8 +67,7 @@ gait_muscle_driven = gait_muscle_driven(biorbd_model,
                                         grf_ref,
                                         moments_ref,
                                         cop_ref,
-                                        n_threads=4,
-                                        four_contact=True)
+                                        n_threads=4)
 tic = time()
 # --- Solve the program --- #
 sol = gait_muscle_driven.solve()
