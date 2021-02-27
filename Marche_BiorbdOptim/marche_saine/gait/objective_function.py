@@ -163,8 +163,9 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
 
 
 class objective:
+
     @staticmethod
-    def set_objective_function_markers(objective_functions, markers_ref, p):
+    def set_objective_function_markers(objective_functions, markers_ref,p):
         # --- markers_idx ---
         markers_pelvis = [0, 1, 2, 3]
         markers_anat = [4, 9, 10, 11, 12, 17, 18]
@@ -174,14 +175,14 @@ class objective:
         weigth_markers = (1000, 10000000, 10000000, 100)
         for (i, m_idx) in enumerate(markers_idx):
             objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
-                                         weight=weigth_markers[i],
-                                         index=m_idx,
-                                         target=markers_ref[:, m_idx, :],
-                                         phase=p,
-                                         quadratic=True)
+                                    weight=weigth_markers[i],
+                                    index=m_idx,
+                                    target=markers_ref[:, m_idx, :],
+                                    phase=p,
+                                    quadratic=True)
 
     @staticmethod
-    def set_objective_function_controls(objective_functions, p):
+    def set_objective_function_muscle_controls(objective_functions, p):
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e-2, index=(10), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e1, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=1e2, phase=p, quadratic=True)
@@ -207,3 +208,33 @@ class objective:
                                  weight=0.01,
                                  quadratic=True,
                                  phase=p)
+
+    @staticmethod
+    def set_objective_function_heel_strike(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
+        objective.set_objective_function_markers(objective_functions, markers_ref, 0)
+        objective.set_objective_function_muscle_controls(objective_functions, 0)
+        objective.set_objective_function_forces(objective_functions, grf_ref, 0)
+
+    @staticmethod
+    def set_objective_function_flatfoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
+        objective.set_objective_function_markers(objective_functions, markers_ref, 1)
+        objective.set_objective_function_muscle_controls(objective_functions, 1)
+        objective.set_objective_function_forces(objective_functions, grf_ref, 1)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 1)
+
+    @staticmethod
+    def set_objective_function_forefoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
+        objective.set_objective_function_markers(objective_functions, markers_ref, 2)
+        objective.set_objective_function_muscle_controls(objective_functions, 2)
+        objective.set_objective_function_forces(objective_functions, grf_ref, 2)
+        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 2)
+
+    @staticmethod
+    def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
+        objective.set_objective_function_markers(objective_functions, markers_ref, 3)
+        objective.set_objective_function_muscle_controls(objective_functions, 3)
+
+
+
+
+

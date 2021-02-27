@@ -232,16 +232,10 @@ class gait_muscle_driven:
 
 
     def set_objective_function(self):
-        for p in range(self.n_phases):
-            objective.set_objective_function_markers(self.objective_functions, self.markers_ref[p], p)
-            objective.set_objective_function_controls(self.objective_functions, p)
-
-        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[0], 0)
-        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[1], 1)
-        objective.set_objective_function_forces(self.objective_functions, self.grf_ref[2], 2)
-
-        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[1], self.cop_ref[1], 1)
-        objective.set_objective_function_moments(self.objective_functions, self.moments_ref[2], self.cop_ref[2], 2)
+        objective.set_objective_function_heel_strike(self.objective_functions, self.markers_ref[0], self.grf_ref[0], self.moments_ref[0], self.cop_ref[0])
+        objective.set_objective_function_flatfoot(self.objective_functions, self.markers_ref[1], self.grf_ref[1], self.moments_ref[1], self.cop_ref[1])
+        objective.set_objective_function_forefoot(self.objective_functions, self.markers_ref[2], self.grf_ref[2], self.moments_ref[2], self.cop_ref[2])
+        objective.set_objective_function_swing(self.objective_functions, self.markers_ref[3], self.grf_ref[3], self.moments_ref[3], self.cop_ref[3])
 
 
     def set_dynamics(self):
