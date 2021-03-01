@@ -87,7 +87,7 @@ class contact:
         self.position["Meta_5_r"] = []
         self.position["Toe_r"] = []
         for phase in range(self.n_phases):
-            markers_pos=self.compute_contact_position(p)
+            markers_pos=self.compute_contact_position(phase)
             self.position["Heel_r"].append(markers_pos[:, 26, :])
             self.position["Meta_1_r"].append(markers_pos[:, 27, :])
             self.position["Meta_5_r"].append(markers_pos[:, 28, :])

@@ -27,6 +27,30 @@ def forces_from_forward_dynamics(model, q, qdot, residual_tau, activation):
     biorbd.Model.ForwardDynamicsConstraintsDirect(model, q, qdot, tau, cs)
     return cs.getForce().to_mx()
 
+def contact_forces_casadi(model):
+    q_sym = MX.sym("q_sym", model.nbQ(), 1)
+    qdot_sym = MX.sym("qdot_sym", model.nbQ(), 1)
+    residual_tau_sym = MX.sym("residual_tau_sym", model.nbQ(), 1)
+    activation_sym = MX.sym("activation_sym", model.nbMuscleTotal())
+    return Function("contact_forces",
+                              [q_sym, qdot_sym, residual_tau_sym, activation_sym],
+                              [forces_from_forward_dynamics(model, q_sym, qdot_sym, residual_tau_sym,
+                                                            activation_sym)],
+                              ["q_sym", "qdot_sym", "residual_tau_sym", "activation_sym"],
+                              ["forces"]).expand()
+
+def markers_func_casadi(model):
+    symbolic_q = MX.sym("q", model.nbQ(), 1)
+    markers_func = []
+    for m in range(model.nbMarkers()):
+        markers_func.append(Function(
+            "ForwardKin",
+            [symbolic_q], [model.marker(symbolic_q, m).to_mx()],
+            ["q"],
+            ["markers"],
+        ).expand())
+    return markers_func
+
 # Define the problem -- model path
 biorbd_model = (
     biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),
@@ -84,10 +108,6 @@ cn = []
 for c in biorbd_model[1].contactNames():
     cn.append(c.to_string())
 
-init_heel = np.array([np.mean(markers_ref[1][0, 19, :] + 0.02), np.mean(markers_ref[1][1, 19, :]), 0])
-init_meta1 = np.array([np.mean(markers_ref[1][0, 20, :]), np.mean(markers_ref[1][1, 20, :]), 0])
-init_meta5 = np.array([np.mean(markers_ref[1][0, 24, :]), np.mean(markers_ref[1][1, 24, :]), 0])
-
 # --- flatfoot - get position ---
 pos_Heel = MX.sym("pos_Heel", 2, 1)
 pos_Meta1 = MX.sym("pos_Meta1", 2, 1)
@@ -98,27 +118,24 @@ lbg = []
 ubg = []
 constraint = []
 
-q_sym = MX.sym("q_sym", biorbd_model[1].nbQ(), 1)
-qdot_sym = MX.sym("qdot_sym", biorbd_model[1].nbQ(), 1)
-residual_tau_sym = MX.sym("residual_tau_sym", biorbd_model[1].nbQ(), 1)
-activation_sym = MX.sym("activation_sym", biorbd_model[1].nbMuscleTotal())
-contact_forces = Function("contact_forces",
-                          [q_sym, qdot_sym, residual_tau_sym, activation_sym],
-                          [forces_from_forward_dynamics(biorbd_model[1], q_sym, qdot_sym, residual_tau_sym, activation_sym)],
-                          ["q_sym", "qdot_sym", "residual_tau_sym", "activation_sym"],
-                          ["forces"]).expand()
+# q_sym = MX.sym("q_sym", biorbd_model[1].nbQ(), 1)
+# qdot_sym = MX.sym("qdot_sym", biorbd_model[1].nbQ(), 1)
+# residual_tau_sym = MX.sym("residual_tau_sym", biorbd_model[1].nbQ(), 1)
+# activation_sym = MX.sym("activation_sym", biorbd_model[1].nbMuscleTotal())
+# contact_forces= Function( "contact_forces",
+#                 [q_sym, qdot_sym, residual_tau_sym, activation_sym],
+#                 [forces_from_forward_dynamics(biorbd_model[1], q_sym, qdot_sym, residual_tau_sym,
+#                                               activation_sym)],
+#                 ["q_sym", "qdot_sym", "residual_tau_sym", "activation_sym"],
+#                 ["forces"]).expand()
 
-q_sym2 = MX.sym("q_sym2", biorbd_model[1].nbQ(), 1)
-markers_func = []
-for m in range(biorbd_model[1].nbMarkers()):
-    markers_func.append(Function(f"markers_{m}",
-                          [q_sym2],
-                          [biorbd_model[1].marker(m, q_sym2)],
-                          ["q_sym2"],
-                          [f"position_marker_{m}"]).expand())
+markers_func = np.array(markers_func_casadi(biorbd_model[0]))
+init_heel = np.array(markers_func[26](q_ref[1][:, 0]))
+init_meta1 = np.array(markers_func[27](q_ref[1][:, 0]))
+init_meta5 = np.array(markers_func[28](q_ref[1][:, 0]))
+init_toe = np.array(markers_func[29](q_ref[2][:, 0]))
 
-
-X0 = []
+contact_forces=contact_forces_casadi(biorbd_model[1])
 for i in range(number_shooting_points[1] + 1):
     # Aliases
     heel = cop_ref[1][:-1, i] - pos_Heel
@@ -126,7 +143,7 @@ for i in range(number_shooting_points[1] + 1):
     meta5 = cop_ref[1][:-1, i] - pos_Meta5
 
     # compute forces
-    force_sim = contact_forces(q_ref[1][:, i], qdot_ref[1][:, i], res_tau[:, i], activation[:, i])
+    force_sim = contact_forces(q_ref[1][:, i], qdot_ref[1][:, i], res_tau[:, 4 + i], activation[:, 4 + i])
     for f_name in labels_forces:
         forces[f_name] = 0.0
     for c in cn:
@@ -148,19 +165,45 @@ for i in range(number_shooting_points[1] + 1):
     jm2 = moments_ref[1][2, i] - Mz
     objective += jm0 * jm0 + jm1 * jm1 + jm2 * jm2
 
-    # compute markers position
-    marker_heel = markers_func[19](q_ref[1][:, i])
-    X0.append([init_heel[0], init_heel[1], init_meta1[0], init_meta1[1], init_meta5[0], init_meta5[1]])
+contact_forces_2 = contact_forces_casadi(biorbd_model[2])
+for i in range(number_shooting_points[2] + 1):
+    # Aliases
+    meta1 = cop_ref[2][:-1, i] - pos_Meta1
+    meta5 = cop_ref[2][:-1, i] - pos_Meta5
+    toe = cop_ref[2][:-1, i] - pos_Toe
 
-x0_pos = [init_heel[0], init_heel[1], init_meta1[0], init_meta1[1], init_meta5[0], init_meta5[1]]
+    # compute forces
+    force_sim = contact_forces_2(q_ref[2][:, i], qdot_ref[2][:, i], res_tau[:, 38+i], activation[:, 38+i])
+    for f_name in labels_forces:
+        forces[f_name] = 0.0
+    for c in cn:
+        forces[c] = force_sim[cn.index(c)]
+
+    # tracking moments
+    Mx = ( meta1[1] * forces["Meta_1_r_Z"] + meta5[1] * forces["Meta_5_r_Z"] + toe[1] * forces["Toe_r_Z"])
+    My = (- meta1[0] * forces["Meta_1_r_Z"] - meta5[0] * forces["Meta_5_r_Z"] - toe[0] * forces["Toe_r_Z"])
+    Mz = (meta1[0] * forces["Meta_1_r_Y"] - meta1[1] * forces["Meta_1_r_X"]
+          + meta5[0] * forces["Meta_5_r_Y"] - meta5[1] * forces["Meta_5_r_X"]
+          + toe[0] * forces["Toe_r_Y"] - toe[1] * forces["Toe_r_X"])
+
+    jm0 = Mx - moments_ref[2][0, i]
+    jm1 = moments_ref[2][1, i] - My
+    jm2 = moments_ref[2][2, i] - Mz
+    objective += jm0 * jm0 + jm1 * jm1 + jm2 * jm2
+
+# x0_pos = [init_heel[0], init_heel[1], init_meta1[0], init_meta1[1], init_meta5[0], init_meta5[1]]
+x0_pos = [init_heel[0], init_heel[1], init_meta1[0], init_meta1[1], init_meta5[0], init_meta5[1], init_toe[0], init_toe[1]]
 lbx = []
 ubx = []
 for x0 in x0_pos:
     lbx.append(x0-0.01)
     ubx.append(x0+0.01)
 
-w = [pos_Heel, pos_Meta1, pos_Meta5]
+# w = [pos_Heel, pos_Meta1, pos_Meta5]
+w = [pos_Heel, pos_Meta1, pos_Meta5, pos_Toe]
 nlp = {"x": vertcat(*w), "f": objective, "g": vertcat(*constraint)}
 opts = {"ipopt.tol": 1e-8, "ipopt.hessian_approximation": "exact"}
 solver = nlpsol("solver", "ipopt", nlp, opts)
 res = solver(x0=x0_pos, lbx=lbx, ubx=ubx, lbg=lbg, ubg=ubg)
+
+a=2
