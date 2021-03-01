@@ -358,7 +358,7 @@ endmarker
 // --------------------------------------------------------------------------------------------------------
 marker	 Heel_r
 	parent    foot_marker_r
-	position    0.0054278	  -0.02	   0.00220395
+	position    0.0254278	  -0.02	   0.00220395
 	technical	1
 endmarker
 marker	Meta_1_r
