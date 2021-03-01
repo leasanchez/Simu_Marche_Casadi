@@ -9,7 +9,18 @@ import biorbd
 from matplotlib import pyplot as plt
 
 from gait.load_experimental_data import LoadData
-from gait.ocp import gait_torque_driven, gait_muscle_driven
+from gait.ocp import gait_muscle_driven
+from gait.muscle_functions import muscle
+
+
+def get_q_name(model):
+    q_name = []
+    for s in range(model.nbSegment()):
+        seg_name = model.segment(s).name().to_string()
+        for d in range(model.segment(s).nbDof()):
+            dof_name = model.segment(s).nameDof(d).to_string()
+            q_name.append(seg_name + "_" + dof_name)
+    return q_name
 
 def get_results(sol):
     q = sol.states["q"]
@@ -25,6 +36,21 @@ def save_results(ocp, sol, save_path):
     np.save(save_path + 'q', q)
     np.save(save_path + 'tau', tau)
     np.save(save_path + 'muscle', muscle)
+
+def plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, idx_q, idx_muscle, number_shooting_points):
+    q_name = get_q_name(muscle_no_hip.model)
+    fig = plt.figure()
+    fig.suptitle(f"{muscle_hip.muscle_name[idx_muscle]} - - {q_name[idx_q]}")
+    plt.plot(muscle_hip.individual_muscle_torque[idx_muscle, idx_q, :], "r")
+    plt.plot(muscle_no_hip.individual_muscle_torque[idx_muscle, idx_q, :], "b")
+    plt.plot(muscle_no_rf.individual_muscle_torque[idx_muscle, idx_q, :], "g")
+    plt.xlim([0.0, muscle_hip.n_shooting + 1])
+    for p in range(nb_phases):
+        plt.plot([sum(number_shooting_points[:p + 1]), sum(number_shooting_points[:p + 1])],
+                     [min(muscle_no_hip.individual_muscle_torque[11, 9, :]),
+                      max(muscle_no_hip.individual_muscle_torque[11, 9, :])], "k--")
+    plt.legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
+
 
 # Define the problem -- model path
 biorbd_model = (
@@ -70,6 +96,7 @@ gait_muscle_driven = gait_muscle_driven(models=biorbd_model,
                                         grf_ref=grf_ref,
                                         moments_ref=moments_ref,
                                         cop_ref=cop_ref,
+                                        save_path='./RES/muscle_driven/Hip_muscle/',
                                         n_threads=8)
 tic = time()
 # --- Solve the program --- #
@@ -83,5 +110,46 @@ sol.print()
 
 # --- Save results --- #
 sol_merged = sol.merge_phases()
-save_path = './RES/muscle_driven/'
+save_path = './RES/muscle_driven/No_hip/'
 save_results(gait_muscle_driven.ocp, sol_merged, save_path)
+
+# --- Load previous results --- #
+ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
+muscle_hip = muscle(ocp_hip, sol_hip)
+ocp_no_hip, sol_no_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_hip/cycle.bo')
+muscle_no_hip = muscle(ocp_no_hip, sol_no_hip)
+ocp_no_rf, sol_no_rf = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_RF/cycle.bo')
+muscle_no_rf = muscle(ocp_no_rf, sol_no_rf)
+
+# --- plot activations --- #
+fig, axes = plt.subplots(4, 5)
+axes = axes.flatten()
+fig.suptitle('Muscle activations')
+for (m, muscle) in enumerate(muscle_hip.muscle_name):
+    axes[m].set_title(muscle)
+    axes[m].plot(muscle_hip.activations[m, :], "r")
+    axes[m].plot(muscle_no_hip.activations[m, :], "b")
+    axes[m].plot(muscle_no_rf.activations[m, :], "g")
+    axes[m].set_ylim([0.0, 1.0])
+    axes[m].set_xlim([0.0, muscle_hip.n_shooting + 1])
+    for p in range(nb_phases):
+        axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, 1.0], "k--")
+axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
+
+# --- plot muscle forces --- #
+fig, axes = plt.subplots(4, 5)
+axes = axes.flatten()
+fig.suptitle('Muscle forces')
+for (m, muscle) in enumerate(muscle_hip.muscle_name):
+    axes[m].set_title(muscle)
+    axes[m].plot(muscle_hip.muscle_force[m, :], "r")
+    axes[m].plot(muscle_no_hip.muscle_force[m, :], "b")
+    axes[m].plot(muscle_no_rf.muscle_force[m, :], "g")
+    axes[m].set_ylim([0.0, max(muscle_hip.muscle_force[m, :])])
+    axes[m].set_xlim([0.0, muscle_hip.n_shooting + 1])
+    for p in range(nb_phases):
+        axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, max(muscle_hip.muscle_force[m, :])], "k--")
+axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
+
+# --- plot muscle torque --- #
+plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 9, 11, number_shooting_points)
