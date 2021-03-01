@@ -356,24 +356,24 @@ endmarker
 // --------------------------------------------------------------------------------------------------------
 // Markers Contact
 // --------------------------------------------------------------------------------------------------------
-marker	 Heel_r
+marker	 Heel_r //26
 	parent    foot_marker_r
-	position    0.0254278	  -0.02	   0.00220395
+	position    0.0354278	  -0.02	   -0.00779605
 	technical	1
 endmarker
-marker	Meta_1_r
+marker	Meta_1_r //27
 	parent    foot_marker_r
-	position    0.144628	 -0.02	  -0.0223195
+	position    0.18973	 -0.02	  -0.0223195
 	technical	1
 endmarker
-marker	 Meta_5_r
+marker	 Meta_5_r //28
 	parent    foot_marker_r
-	position    0.096359	 -0.02	   0.0432144
+	position    0.166485	 -0.02	   0.0538694
 	technical	1
 endmarker
-marker	  Toe_r
+marker	  Toe_r //29
 	parent    foot_marker_r
-	position    0.200778	 -0.02	   0.00583628
+	position    0.24	     -0.02    -0.0323195
 	technical	1
 endmarker
 
