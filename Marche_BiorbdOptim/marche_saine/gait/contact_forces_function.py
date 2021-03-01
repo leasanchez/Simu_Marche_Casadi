@@ -179,5 +179,5 @@ class contact:
             x_merged[key] = np.empty(sum(self.number_shooting_points) + 1)
             n_shoot=0
             for phase in range(self.n_phases):
-                x_merged[key][n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = np.vstack(x_merged[key], x[key][phase])
+                x_merged[key][n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = x[key][phase]
                 n_shoot += self.number_shooting_points[phase]
