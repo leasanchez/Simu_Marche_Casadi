@@ -25,7 +25,7 @@ class parameter:
         bound_f_iso = Bounds([0.2]*model.nbMuscleTotal(),
                              [5]*model.nbMuscleTotal(),
                              interpolation=InterpolationType.CONSTANT)
-        initial_fiso= InitialGuess(np.repeat(1, model.nbMuscleTotal()))
+        initial_fiso= InitialGuess([1]*model.nbMuscleTotal())
         fiso_init = force_isometric(model)
         parameters.add(
             "force_isometrique",  # The name of the parameter
