@@ -22,7 +22,7 @@ from bioptim import (
 
 
 class gait_muscle_driven:
-    def __init__(self, models, nb_shooting, phase_time, q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, n_threads=1):
+    def __init__(self, models, nb_shooting, phase_time, q_ref, qdot_ref, markers_ref, grf_ref, moments_ref, cop_ref, save_path=None, n_threads=1):
         self.models=models
 
         # Element for the optimization
@@ -75,8 +75,11 @@ class gait_muscle_driven:
         # Initial guess
         self.x_init = InitialGuessList()
         self.u_init = InitialGuessList()
-        self.set_initial_guess()
-        # self.set_initial_guess_from_solution(save_path)
+        if save_path is not None:
+            self.save_path = save_path
+            self.set_initial_guess_from_solution()
+        else:
+            self.set_initial_guess()
 
         # Ocp
         self.ocp = OptimalControlProgram(
@@ -92,6 +95,7 @@ class gait_muscle_driven:
             constraints=self.constraints,
             phase_transitions=self.phase_transition,
             n_threads=self.n_threads,
+            parameters=self.parameters,
         )
 
 
@@ -141,12 +145,12 @@ class gait_muscle_driven:
         for p in range(self.n_phases):
             init_x = np.zeros((self.nb_q + self.nb_qdot, self.nb_shooting[p] + 1))
             init_x[:self.nb_q, :] = np.load(self.save_path + "q.npy")[:, n_shoot:n_shoot + self.nb_shooting[p] + 1]
-            init_x[self.nb_q:self.nb_q + self.nb_qdot, :] = np.load(self.save_path + "q_dot.npy")[:, n_shoot:n_shoot + self.nb_shooting[p] + 1]
+            init_x[self.nb_q:self.nb_q + self.nb_qdot, :] = np.load(self.save_path + "qdot.npy")[:, n_shoot:n_shoot + self.nb_shooting[p] + 1]
             self.x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
             init_u = np.zeros((self.nb_tau + self.nb_mus, self.nb_shooting[p]))
             init_u[:self.nb_tau, :] = np.load(self.save_path + "tau.npy")[:, n_shoot:n_shoot + self.nb_shooting[p]]
-            init_u[self.nb_tau:, :] = np.load(self.save_path + "activation.npy")[:, n_shoot:n_shoot + self.nb_shooting[p]]
+            init_u[self.nb_tau:, :] = np.load(self.save_path + "muscle.npy")[:, n_shoot:n_shoot + self.nb_shooting[p]]
             self.u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
             n_shoot += self.nb_shooting[p]
 
