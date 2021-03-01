@@ -265,8 +265,8 @@ class gait_muscle_driven:
             init_x[self.nb_q:self.nb_q + self.nb_qdot, :] = self.qdot_ref[p]
             self.x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
 
-            init_u = np.zeros((self.nb_tau + self.nb_mus, self.nb_shooting[p]))
-            self.u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
+            init_u = [self.torque_init] * self.nb_tau + [self.activation_init] * self.nb_mus
+            self.u_init.add(init_u)
             n_shoot += self.nb_shooting[p]
 
     def set_initial_guess_from_solution(self):
@@ -288,7 +288,7 @@ class gait_muscle_driven:
             solver=Solver.IPOPT,
             solver_options={
                 "ipopt.tol": 1e-3,
-                "ipopt.max_iter": 5000,
+                "ipopt.max_iter": 1000,
                 "ipopt.hessian_approximation": "exact",
                 "ipopt.limited_memory_max_history": 50,
                 "ipopt.linear_solver": "ma57",
