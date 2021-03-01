@@ -1,7 +1,7 @@
 import numpy as np
+import biorbd
 from bioptim import ObjectiveFcn, Node, PenaltyNodes
 from casadi import vertcat, MX
-
 
 
 def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
@@ -23,7 +23,9 @@ def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
 
     ns = pn.nlp.ns  # number of shooting points for the phase
     val = []  # init
-    cn = pn.nlp.model.contactNames()  # contact name for the model
+    cn = []
+    for c in pn.nlp.model.contactNames():
+        cn.append(c.to_string()) # contact name for the model
 
     # --- compute forces ---
     forces = {}  # define dictionnary with all the contact point possible
@@ -41,33 +43,30 @@ def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
         "Toe_r_Y",
         "Toe_r_Z",
     ]
-    for label in labels_forces:
-        forces[label] = []  # init
 
     for n in range(ns):
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
+        # --- compute forces ---
+        force_sim = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)
+        for f_name in labels_forces:
+            forces[f_name] = 0.0
+        for c in cn:
+            forces[c] = force_sim[cn.index(c)]
 
         # --- tracking forces ---
         val = vertcat(
             val,
             grf[0, pn.t[n]]
-            - (forces["Heel_r_X"][n] + forces["Meta_1_r_X"][n] + forces["Meta_5_r_X"][n] + forces["Toe_r_X"][n]),
+            - (forces["Heel_r_X"] + forces["Meta_1_r_X"] + forces["Meta_5_r_X"] + forces["Toe_r_X"]),
         )
         val = vertcat(
             val,
             grf[1, pn.t[n]]
-            - (forces["Heel_r_Y"][n] + forces["Meta_1_r_Y"][n] + forces["Meta_5_r_Y"][n] + forces["Toe_r_Y"][n]),
+            - (forces["Heel_r_Y"] + forces["Meta_1_r_Y"] + forces["Meta_5_r_Y"] + forces["Toe_r_Y"]),
         )
         val = vertcat(
             val,
             grf[2, pn.t[n]]
-            - (forces["Heel_r_Z"][n] + forces["Meta_1_r_Z"][n] + forces["Meta_5_r_Z"][n] + forces["Toe_r_Z"][n]),
+            - (forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"] + forces["Toe_r_Z"]),
         )
     return val
 
@@ -93,8 +92,11 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
 
     # --- aliases ---
     ns = pn.nlp.ns  # number of shooting points for the phase
-    nq = pn.nlp.model.nbQ()  # number of dof
-    cn = pn.nlp.model.contactNames()  # contact name for the model
+    nq = pn.nlp.shape["q"] # number of dof
+    markers = biorbd.to_casadi_func("markers", pn.nlp.model.markers, pn.nlp.q)
+    cn = []
+    for c in pn.nlp.model.contactNames() :
+        cn.append(c.to_string())           # contact name for the model
     val = []  # init
 
     # --- init forces ---
@@ -113,49 +115,40 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
         "Toe_r_Y",
         "Toe_r_Z",
     ]
-    for label in labels_forces:
-        forces[label] = []  # init
 
     for n in range(ns):
         # --- compute contact point position ---
         q = pn.x[n][:nq]
-        markers = pn.nlp.model.markers(q)  # compute markers positions
-        heel = markers[-4].to_mx() - CoP[:, n]
-        meta1 = markers[-3].to_mx() - CoP[:, n]
-        meta5 = markers[-2].to_mx() - CoP[:, n]
-        toe = markers[-1].to_mx() - CoP[:, n]
+        heel = markers(q)[:, 26] - CoP[:, pn.t[n]]
+        meta1 = markers(q)[:, 27] - CoP[:, pn.t[n]]
+        meta5 = markers(q)[:, 28] - CoP[:, pn.t[n]]
+        toe = markers(q)[:, 29] - CoP[:, pn.t[n]]
 
         # --- compute forces ---
-        for f in forces:
-            forces[f].append(0.0)  # init: put 0 if the contact point is not activated
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for i, c in enumerate(cn):
-            if c.to_string() in forces:  # check if contact point is activated
-                forces[c.to_string()][n] = force[i]  # put corresponding forces in dictionnary
+        force_sim = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)
+        for f_name in labels_forces:
+            forces[f_name] = 0.0
+        for c in cn:
+            forces[c]=force_sim[cn.index(c)]
 
         # --- tracking moments ---
         Mx = (
-            heel[1] * forces["Heel_r_Z"][n]
-            + meta1[1] * forces["Meta_1_r_Z"][n]
-            + meta5[1] * forces["Meta_5_r_Z"][n]
-            + toe[1] * forces["Toe_r_Z"][n]
+            heel[1] * forces["Heel_r_Z"]
+            + meta1[1] * forces["Meta_1_r_Z"]
+            + meta5[1] * forces["Meta_5_r_Z"]
+            + toe[1] * forces["Toe_r_Z"]
         )
         My = (
-            -heel[0] * forces["Heel_r_Z"][n]
-            - meta1[0] * forces["Meta_1_r_Z"][n]
-            - meta5[0] * forces["Meta_5_r_Z"][n]
-            - toe[0] * forces["Toe_r_Z"][n]
+            -heel[0] * forces["Heel_r_Z"]
+            - meta1[0] * forces["Meta_1_r_Z"]
+            - meta5[0] * forces["Meta_5_r_Z"]
+            - toe[0] * forces["Toe_r_Z"]
         )
-        Mz = (
-            heel[0] * forces["Heel_r_Y"][n]
-            - heel[1] * forces["Heel_r_X"][n]
-            + meta1[0] * forces["Meta_1_r_Y"][n]
-            - meta1[1] * forces["Meta_1_r_X"][n]
-            + meta5[0] * forces["Meta_5_r_Y"][n]
-            - meta5[1] * forces["Meta_5_r_X"][n]
-            + toe[0] * forces["Toe_r_Y"][n]
-            - toe[1] * forces["Toe_r_X"][n]
-        )
+        Mz = (heel[0] * forces["Heel_r_Y"] - heel[1] * forces["Heel_r_X"]
+              + meta1[0] * forces["Meta_1_r_Y"] - meta1[1] * forces["Meta_1_r_X"]
+              + meta5[0] * forces["Meta_5_r_Y"] - meta5[1] * forces["Meta_5_r_X"]
+              + toe[0] * forces["Toe_r_Y"] - toe[1] * forces["Toe_r_X"])
+
         val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
         val = vertcat(val, M_ref[1, pn.t[n]] - My)
         val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
@@ -163,7 +156,6 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
 
 
 class objective:
-
     @staticmethod
     def set_objective_function_markers(objective_functions, markers_ref,p):
         # --- markers_idx ---
@@ -172,7 +164,7 @@ class objective:
         markers_tissus = [5, 6, 7, 8, 13, 14, 15, 16]
         markers_pied = [19, 20, 21, 22, 23, 24, 25]
         markers_idx = (markers_anat, markers_pelvis, markers_pied, markers_tissus)
-        weigth_markers = (1000, 10000000, 10000000, 100)
+        weigth_markers = (1000, 100000, 100000, 100)
         for (i, m_idx) in enumerate(markers_idx):
             objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
                                     weight=weigth_markers[i],
@@ -227,7 +219,7 @@ class objective:
         objective.set_objective_function_markers(objective_functions, markers_ref, 2)
         objective.set_objective_function_muscle_controls(objective_functions, 2)
         objective.set_objective_function_forces(objective_functions, grf_ref, 2)
-        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 2)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 2)
 
     @staticmethod
     def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
