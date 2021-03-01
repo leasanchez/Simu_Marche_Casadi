@@ -1,6 +1,6 @@
 import numpy as np
 import biorbd
-from casadi import MX, Function, vertcat
+from casadi import MX, Function, vertcat, DM
 
 
 
@@ -46,9 +46,6 @@ def force_isometric(model):
             fiso.append(model.muscleGroup(nGrp).muscle(nMus).characteristics().forceIsoMax().to_mx())
     return vertcat(*fiso)
 
-def get_force_iso(model):
-    return Function("Fiso", [], [force_isometric(model)], [], ["fiso"]).expand()
-
 def get_muscle_length(model):
     qMX = MX.sym("qMX", model.nbQ(), 1)
     muscle_len = []
@@ -64,7 +61,6 @@ class muscle:
 
         # results data
         self.model=self.ocp.nlp[0].model
-        self.number_shooting_points=self.ocp.nlp.ns
         self.q=sol.states["q"]
         self.qdot=sol.states["qdot"]
         self.tau=sol.controls["tau"]
@@ -93,21 +89,20 @@ class muscle:
         return muscle_name
 
     def set_f_iso(self):
-        f_iso_func = get_force_iso(self.model)
-        return f_iso_func['fiso']
+        return force_isometric(self.model)
 
     def compute_muscular_torque(self):
         muscular_torque = np.zeros((self.n_q, self.n_shooting + 1))
         muscle_tau_func = get_muscular_torque(self.model)
         for n in range(self.n_shooting + 1):
-            muscular_torque[:, n] = muscle_tau_func(self.q[:, n], self.qdot[:, n], self.activations[:, n])
+            muscular_torque[:, n:n+1] = muscle_tau_func(self.q[:, n], self.qdot[:, n], self.activations[:, n])
         return muscular_torque
 
     def compute_muscle_force(self):
         muscle_force = np.zeros((self.n_mus, self.n_shooting + 1))
         muscle_force_func = get_muscular_force(self.model)
         for n in range(self.n_shooting + 1):
-            muscle_force[:, n]=muscle_force_func(self.q[:, n], self.qdot[:, n], self.activations[:, n])
+            muscle_force[:, n:n+1]=muscle_force_func(self.q[:, n], self.qdot[:, n], self.activations[:, n])
         return muscle_force
 
     def compute_muscle_length(self):
@@ -115,7 +110,7 @@ class muscle:
         muscle_length_func = get_muscle_length(self.model)
         for n in range(self.n_shooting + 1):
             for m in range(self.n_mus):
-                muscle_length[m, n]=muscle_length_func[m](self.q[:, n])
+                muscle_length[m, n:n+1]=muscle_length_func[m](self.q[:, n])
         return muscle_length
 
     def compute_muscle_jacobian(self):
