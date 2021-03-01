@@ -11,6 +11,20 @@ from matplotlib import pyplot as plt
 from gait.load_experimental_data import LoadData
 from gait.ocp import gait_torque_driven, gait_muscle_driven
 
+def get_results(sol):
+    q = sol.states["q"]
+    qdot = sol.states["qdot"]
+    tau = sol.controls["tau"]
+    muscle = sol.controls["muscles"]
+    return q, qdot, tau, muscle
+
+def save_results(ocp, sol, save_path):
+    q, qdot, tau, muscle = get_results(sol)
+    ocp.save(sol, save_path + 'cycle.bo')
+    np.save(save_path + 'qdot', qdot)
+    np.save(save_path + 'q', q)
+    np.save(save_path + 'tau', tau)
+    np.save(save_path + 'muscle', muscle)
 
 # Define the problem -- model path
 biorbd_model = (
@@ -67,5 +81,7 @@ sol.animate()
 sol.graphs()
 sol.print()
 
-    # # --- Save results --- #
-    # ocp.save(sol, "gait.bo")
+# --- Save results --- #
+sol_merged = sol.merge_phases()
+save_path = './RES/muscle_driven/'
+save_results(gait_muscle_driven.ocp, sol_merged, save_path)
