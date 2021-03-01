@@ -182,7 +182,7 @@ class C3dData:
 
 
 class LoadData:
-    def __init__(self, model, c3d_file, q_file, qdot_file):
+    def __init__(self, model, c3d_file, q_file, qdot_file, dt, interpolation=False):
         def load_txt_file(file_path, size):
             data_tp = np.loadtxt(file_path)
             nb_frame = int(len(data_tp) / size)
@@ -203,15 +203,34 @@ class LoadData:
         self.qdot = load_txt_file(qdot_file, self.nb_qdot)
         self.emg=self.dispatch_muscle_activation(self.c3d_data.emg)
 
-    def dispatch_data(self, data, nb_shooting):
+        # dispatch data
+        self.dt = dt
+        self.phase_time = self.c3d_data.get_time()
+        self.number_shooting_points = self.get_shooting_numbers()
+        if interpolation:
+            self.q_ref = self.dispatch_data_interpolation(data=self.q)
+            self.qdot_ref = self.dispatch_data_interpolation(data=self.qdot)
+            self.markers_ref = self.dispatch_data_interpolation(data=self.c3d_data.trajectories)
+            self.grf_ref = self.dispatch_data_interpolation(data=self.c3d_data.forces)
+            self.moments_ref = self.dispatch_data_interpolation(data=self.c3d_data.moments)
+            self.cop_ref = self.dispatch_data_interpolation(data=self.c3d_data.cop)
+        else:
+            self.q_ref = self.dispatch_data(data=self.q)
+            self.qdot_ref = self.dispatch_data(data=self.qdot)
+            self.markers_ref = self.dispatch_data(data=self.c3d_data.trajectories)
+            self.grf_ref = self.dispatch_data(data=self.c3d_data.forces)
+            self.moments_ref = self.dispatch_data(data=self.c3d_data.moments)
+            self.cop_ref = self.dispatch_data(data=self.c3d_data.cop)
+
+    def dispatch_data(self, data):
         """
         divide and adjust data dimensions to match number of shooting point for each phase
         """
 
         index = self.c3d_data.get_indices()
         out = []
-        for i in range(len(nb_shooting)):
-            a = (index[i + 1] + 1 - index[i]) / (nb_shooting[i] + 1)
+        for i in range(len(self.number_shooting_points)):
+            a = (index[i + 1] + 1 - index[i]) / (self.number_shooting_points[i] + 1)
             if len(data.shape) == 3:
                 if a.is_integer():
                     x = data[:, :, index[i] : index[i + 1] + 1]
@@ -229,20 +248,21 @@ class LoadData:
                     out.append(x[:, 0 :: int(a)])
         return out
 
-    def dispatch_data_interpolation(self, data, nb_shooting):
+    def dispatch_data_interpolation(self, data):
         """
         divide and adjust data dimensions to match number of shooting point for each phase
         """
         index = self.c3d_data.get_indices()
-        phase_time = self.c3d_data.get_time()
         out = []
-        for (i, time) in enumerate(phase_time):
+        for (i, time) in enumerate(self.phase_time):
             t = np.linspace(0, time, (index[i + 1] - index[i]) + 1)
-            node_t = np.linspace(0, time, nb_shooting[i] + 1)
+            node_t = np.linspace(0, time, self.number_shooting_points[i] + 1)
             if len(data.shape)==3:
                 f = interp1d(t, data[:, :, index[i]: (index[i + 1] + 1)], kind="cubic")
             else:
-                f = interp1d(t, data[:, index[i]: (index[i + 1] + 1)], kind="cubic")
+                d = data[:, index[i]: (index[i + 1] + 1)]
+                d[np.isnan(d)] = 0.0
+                f = interp1d(t, d, kind="cubic")
             out.append(f(node_t))
         return out
 
@@ -268,3 +288,9 @@ class LoadData:
         excitation_ref[15, :] = data[8, :]  # soleus_r
         excitation_ref[16, :] = data[9, :]  # tib_ant_r
         return excitation_ref
+
+    def get_shooting_numbers(self):
+        number_shooting_points = []
+        for time in self.phase_time:
+            number_shooting_points.append(int(time / self.dt) - 1)
+        return number_shooting_points
