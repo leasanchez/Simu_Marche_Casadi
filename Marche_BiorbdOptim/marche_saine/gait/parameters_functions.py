@@ -26,12 +26,12 @@ class parameter:
                              [5]*model.nbMuscleTotal(),
                              interpolation=InterpolationType.CONSTANT)
         initial_fiso= InitialGuess([1]*model.nbMuscleTotal())
-        fiso_init = force_isometric(model)
+        fiso_init = [573, 819, 552, 1119, 873, 1000, 2000, 3000, 1288, 410, 2700, 1169, 1294, 1365, 1871, 1600, 700, 4000, 3000]
         parameters.add(
-            "force_isometrique",  # The name of the parameter
-            modify_isometric_force,  # The function that modifies the biorbd model
-            initial_fiso,  # The initial guess
-            bound_f_iso,  # The bounds
+            "force_isometrique",
+            modify_isometric_force,
+            initial_fiso,  
+            bound_f_iso,
             size=model.nbMuscleTotal(),
             fiso_init=fiso_init,
         )
