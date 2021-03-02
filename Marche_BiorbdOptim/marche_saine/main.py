@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 from gait.load_experimental_data import LoadData
 from gait.ocp import gait_muscle_driven
 from gait.muscle_functions import muscle
+from gait.compute_tracking_functions import tracking
+from gait.contact_forces_function import contact
 
 
 def get_q_name(model):
@@ -30,8 +32,9 @@ def get_results(sol):
     return q, qdot, tau, muscle
 
 def save_results(ocp, sol, save_path):
-    q, qdot, tau, muscle = get_results(sol)
     ocp.save(sol, save_path + 'cycle.bo')
+    sol_merged = sol.merge_phases()
+    q, qdot, tau, muscle = get_results(sol_merged)
     np.save(save_path + 'qdot', qdot)
     np.save(save_path + 'q', q)
     np.save(save_path + 'tau', tau)
@@ -47,8 +50,8 @@ def plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, idx_q, idx_mus
     plt.xlim([0.0, muscle_hip.n_shooting + 1])
     for p in range(nb_phases):
         plt.plot([sum(number_shooting_points[:p + 1]), sum(number_shooting_points[:p + 1])],
-                     [min(muscle_no_hip.individual_muscle_torque[11, 9, :]),
-                      max(muscle_no_hip.individual_muscle_torque[11, 9, :])], "k--")
+                     [min(muscle_hip.individual_muscle_torque[idx_muscle, idx_q, :]),
+                      max(muscle_hip.individual_muscle_torque[idx_muscle, idx_q, :])], "k--")
     plt.legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
 
@@ -109,13 +112,35 @@ sol.graphs()
 sol.print()
 
 # --- Save results --- #
-sol_merged = sol.merge_phases()
-save_path = './RES/muscle_driven/No_hip/'
-save_results(gait_muscle_driven.ocp, sol_merged, save_path)
+save_path = './RES/muscle_driven/Hip_muscle/'
+save_results(gait_muscle_driven.ocp, sol, save_path)
+
+# # --- Compare contact position --- #
+# ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
+# contact_hip = contact(ocp_hip, sol_hip, muscles=True)
+
+# # --- plot cop --- #
+# fig, axes = plt.subplots(2, 1)
+# axes = axes.flatten()
+# fig.suptitle('cop position ')
+# axes[0].set_title("cop X")
+# axes[0].plot(COP_REF[0, :53], "k--")
+# axes[0].plot(cop_hip["cop_r_X"][:53], "r")
+# axes[0].plot(cop_decal["cop_r_X"][:53], "b")
+# for p in range(nb_phases - 1):
+#     axes[0].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[0, :]), max(COP_REF[0, :])], "k--")
+#
+# axes[1].set_title("cop Y")
+# axes[1].plot(COP_REF[1, :53], "k--")
+# axes[1].plot(cop_hip["cop_r_Y"][:53], "r")
+# axes[1].plot(cop_decal["cop_r_Y"][:53], "b")
+# for p in range(nb_phases - 1):
+#     axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
+# axes[1].legend(["reference", "marker position", "decalage"])
 
 # --- Load previous results --- #
 ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
-muscle_hip = muscle(ocp_hip, sol_hip)
+muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
 ocp_no_hip, sol_no_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_hip/cycle.bo')
 muscle_no_hip = muscle(ocp_no_hip, sol_no_hip)
 ocp_no_rf, sol_no_rf = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_RF/cycle.bo')
@@ -152,4 +177,4 @@ for (m, muscle) in enumerate(muscle_hip.muscle_name):
 axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
 # --- plot muscle torque --- #
-plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 9, 11, number_shooting_points)
+plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 8, 7, number_shooting_points)
