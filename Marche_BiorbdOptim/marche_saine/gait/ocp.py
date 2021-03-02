@@ -60,8 +60,8 @@ class gait_muscle_driven:
         self.set_constraint()
 
         # parameters
-        # self.parameters = ParameterList()
-        # self.set_parameters()
+        self.parameters = ParameterList()
+        self.set_parameters()
 
         # Phase transitions
         self.phase_transition = PhaseTransitionList()
