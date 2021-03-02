@@ -4,7 +4,7 @@ import biorbd
 import bioviz
 from time import time
 from matplotlib import pyplot as plt
-from .Compute_Results.Plot_results import Affichage
+from Compute_Results.Plot_results import Affichage
 
 from bioptim import (
     OptimalControlProgram,
@@ -33,6 +33,43 @@ def set_objectif_function(objective_functions):
                             quadratic=True,
                             node=Node.ALL,
                             weight=10)
+    # symmetry
+    objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+                            node=Node.ALL,
+                            first_dof=6,
+                            second_dof=12,
+                            coef=-1,
+                            weight=100000,
+                            quadratic=True)
+    # objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+    #                         node=Node.ALL,
+    #                         first_dof=7,
+    #                         second_dof=13,
+    #                         coef=-1,
+    #                         weight=1000)
+    # objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+    #                         node=Node.ALL,
+    #                         first_dof=10,
+    #                         second_dof=16,
+    #                         coef=-1,
+    #                         weight=1000)
+
+    # idx_minus = (6, 7, 10)
+    # for i in idx_minus:
+    #     objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+    #                             node=Node.ALL,
+    #                             first_dof=i,
+    #                             second_dof=(i + 6),
+    #                             coef=-1,
+    #                             weight=1000)
+    # idx_plus = (8, 9, 11)
+    # for i in idx_plus:
+    #     objective_functions.add(ObjectiveFcn.Lagrange.PROPORTIONAL_STATE,
+    #                             node=Node.ALL,
+    #                             first_dof=i,
+    #                             second_dof=i + 6,
+    #                             coef=1,
+    #                             weight=1000)
     return objective_functions
 
 
@@ -157,7 +194,7 @@ model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
 # --- Problem parameters --- #
 nb_q = model.nbQ()
 nb_qdot = model.nbQdot()
-nb_tau = model.nbGeneralizedTorque() - model.nbRoot()
+nb_tau = model.nbGeneralizedTorque() #- model.nbRoot()
 nb_mus = model.nbMuscleTotal()
 nb_shooting = 30
 final_time = 1.0
@@ -202,13 +239,13 @@ u_bounds = BoundsList()
 x_bounds, u_bounds = set_bounds(model, x_bounds, u_bounds, position_high)
 
 # --- Remove root actuation --- #
-u_mapping = set_mapping()
+# u_mapping = set_mapping()
 
 # --- Initial guess --- #
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = set_initial_guess(x_init, u_init, position_high, position_low, nb_shooting)
-# x_init, u_init = set_initial_guess_from_previous_solution(x_init, u_init, save_path='./RES/muscle_driven/')
+# x_init, u_init = set_initial_guess(x_init, u_init, position_high, position_low, nb_shooting)
+x_init, u_init = set_initial_guess_from_previous_solution(x_init, u_init, save_path='./RES/muscle_driven/pelvis_cstr/')
 
 # ------------- #
 
@@ -224,19 +261,19 @@ ocp = OptimalControlProgram(
     objective_functions=objective_functions,
     constraints=constraints,
     n_threads=4,
-    tau_mapping=u_mapping,
+    # tau_mapping=u_mapping,
 )
 
-# path_previous = './RES/muscle_driven/cycle.bo'
-# ocp_rot, sol_rot = ocp.load(path_previous)
-
-# --- Plot Results --- #
-# Affichage_resultat_rot = Affichage(ocp_rot, sol_rot, muscles=True)
-# Affichage_resultat_rot.plot_q_symetry()
-# Affichage_resultat_rot.plot_tau_symetry()
-# Affichage_resultat_rot.plot_qdot_symetry()
-# Affichage_resultat_rot.plot_forces()
-# Affichage_resultat_rot.plot_muscles_symetry()
+# path_previous = './RES/muscle_driven/symetry/cycle.bo'
+# ocp_sym, sol_sym = ocp.load(path_previous)
+# # --- Plot Results --- #
+# Affichage_resultat_sym = Affichage(ocp_sym, sol_sym, muscles=True)
+# Affichage_resultat_sym.plot_q_symetry()
+# Affichage_resultat_sym.plot_tau_symetry()
+# Affichage_resultat_sym.plot_qdot_symetry()
+# Affichage_resultat_sym.plot_individual_forces()
+# Affichage_resultat_sym.plot_sum_forces()
+# Affichage_resultat_sym.plot_muscles_symetry()
 #
 # path_previous_cstr = './RES/muscle_driven/pelvis_cstr/cycle.bo'
 # ocp_pel, sol_pel = ocp.load(path_previous_cstr)
@@ -283,7 +320,7 @@ Affichage_resultat.plot_forces()
 Affichage_resultat.plot_muscles_symetry()
 
 # --- Save results ---
-save_path = './RES/muscle_driven/no_pelvic_control/'
+save_path = './RES/muscle_driven/symetry/'
 save_results(ocp, sol, save_path)
 
 # --- Show results --- #
