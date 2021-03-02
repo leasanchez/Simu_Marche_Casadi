@@ -1,5 +1,5 @@
 import numpy as np
-from Utils_start import utils
+from .Utils_start import utils
 from casadi import MX, Function
 
 def markers_func_casadi(model):
@@ -56,6 +56,7 @@ class contact:
         self.individual_moments={}
         self.moments = {}
         self.set_individual_moments()
+        self.set_sum_moments()
         self.cop = {}
         self.set_cop()
 

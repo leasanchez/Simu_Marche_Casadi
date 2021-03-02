@@ -37,7 +37,7 @@ class Affichage:
         self.contact_name = utils.get_contact_name(self.model)
 
         # contact
-        self.contact_data = contact(self.ocp, self.sol, muscles=False)
+        self.contact_data = contact(self.ocp, self.sol, self.muscles)
 
     def plot_individual_forces(self):
         forces = self.contact_data.individual_forces
