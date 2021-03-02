@@ -62,13 +62,14 @@ class contact:
         self.individual_moments={}
         self.moments = {}
         self.set_individual_moments()
+        self.set_sum_moments()
         self.cop = {}
         self.set_cop()
 
 
     def get_contact_name(self):
-        cn = []
         for p in range(self.n_phases):
+            cn = []
             for name in self.model[p].contactNames():
                 cn.append(name.to_string())
             self.contact_name.append(cn)
@@ -107,13 +108,15 @@ class contact:
     def set_individual_forces(self):
         for name in self.labels_forces:
             self.individual_forces[name] = []
-        for phase in range(self.n_phases):
+        for phase in range(self.n_phases-1):
             forces_sim = self.compute_individual_forces(phase)
             for name in self.labels_forces:
                 if name in self.contact_name[phase]:
                     self.individual_forces[name].append(forces_sim[self.contact_name[phase].index(name), :])
                 else:
                     self.individual_forces[name].append(np.zeros(self.q[phase].shape[1]))
+        for name in self.labels_forces:
+            self.individual_forces[name].append(np.zeros(self.q[3].shape[1]))
 
     def set_sum_forces(self):
         self.forces["forces_r_X"] = []
@@ -138,12 +141,19 @@ class contact:
             self.individual_moments[f"{name}_X"] = []
             self.individual_moments[f"{name}_Y"] = []
             self.individual_moments[f"{name}_Z"] = []
-        for phase in range(self.n_phases):
+        for phase in range(self.n_phases - 1):
             for name in self.position.keys():
                 self.individual_moments[f"{name}_X"].append(self.position[name][phase][1, :] * self.individual_forces[f"{name}_Z"][phase])
                 self.individual_moments[f"{name}_Y"].append(-self.position[name][phase][0, :] * self.individual_forces[f"{name}_Z"][phase])
                 self.individual_moments[f"{name}_Z"].append(self.position[name][phase][0, :] * self.individual_forces[f"{name}_Y"][phase] \
                                                        - self.position[name][phase][1, :] * self.individual_forces[f"{name}_X"][phase])
+        for name in self.position.keys():
+            self.individual_moments[f"{name}_X"].append(np.zeros(self.number_shooting_points[3] + 1))
+            self.individual_moments[f"{name}_Y"].append(np.zeros(self.number_shooting_points[3] + 1))
+            self.individual_moments[f"{name}_Z"].append(np.zeros(self.number_shooting_points[3] + 1))
+
+
+
     def set_sum_moments(self):
         self.moments["moments_r_X"] = []
         self.moments["moments_r_Y"] = []
@@ -181,3 +191,4 @@ class contact:
             for phase in range(self.n_phases):
                 x_merged[key][n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = x[key][phase]
                 n_shoot += self.number_shooting_points[phase]
+        return x_merged
