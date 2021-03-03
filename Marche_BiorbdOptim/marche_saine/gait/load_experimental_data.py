@@ -53,8 +53,11 @@ class C3dData:
         self.cop = self.get_cop(self.c3d)
         self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
-        self.indices = self.get_indices()
-        self.phase_time = self.get_time()
+        self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
+        # self.indices = self.get_indices()
+        self.indices = self.get_indices_from_forces()
+        self.phase_time = self.get_time_from_forces()
+        # self.phase_time = self.get_time()
 
     @staticmethod
     def get_marker_trajectories(loaded_c3d, marker_names):
@@ -133,6 +136,15 @@ class C3dData:
 
         return rhs, rto
 
+    @staticmethod
+    def get_rhs_rto_from_forces(forces):
+        """
+        find heel strike (HS) and toe off (TO) from ground reaction forces
+        determine the indexes of the beginning and end of the cycle
+        """
+        idx = np.where(forces[2, :] > 5)
+        return idx[0][0], idx[0][-1]
+
     def get_indices(self):
         """
         find phase indexes
@@ -168,6 +180,40 @@ class C3dData:
         idx_2_contacts = idx_start + np.max([idx_meta5[0][0], idx_meta1[0][0]])
         return [idx_start, idx_2_contacts, idx_heel_rise, idx_stop_stance, idx_stop]
 
+    def get_indices_from_forces(self):
+        """
+        find phase indexes
+        indexes corresponding to the event that defines phases :
+        - start : heel strike
+        - 2 contacts : toes on the ground
+        - heel rise : rising of the heel
+        - stop stance : foot off the ground
+        - stop : second heel strike
+        """
+        freq = self.c3d["parameters"]["POINT"]["RATE"]["value"][0]
+        threshold = 0.04
+
+        # get events for start and stop of the cycle
+        rhs, rto = C3dData.get_event_rhs_rto(self.c3d)
+        idx_start, idx_stop_stance = C3dData.get_rhs_rto_from_forces(self.forces)
+        idx_stop = int(round(rhs[1] * freq) + 1)
+
+        # get markers position
+        markers = C3dData.get_marker_trajectories(self.c3d, self.marker_names)
+        heel = markers[:, 19, idx_start:idx_stop_stance]
+        meta1 = markers[:, 20, idx_start:idx_stop_stance]
+        meta5 = markers[:, 24, idx_start:idx_stop_stance]
+
+        # Heel rise
+        idx_heel = np.where(heel[2, :] > threshold)
+        idx_heel_rise = idx_start + int(idx_heel[0][0])
+
+        # forefoot
+        idx_meta1 = np.where(meta1[2, :] < threshold)
+        idx_meta5 = np.where(meta5[2, :] < threshold)
+        idx_2_contacts = idx_start + np.max([idx_meta5[0][0], idx_meta1[0][0]])
+        return [idx_start, idx_2_contacts, idx_heel_rise, idx_stop_stance, idx_stop]
+
     def get_time(self):
         """
         find phase duration
@@ -178,6 +224,18 @@ class C3dData:
         phase_time = []
         for i in range(len(index) - 1):
             phase_time.append((1 / freq * (index[i + 1] - index[i] + 1)))
+        return phase_time
+
+    def get_time_from_forces(self):
+        """
+        find phase duration
+        """
+        freq = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]
+
+        index = self.get_indices_from_forces()
+        phase_time = []
+        for i in range(len(index) - 1):
+            phase_time.append((1 / freq * (index[i + 1] - index[i])))
         return phase_time
 
 
@@ -205,7 +263,8 @@ class LoadData:
 
         # dispatch data
         self.dt = dt
-        self.phase_time = self.c3d_data.get_time()
+        # self.phase_time = self.c3d_data.get_time()
+        self.phase_time = self.c3d_data.get_time_from_forces()
         self.number_shooting_points = self.get_shooting_numbers()
         if interpolation:
             self.q_ref = self.dispatch_data_interpolation(data=self.q)
@@ -252,7 +311,7 @@ class LoadData:
         """
         divide and adjust data dimensions to match number of shooting point for each phase
         """
-        index = self.c3d_data.get_indices()
+        index = self.c3d_data.get_indices_from_forces()
         out = []
         for (i, time) in enumerate(self.phase_time):
             t = np.linspace(0, time, (index[i + 1] - index[i]) + 1)
@@ -292,5 +351,5 @@ class LoadData:
     def get_shooting_numbers(self):
         number_shooting_points = []
         for time in self.phase_time:
-            number_shooting_points.append(int(time / self.dt) - 1)
+            number_shooting_points.append(int(time / self.dt))
         return number_shooting_points
