@@ -60,8 +60,8 @@ class gait_muscle_driven:
         self.set_constraint()
 
         # parameters
-        self.parameters = ParameterList()
-        self.set_parameters()
+        # self.parameters = ParameterList()
+        # self.set_parameters()
 
         # Phase transitions
         self.phase_transition = PhaseTransitionList()
@@ -127,6 +127,11 @@ class gait_muscle_driven:
             self.x_bounds.add(bounds=QAndQDotBounds(self.models[p]))
             self.u_bounds.add([self.torque_min] * self.nb_tau + [self.activation_min] * self.nb_mus,
                               [self.torque_max] * self.nb_tau + [self.activation_max] * self.nb_mus)
+            # # without iliopsoas
+            # self.u_bounds[p].max[self.nb_tau + 6, :]=0.001
+            # self.u_bounds[p].max[self.nb_tau + 7, :] = 0.001
+            # without rectus femoris
+            self.u_bounds[p].max[self.nb_tau + 11, :]=0.001
 
     def set_initial_guess(self):
         n_shoot=0
