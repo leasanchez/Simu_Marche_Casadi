@@ -6,6 +6,7 @@ from time import time
 
 import numpy as np
 import biorbd
+from casadi import MX, Function
 from matplotlib import pyplot as plt
 
 from gait.load_experimental_data import LoadData
@@ -14,6 +15,17 @@ from gait.muscle_functions import muscle
 from gait.compute_tracking_functions import tracking
 from gait.contact_forces_function import contact
 
+def contact_position_func_casadi(model):
+    symbolic_q = MX.sym("q", model.nbQ(), 1)
+    nb_contact = model.nbContacts()
+    contact_pos_func = []
+    for c in range(nb_contact):
+        contact_pos_func.append(Function(
+                "ForwardKin_contact",
+                [symbolic_q], [model.constraintsInGlobal(symbolic_q, True)[c].to_mx()],
+                ["q"],
+                ["contact_pos"]).expand())
+    return contact_pos_func
 
 def get_q_name(model):
     q_name = []
@@ -90,20 +102,20 @@ grf_ref = data.grf_ref
 moments_ref = data.moments_ref
 cop_ref = data.cop_ref
 
-gait_muscle_driven = gait_muscle_driven(models=biorbd_model,
-                                        nb_shooting=number_shooting_points,
-                                        phase_time=phase_time,
-                                        q_ref=q_ref,
-                                        qdot_ref=qdot_ref,
-                                        markers_ref=markers_ref,
-                                        grf_ref=grf_ref,
-                                        moments_ref=moments_ref,
-                                        cop_ref=cop_ref,
-                                        save_path='./RES/muscle_driven/Hip_muscle/',
-                                        n_threads=8)
+gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
+                                                        nb_shooting=number_shooting_points,
+                                                        phase_time=phase_time,
+                                                        q_ref=q_ref,
+                                                        qdot_ref=qdot_ref,
+                                                        markers_ref=markers_ref,
+                                                        grf_ref=grf_ref,
+                                                        moments_ref=moments_ref,
+                                                        cop_ref=cop_ref,
+                                                        save_path='./RES/muscle_driven/Hip_muscle/grf_idx/',
+                                                        n_threads=8)
 tic = time()
 # --- Solve the program --- #
-sol = gait_muscle_driven.solve()
+sol = gait_muscle_driven_markers_tracking.solve()
 toc = time() - tic
 
 # --- Show results --- #
@@ -112,31 +124,37 @@ sol.graphs()
 sol.print()
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/Hip_muscle/'
-save_results(gait_muscle_driven.ocp, sol, save_path)
+save_path = './RES/muscle_driven/No_hip/idx_ant/'
+save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
-# # --- Compare contact position --- #
-# ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
-# contact_hip = contact(ocp_hip, sol_hip, muscles=True)
+# --- Compare contact position --- #
+ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+contact_hip = contact(ocp_hip, sol_hip, muscles=True)
+track_hip = tracking(ocp_hip, sol_hip, data, muscles=True)
+cop_hip = contact_hip.merged_result(contact_hip.cop)
+COP_REF = track_hip.merged_reference(track_hip.cop_ref)
+ocp_decal, sol_decal = gait_muscle_driven.ocp.load('./RES/muscle_driven/decal_contact/cycle.bo')
+contact_decal = contact(ocp_decal, sol_decal, muscles=True)
+cop_decal= contact_decal.merged_result(contact_decal.cop)
 
-# # --- plot cop --- #
-# fig, axes = plt.subplots(2, 1)
-# axes = axes.flatten()
-# fig.suptitle('cop position ')
-# axes[0].set_title("cop X")
-# axes[0].plot(COP_REF[0, :53], "k--")
-# axes[0].plot(cop_hip["cop_r_X"][:53], "r")
-# axes[0].plot(cop_decal["cop_r_X"][:53], "b")
-# for p in range(nb_phases - 1):
-#     axes[0].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[0, :]), max(COP_REF[0, :])], "k--")
-#
-# axes[1].set_title("cop Y")
-# axes[1].plot(COP_REF[1, :53], "k--")
-# axes[1].plot(cop_hip["cop_r_Y"][:53], "r")
-# axes[1].plot(cop_decal["cop_r_Y"][:53], "b")
-# for p in range(nb_phases - 1):
-#     axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
-# axes[1].legend(["reference", "marker position", "decalage"])
+# --- plot cop --- #
+fig, axes = plt.subplots(2, 1)
+axes = axes.flatten()
+fig.suptitle('cop position ')
+axes[0].set_title("cop X")
+axes[0].scatter(COP_REF[0, :53], "k--")
+axes[0].scatter(cop_hip["cop_r_X"][:53], "r")
+axes[0].scatter(cop_decal["cop_r_X"][:53], "b")
+for p in range(nb_phases - 1):
+    axes[0].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[0, :]), max(COP_REF[0, :])], "k--")
+
+axes[1].set_title("cop Y")
+axes[1].scatter(COP_REF[1, :53], "k--")
+axes[1].scatter(cop_hip["cop_r_Y"][:53], "r")
+axes[1].scatter(cop_decal["cop_r_Y"][:53], "b")
+for p in range(nb_phases - 1):
+    axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
+axes[1].legend(["reference", "marker position", "decalage"])
 
 # --- Load previous results --- #
 ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
@@ -176,5 +194,6 @@ for (m, muscle) in enumerate(muscle_hip.muscle_name):
         axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, max(muscle_hip.muscle_force[m, :])], "k--")
 axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
+contact_pos_func = contact_position_func_casadi(biorbd_model[0])
 # --- plot muscle torque --- #
 plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 8, 7, number_shooting_points)
