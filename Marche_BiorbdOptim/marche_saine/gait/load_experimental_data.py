@@ -53,11 +53,12 @@ class C3dData:
         self.cop = self.get_cop(self.c3d)
         self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
-        self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
+        # self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
+        self.indices = [100,109,179,206,285]
         # self.indices = self.get_indices()
-        self.indices = self.get_indices_from_forces()
-        self.phase_time = self.get_time_from_forces()
-        # self.phase_time = self.get_time()
+        # self.indices = self.get_indices_from_forces()
+        # self.phase_time = self.get_time_from_forces()
+        self.phase_time = self.get_time()
 
     @staticmethod
     def get_marker_trajectories(loaded_c3d, marker_names):
@@ -220,7 +221,7 @@ class C3dData:
         """
         freq = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]
 
-        index = self.get_indices()
+        index = self.indices
         phase_time = []
         for i in range(len(index) - 1):
             phase_time.append((1 / freq * (index[i + 1] - index[i] + 1)))
@@ -263,8 +264,8 @@ class LoadData:
 
         # dispatch data
         self.dt = dt
-        # self.phase_time = self.c3d_data.get_time()
-        self.phase_time = self.c3d_data.get_time_from_forces()
+        self.phase_time = self.c3d_data.get_time()
+        # self.phase_time = self.c3d_data.get_time_from_forces()
         self.number_shooting_points = self.get_shooting_numbers()
         if interpolation:
             self.q_ref = self.dispatch_data_interpolation(data=self.q)
@@ -311,7 +312,7 @@ class LoadData:
         """
         divide and adjust data dimensions to match number of shooting point for each phase
         """
-        index = self.c3d_data.get_indices_from_forces()
+        index = self.c3d_data.indices
         out = []
         for (i, time) in enumerate(self.phase_time):
             t = np.linspace(0, time, (index[i + 1] - index[i]) + 1)
