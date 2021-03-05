@@ -30,6 +30,20 @@ from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
 
 
+def get_results(sol):
+    q = sol.states["q"]
+    qdot = sol.states["qdot"]
+    tau = sol.controls["tau"]
+    return q, qdot, tau
+
+def save_results(ocp, sol, save_path):
+    ocp.save(sol, save_path + 'cycle.bo')
+    q, qdot, tau = get_results(sol.merge_phases())
+    np.save(save_path + 'qdot', qdot)
+    np.save(save_path + 'q', q)
+    np.save(save_path + 'tau', tau)
+
+
 # OPTIMAL CONTROL PROBLEM
 model = biorbd.Model("Modeles_S2M/2legs_18dof_flatfootR.bioMod")
 
@@ -49,13 +63,6 @@ position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
                 0, 0, 1.53, -1.55, 0, 0.68,
                 0, 0, 1.53, -1.55, 0, 0.68]
-q_init = np.zeros((nb_q, nb_shooting + 1))
-for i in range(nb_q):
-    q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2)).squeeze()
-    q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1).squeeze()
-    # q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
-qdot_init = np.gradient(q_init)[1]
-qddot_init = np.gradient(qdot_init)[1]
 
 # --- Compute CoM position --- #
 symbolic_q = MX.sym("q", nb_q, 1)
@@ -117,24 +124,6 @@ ocp = OptimalControlProgram(
     n_threads=4,
 )
 
-# # --- Get Previous Results --- #
-# path_previous = './RES/torque_driven/cycle.bo'
-# ocp_previous, sol_previous = ocp.load(path_previous)
-# states_previous, controls_previous = Data.get_data(ocp_previous, sol_previous["x"])
-# q_previous = states_previous["q"]
-#
-# # --- Show results --- #
-# ShowResult(ocp_previous, sol_previous).animate(show_muscles=False)
-# ShowResult(ocp_previous, sol_previous).animate(show_muscles=False, show_segments_center_of_mass=False, show_local_ref_frame=False)
-# ShowResult(ocp_previous, sol_previous).graphs()
-#
-# # --- Plot CoM --- #
-# CoM = np.zeros((3, q_previous.shape[1]))
-# for n in range(nb_shooting + 1):
-#     CoM[:, n:n+1] = compute_CoM(q_previous[:, n])
-# plt.figure()
-# plt.plot(CoM[2, :])
-
 # --- Solve the program --- #
 sol = ocp.solve(
     solver=Solver.IPOPT,
@@ -149,17 +138,11 @@ sol = ocp.solve(
 )
 
 # --- Get Results --- #
-states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-q = states_sol["q"]
-q_dot = states_sol["qdot"]
-tau = controls_sol["tau"]
+q, q_dot, tau = get_results(sol)
 
 # --- Save results ---
 save_path = './RES/torque_driven/'
-ocp.save(sol, save_path + 'cycle.bo')
-np.save(save_path + 'qdot', q_dot)
-np.save(save_path + 'q', q)
-np.save(save_path + 'tau', tau)
+save_results(ocp, sol, save_path)
 
 # --- Plot CoM --- #
 CoM = np.zeros((3, q.shape[1]))
@@ -169,7 +152,7 @@ plt.figure()
 plt.plot(CoM[2, :])
 
 # --- Show results --- #
-ShowResult(ocp, sol).animate(show_muscles=False)
-ShowResult(ocp, sol).graphs()
+sol.animate(show_muscles=False)
+sol.graphs()
 
 
