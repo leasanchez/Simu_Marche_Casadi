@@ -138,25 +138,10 @@ constraints = constraint.set_constraints(constraints)
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
-x_bounds.add(bounds=QAndQDotBounds(model))
-x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
-x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
-
-x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
-x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
-
 u_bounds = BoundsList()
-# u_bounds.add(
-#             [torque_min] * nb_tau + [activation_min] * nb_mus,
-#             [torque_max] * nb_tau + [activation_max] * nb_mus,
-# )
-u_bounds.add(
-            [torque_min] * nb_tau,
-            [torque_max] * nb_tau,
-)
+x_bounds, u_bounds = bounds.set_bounds_torque_driven(model, x_bounds, u_bounds, position_high)
 
 # --- Initial guess --- #
-# Initial guess - simu
 x_init = InitialGuessList()
 init_x = np.zeros((nb_q + nb_qdot, nb_shooting + 1))
 init_x[:nb_q, :] = q_init
