@@ -1,0 +1,127 @@
+import biorbd
+import numpy as np
+from casadi import MX
+from time import time
+from bioptim import (
+    OptimalControlProgram,
+    DynamicsList,
+    DynamicsFcn,
+    BoundsList,
+    InitialGuessList,
+    ObjectiveList,
+    ConstraintList,
+    Solver,
+)
+
+from ocp.objective_functions import objective
+from ocp.constraint_functions import constraint
+from ocp.bounds_functions import bounds
+from ocp.initial_guess_functions import initial_guess
+
+
+def get_results(sol):
+    q = sol.states["q"]
+    qdot = sol.states["qdot"]
+    tau = sol.controls["tau"]
+    muscle = sol.controls["muscles"]
+    return q, qdot, tau, muscle
+
+def save_results(ocp, sol, save_path):
+    ocp.save(sol, save_path + 'cycle.bo')
+    q, qdot, tau, muscle = get_results(sol.merge_phases())
+    np.save(save_path + 'qdot', qdot)
+    np.save(save_path + 'q', q)
+    np.save(save_path + 'tau', tau)
+    np.save(save_path + 'muscle', muscle)
+
+
+model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
+
+# --- Problem parameters --- #
+nb_q = model.nbQ()
+nb_qdot = model.nbQdot()
+nb_tau = model.nbGeneralizedTorque() - model.nbRoot()
+nb_mus = model.nbMuscleTotal()
+nb_shooting = 30
+final_time = 1.0
+
+# --- Subject positions and initial trajectories --- #
+position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+                [0], [0], [0.37], [-0.13], [0], [0.11],
+                [0], [0], [0.37], [-0.13], [0], [0.11]]
+position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+                0, 0, 1.53, -1.55, 0, 0.68,
+                0, 0, 1.53, -1.55, 0, 0.68]
+
+# --- Compute CoM position --- #
+compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", nb_q, 1))
+CoM_high = compute_CoM(np.array(position_high))
+CoM_low = compute_CoM(np.array(position_low))
+
+# --- Define Optimal Control Problem --- #
+# Objective function
+objective_functions = ObjectiveList()
+objective_functions = objective.set_objectif_function(objective_functions)
+
+# Dynamics
+dynamics = DynamicsList()
+dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
+
+# Constraints
+constraints = ConstraintList()
+constraints = constraint.set_constraints(constraints)
+
+# Path constraints
+x_bounds = BoundsList()
+u_bounds = BoundsList()
+x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high)
+
+# Initial guess
+x_init = InitialGuessList()
+u_init = InitialGuessList()
+# x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting)
+x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
+                                                                        x_init,
+                                                                        u_init,
+                                                                        save_path='./RES/muscle_driven/pelvis_cstr/',
+                                                                        nb_shooting=nb_shooting)
+
+# ------------- #
+ocp = OptimalControlProgram(
+    biorbd_model=model,
+    dynamics=dynamics,
+    n_shooting=nb_shooting,
+    phase_time=final_time,
+    x_init=x_init,
+    u_init=u_init,
+    x_bounds=x_bounds,
+    u_bounds=u_bounds,
+    objective_functions=objective_functions,
+    constraints=constraints,
+    n_threads=4,
+    # tau_mapping=u_mapping,
+)
+
+# --- Solve the program --- #
+tic = time()
+sol = ocp.solve(
+    solver=Solver.IPOPT,
+    solver_options={
+        "ipopt.tol": 1e-6,
+        "ipopt.max_iter": 5000,
+        "ipopt.hessian_approximation": "limited-memory",
+        "ipopt.limited_memory_max_history": 50,
+        "ipopt.linear_solver": "ma57",
+    },
+    show_online_optim=False,
+)
+toc = time() - tic
+
+# --- Save results ---
+save_path = './RES/muscle_driven/tronc/'
+save_results(ocp, sol, save_path)
+
+# --- Show results --- #
+sol.animate()
+sol.print()
+sol.graphs()
