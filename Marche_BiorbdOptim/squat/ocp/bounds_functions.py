@@ -8,11 +8,11 @@ class bounds:
         activation_min, activation_max = 1e-3, 1.0
 
         x_bounds.add(bounds=QAndQDotBounds(model))
-        x_bounds[0].min[:model.nbQ(), [0, 2]] = np.array(position_init).squeeze()
-        x_bounds[0].max[:model.nbQ(), [0, 2]] = np.array(position_init).squeeze()
+        x_bounds[0].min[:model.nbQ(), 0] = np.array(position_init).squeeze()
+        x_bounds[0].max[:model.nbQ(), 0] = np.array(position_init).squeeze()
 
-        # x_bounds[0].min[:model.nbQ(), -1] = np.array(position_init).squeeze()
-        # x_bounds[0].max[:model.nbQ(), -1] = np.array(position_init).squeeze()
+        x_bounds[0].min[:model.nbQ(), -1] = np.array(position_init).squeeze()
+        x_bounds[0].max[:model.nbQ(), -1] = np.array(position_init).squeeze()
 
         u_bounds.add(
             [torque_min] * model.nbGeneralizedTorque() + [activation_min] * model.nbMuscleTotal(),
