@@ -114,7 +114,7 @@ endmarker
 segment torso
         parent pelvis 
         RTinMatrix	1
-	RT
+	    RT
 		1	0	0	 -0.125334
 		0	1	0	 -0.028679
 		0	0	1	  0.0
@@ -126,38 +126,38 @@ segment torso
             0.0        0.0        3.042
         com    -0.0147      0.3769        -0.00230561
 	mesh    0           0              0
-	mesh   -0.0147      0.65          -0.00230561
+	mesh   -0.0147      0.70          -0.00230561
 endsegment
 
 // ---- Markers
 marker	CLAV //4
 	parent	torso
-	position	0.05	0.5	0
+	position	0.05	0.45    0
 	anatomical	1
 endmarker
 marker	STRN //5
 	parent	torso
-	position	0.05	0.4	0
+	position	0.05	0.35    0
 	anatomical	1
 endmarker
 marker	AV //6
 	parent	torso
-	position	0.05	0.45	0
+	position	0.05	0.4 	0
 	anatomical	1
 endmarker
 marker	T10 //7
 	parent	torso
-	position	-0.05	0.4	0
+	position	-0.05	0.35 	0
 	anatomical	1
 endmarker
 marker	T2 //8
 	parent	torso
-	position	-0.05	0.45	0
+	position	-0.05	0.4 	0
 	anatomical	1
 endmarker
 marker	C7 //9
 	parent	torso
-	position	-0.05	0.5	0
+	position	-0.05	0.45	0
 	anatomical	1
 endmarker
 
