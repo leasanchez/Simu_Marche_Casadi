@@ -25,13 +25,22 @@ class objective:
                                 quadratic=True,
                                 node=Node.ALL,
                                 weight=10)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
-                                quadratic=True,
-                                node=Node.ALL,
-                                weight=10)
-
         objective_functions.add(sym_forces,
                                 custom_type=ObjectiveFcn.Lagrange,
                                 node=Node.ALL,
                                 weight=0.1)
+        return objective_functions
+
+    @staticmethod
+    def set_objectif_function_torque_driven(objective_functions):
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                                quadratic=True,
+                                node=Node.ALL,
+                                index=(0, 1, 2, 5, 8, 9, 11, 14, 15, 17),
+                                weight=0.001)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                                quadratic=True,
+                                node=Node.ALL,
+                                index=(3, 4, 6, 7, 10, 12, 13, 16),
+                                weight=0.01)
         return objective_functions

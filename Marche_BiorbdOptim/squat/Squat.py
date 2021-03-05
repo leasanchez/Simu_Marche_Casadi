@@ -14,17 +14,20 @@ from bioptim import (
     QAndQDotBounds,
     InitialGuessList,
     InitialGuess,
-    ShowResult,
     ObjectiveList,
     ObjectiveFcn,
     InterpolationType,
-    Data,
     Node,
     ConstraintList,
     ConstraintFcn,
     Solver,
     PenaltyNodes,
 )
+
+from ocp.objective_functions import objective
+from ocp.constraint_functions import constraint
+from ocp.bounds_functions import bounds
+from ocp.initial_guess_functions import initial_guess
 
 
 def custom_CoM_low(pn: PenaltyNodes) -> MX:
@@ -123,21 +126,7 @@ CoM_low = compute_CoM(np.array(position_low))
 
 # --- Objective function --- #
 objective_functions = ObjectiveList()
-objective_functions.add(custom_CoM_low,
-                        custom_type=ObjectiveFcn.Mayer,
-                        node=Node.ALL,
-                        quadratic=True,
-                        weight=10000)
-objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                        quadratic=True,
-                        node=Node.ALL,
-                        index=(0,1,2,5,8,9,11,14,15,17),
-                        weight=0.001)
-objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                        quadratic=True,
-                        node=Node.ALL,
-                        index=(3,4,6,7,10,12,13,16),
-                        weight=0.01)
+objective_functions = objective.set_objectif_function_torque_driven(objective_functions)
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
@@ -154,17 +143,6 @@ for c in contact_z_axes:
         node=Node.ALL,
         contact_force_idx=c,
     )
-
-# contact_tangential_component_idx = (0,1,4)
-# for c in contact_tangential_component_idx:
-#     constraints.add( # non slipping heel
-#         ConstraintFcn.NON_SLIPPING,
-#         node=Node.ALL,
-#         normal_component_idx=(2,3,5),
-#         tangential_component_idx=c,
-#         static_friction_coefficient=0.5,
-#     )
-
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
