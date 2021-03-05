@@ -134,28 +134,16 @@ dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
 
 # --- Constraints --- #
 constraints = ConstraintList()
-contact_z_axes = (2, 3, 5, 8, 9, 11)
-for c in contact_z_axes:
-    constraints.add( # positive vertical forces
-        ConstraintFcn.CONTACT_FORCE,
-        min_bound=0,
-        max_bound=np.inf,
-        node=Node.ALL,
-        contact_force_idx=c,
-    )
+constraints = constraint.set_constraints(constraints)
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
 x_bounds.add(bounds=QAndQDotBounds(model))
 x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
-# x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
-# x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
 
 x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
 x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
-# x_bounds[0].min[nb_q:, -1] = [0]*nb_qdot
-# x_bounds[0].max[nb_q:, -1] = [0]*nb_qdot
 
 u_bounds = BoundsList()
 # u_bounds.add(
