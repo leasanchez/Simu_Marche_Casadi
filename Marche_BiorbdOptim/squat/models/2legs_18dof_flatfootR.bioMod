@@ -22,27 +22,25 @@ gravity 0 0 -9.8
 // Variables
 // --------------------------------------------------------------------------------------------------------
 variables
-	$fiso_01 382
-	$fiso_02 546
-	$fiso_03 368
-	$fiso_04 546
-	$fiso_05 382
-	$fiso_06 435
-	$fiso_07 1030
-	$fiso_08 328
-	$fiso_09 717
-	$fiso_10 779
-	$fiso_11 1294
-	$fiso_12 1365
-	$fiso_13 1871
-	$fiso_14 1113
-	$fiso_15 488
-	$fiso_16 2839
-	$fiso_17 603
-	$fiso_18 976
-	$fiso_19 1187
-	$fiso_20 1086 //iliacus
-	$fiso_21 1518 //psoas
+	$fiso_01 382 //glut max 1
+	$fiso_02 546 //glut max 2
+	$fiso_03 368 //glut max 3
+	$fiso_04 546 //glut med 1
+	$fiso_05 382 //glut med 2
+	$fiso_06 435 //glut med 3
+	$fiso_07 1030 //semimem
+	$fiso_08 328 //semiten
+	$fiso_09 717 //bi fem
+	$fiso_10 779 //rectus fem
+	$fiso_11 1294 //vas med
+	$fiso_12 1365 //vas int
+	$fiso_13 1871 //vas lat
+	$fiso_14 1113 //gas med
+	$fiso_15 488 //gas lat
+	$fiso_16 2839 //soleus
+	$fiso_17 603 //tib ant
+	$fiso_18 976 //add long
+	$fiso_19 1187 //per long
 endvariables
 
 // --------------------------------------------------------------------------------------------------------
@@ -84,6 +82,7 @@ segment pelvis
 	mesh    -0.020816	-0.029674	-0.12337
 endsegment
 
+
 // ---- Markers
 marker	L_ASIS //0
 	parent	pelvis
@@ -119,12 +118,17 @@ segment torso
 		0	1	0	 -0.028679
 		0	0	1	  0.0
 		0	0	0	  1
-        mass 44.742
+        //mass 44.742
+        //inertia
+        //    3.042      0.0        0.0
+        //    0.0        1.612      0.0
+        //    0.0        0.0        3.042
+        mass 34.28542425
         inertia
-            3.042      0.0        0.0
-            0.0        1.612      0.0
-            0.0        0.0        3.042
-        com    -0.0147      0.3769        -0.00230561
+            2.342567     0.0          0.0
+            0.0          1.24925      0.0
+            0.0          0.0          2.342567
+        com    -0.0147      0.3769        0
 	mesh    0           0              0
 	mesh   -0.0147      0.70          -0.00230561
 endsegment
@@ -176,12 +180,12 @@ segment femur_r
 		0	0	1	 0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/2  pi/2
-                   -pi/2  pi/2
-                   -pi/2  pi/2+pi/3
-        rangesQdot -4    4.5 
-                   -4    4.5  
-                   -4    4.5
+    rangesQ    -pi/2  pi/2
+               -pi/2  pi/2
+               -pi/2  pi/2+pi/3
+    rangesQdot -4    4.5
+               -4    4.5
+               -4    4.5
 	mass	9.8454
 	inertia
 		0.14317	  0	        0
@@ -347,7 +351,6 @@ endsegment
 // ---- Markers
 // no marker
 
-
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_r segment
 // --------------------------------------------------------------------------------------------------------
@@ -369,7 +372,6 @@ segment foot_r
 endsegment
 // ---- Markers
 // no marker
-
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_marker_r segment
@@ -394,10 +396,9 @@ segment foot_marker_r
 	mesh 0.200778	-0.00525585	0.0127656  //FMP2
 	mesh 0.156485	-0.00712829	0.0638694  //FMP5
 	mesh 0.0054278	0.00177226	0.00220395 //FCC
-
-endsegment 
+endsegment
 // ---- Markers
-marker	R_HEE //25
+marker	R_FCC //25
 	parent	foot_marker_r
 	position	0.0054278	0.00177226	0.00220395
 	technical	1
@@ -484,7 +485,6 @@ segment toes_r
 		0	0	0.00027336
 	com	0.030604	-0.0025919	-0.010467
 endsegment
-
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about femur_l segment
@@ -640,7 +640,7 @@ segment patella_l
 endsegment
 
 // --------------------------------------------------------------------------------------------------------
-// Informations about talus_r segment
+// Informations about talus_l segment
 // --------------------------------------------------------------------------------------------------------
 // ---- Segment
 segment talus_l
@@ -683,20 +683,19 @@ segment foot_l
 		0.00084519	0	        0
 		0	        0.0021516	0
 		0	        0	        0.0024947
-	com	0.10155	0.015551	0
+	com	0.10155	    0.015551	0
 endsegment
 
 // --------------------------------------------------------------------------------------------------------
-// Informations about foot_marker_r segment
+// Informations about foot_marker_l segment
 // --------------------------------------------------------------------------------------------------------
-// ---- Segment
 segment foot_marker_l
 	parent foot_l
     RTinMatrix	1
 	RT
 		1	0	0	-0.019937
-		0	1	0	0.017944
-		0	0	1	-0.0099687
+		0	1	0	 0.017944
+		0	0	1	 0.0099687
 		0	0	0	1
 	mass	0
 	inertia
@@ -719,22 +718,22 @@ marker	L_FCC //49
 endmarker
 marker	L_FMP1 //50
 	parent	foot_marker_l
-	position	0.19973	       -0.00594403	0.0323195
+	position	0.19973	  -0.00594403	0.0323195
 	technical	1
 endmarker
 marker	L_HAL //51
 	parent	foot_marker_l
-	position	0.24	       -0.00594403	0.0323195
+	position	0.24	 -0.00594403	0.0323195
 	technical	1
 endmarker
 marker	L_FMP2 //52
 	parent	foot_marker_l
-	position	0.200778	-0.00525585	-0.0127656
+	position	0.200778  -0.00525585	-0.0127656
 	technical	1
 endmarker
 marker	L_FMP5 //53
 	parent	foot_marker_l
-	position	0.156485	-0.00712829	-0.0638694
+	position	0.156485	-0.00712829	  -0.0638694
 	technical	1
 endmarker
 marker	L_FOOT //54
@@ -780,7 +779,7 @@ marker    Meta_5_l //57
 endmarker
 
 // --------------------------------------------------------------------------------------------------------
-// Informations about toes_r segment
+// Informations about toes_l segment
 // --------------------------------------------------------------------------------------------------------
 // ---- Segment
 segment toes_l
@@ -789,16 +788,15 @@ segment toes_l
 	RT 
 		1	0	0	0.17625
 		0	1	0	-0.0019937
-		0	0	1	0.0010766
+		0	0	1	-0.0010766
 		0	0	0	1
 	mass	0.091226
 	inertia
 		9.298e-05	0	        0
 		0	        0.0002371	0
 		0	        0	        0.00027336
-	com	0.030604	-0.0025919	-0.010467
+	com	0.030604	-0.0025919	0.010467
 endsegment
-
 // --------------------------------------------------------------------------------------------------------
 // Informations about muscle groups
 // --------------------------------------------------------------------------------------------------------
@@ -1479,7 +1477,7 @@ muscle glut_max1_l
 	Type			hillthelen
 	statetype        	degroote
 	musclegroup		group29
-        OriginPosition		-0.13126    0.047251  -0.063481
+    OriginPosition		-0.13126    0.047251  -0.063481
 	InsertionPosition	-0.025256  -0.051606  -0.055607
 	optimalLength		0.15059
 	maximalForce		$fiso_01
