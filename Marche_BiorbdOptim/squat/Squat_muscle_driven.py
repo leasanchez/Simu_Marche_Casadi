@@ -1,6 +1,6 @@
 import biorbd
 import numpy as np
-from casadi import MX
+from casadi import MX, Function
 from time import time
 from bioptim import (
     OptimalControlProgram,
@@ -17,6 +17,7 @@ from ocp.objective_functions import objective
 from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
+from Compute_Results.Plot_results import Affichage
 
 
 def get_results(sol):
@@ -45,11 +46,21 @@ nb_mus = model.nbMuscleTotal()
 nb_shooting = 30
 final_time = 1.0
 
-# --- Subject positions and initial trajectories --- #
+# # --- Subject positions and initial trajectories --- #
+# position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
+# position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+#                 0, 0, 1.53, -1.55, 0, 0.68,
+#                 0, 0, 1.53, -1.55, 0, 0.68]
+
+# --- Subject positions and initial trajectories avec tronc --- #
 position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+                 [0], [0], [0.21],
                 [0], [0], [0.37], [-0.13], [0], [0.11],
                 [0], [0], [0.37], [-0.13], [0], [0.11]]
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+                0, 0, 0.21,
                 0, 0, 1.53, -1.55, 0, 0.68,
                 0, 0, 1.53, -1.55, 0, 0.68]
 
@@ -74,17 +85,20 @@ constraints = constraint.set_constraints(constraints)
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high)
+x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high, mapping=False)
 
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-# x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting)
-x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
-                                                                        x_init,
-                                                                        u_init,
-                                                                        save_path='./RES/muscle_driven/pelvis_cstr/',
-                                                                        nb_shooting=nb_shooting)
+x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
+# x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
+#                                                                         x_init,
+#                                                                         u_init,
+#                                                                         save_path='./RES/muscle_driven/pelvis_cstr/',
+#                                                                         nb_shooting=nb_shooting,
+#                                                                         mapping=True)
+# Remove pelvis torque
+# u_mapping = bounds.set_mapping()
 
 # ------------- #
 ocp = OptimalControlProgram(
@@ -102,6 +116,15 @@ ocp = OptimalControlProgram(
     # tau_mapping=u_mapping,
 )
 
+# # --- Load previous solution --- #
+# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/tronc/cycle.bo')
+# plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
+# plot_result.plot_q_symetry()
+# plot_result.plot_tau_symetry()
+# plot_result.plot_qdot_symetry()
+# plot_result.plot_individual_forces()
+# plot_result.plot_muscles_symetry()
+
 # --- Solve the program --- #
 tic = time()
 sol = ocp.solve(
@@ -109,7 +132,7 @@ sol = ocp.solve(
     solver_options={
         "ipopt.tol": 1e-6,
         "ipopt.max_iter": 5000,
-        "ipopt.hessian_approximation": "limited-memory",
+        "ipopt.hessian_approximation": "exact",
         "ipopt.limited_memory_max_history": 50,
         "ipopt.linear_solver": "ma57",
     },
