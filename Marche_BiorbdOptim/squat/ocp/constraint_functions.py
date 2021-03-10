@@ -3,7 +3,7 @@ import numpy as np
 import biorbd
 from casadi import MX
 
-def custom_CoM_low(pn: PenaltyNodes) -> MX:
+def custom_CoM_position(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[0][:nq])
@@ -37,9 +37,23 @@ class constraint:
 
         # --- CoM displacements --- #
         constraints.add(
-            custom_CoM_low,
+            custom_CoM_position,
             min_bound=-0.35,
             max_bound=-0.25,
             node=Node.MID,
+        )
+
+        # --- CoM init and final --- #
+        constraints.add(
+            custom_CoM_position,
+            min_bound=-0.02,
+            max_bound=0.0,
+            node=Node.START,
+        )
+        constraints.add(
+            custom_CoM_position,
+            min_bound=-0.02,
+            max_bound=0.0,
+            node=Node.END,
         )
         return constraints
