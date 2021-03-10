@@ -1,5 +1,6 @@
 from bioptim import ObjectiveFcn, Node, PenaltyNodes
 from casadi import MX, vertcat
+import numpy as np
 
 def sym_forces(pn: PenaltyNodes) -> MX:
     ns = pn.nlp.ns # number of shooting points
@@ -16,21 +17,27 @@ def sym_forces(pn: PenaltyNodes) -> MX:
 
 class objective:
     @staticmethod
-    def set_objectif_function(objective_functions):
+    def set_objectif_function(objective_functions, position_high):
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=range(6),
-                                weight=1)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=range(9, 21),
-                                weight=1)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
                                 quadratic=True,
                                 node=Node.ALL,
                                 weight=10)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
+                                quadratic=True,
+                                node=Node.ALL,
+                                weight=100)
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.START,
+                                index=range(len(position_high)),
+                                target=np.array(position_high),
+                                weight=1)
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=range(len(position_high)),
+                                target=np.array(position_high),
+                                weight=1)
         # objective_functions.add(sym_forces,
         #                         custom_type=ObjectiveFcn.Lagrange,
         #                         node=Node.ALL,

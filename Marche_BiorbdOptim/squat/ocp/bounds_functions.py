@@ -3,16 +3,11 @@ import numpy as np
 
 class bounds:
     @staticmethod
-    def set_bounds(model, x_bounds, u_bounds, position_init, mapping=False):
+    def set_bounds(model, x_bounds, u_bounds, mapping=False):
         torque_min, torque_max = -1000, 1000
-        activation_min, activation_max = 1e-3, 1.0
+        activation_min, activation_max = 1e-3, 0.99
 
         x_bounds.add(bounds=QAndQDotBounds(model))
-        x_bounds[0].min[:model.nbQ(), 0] = np.array(position_init).squeeze()
-        x_bounds[0].max[:model.nbQ(), 0] = np.array(position_init).squeeze()
-
-        x_bounds[0].min[:model.nbQ(), -1] = np.array(position_init).squeeze()
-        x_bounds[0].max[:model.nbQ(), -1] = np.array(position_init).squeeze()
         if mapping:
             u_bounds.add(
                 [torque_min] * (model.nbGeneralizedTorque() - model.nbRoot()) + [activation_min] * model.nbMuscleTotal(),
