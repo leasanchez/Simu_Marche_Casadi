@@ -202,29 +202,35 @@ class objective:
                                  phase=p)
 
     @staticmethod
-    def set_objective_function_heel_strike(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
-        objective.set_objective_function_markers(objective_functions, markers_ref, 0)
-        objective.set_objective_function_muscle_controls(objective_functions, 0)
-        objective.set_objective_function_forces(objective_functions, grf_ref, 0)
+    def set_objective_function_heel_strike(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
+        objective.set_objective_function_markers(objective_functions, markers_ref, p)
+        objective.set_objective_function_muscle_controls(objective_functions, p)
+        objective.set_objective_function_forces(objective_functions, grf_ref, p)
 
     @staticmethod
-    def set_objective_function_flatfoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
-        objective.set_objective_function_markers(objective_functions, markers_ref, 1)
-        objective.set_objective_function_muscle_controls(objective_functions, 1)
-        objective.set_objective_function_forces(objective_functions, grf_ref, 1)
-        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 1)
+    def set_objective_function_flatfoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
+        objective.set_objective_function_markers(objective_functions, markers_ref, p)
+        objective.set_objective_function_muscle_controls(objective_functions, p)
+        objective.set_objective_function_forces(objective_functions, grf_ref, p)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
-    def set_objective_function_forefoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
-        objective.set_objective_function_markers(objective_functions, markers_ref, 2)
-        objective.set_objective_function_muscle_controls(objective_functions, 2)
-        objective.set_objective_function_forces(objective_functions, grf_ref, 2)
-        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, 2)
+    def set_objective_function_forefoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
+        objective.set_objective_function_markers(objective_functions, markers_ref, p)
+        objective.set_objective_function_muscle_controls(objective_functions, p)
+        objective.set_objective_function_forces(objective_functions, grf_ref, p)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
-    def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref):
-        objective.set_objective_function_markers(objective_functions, markers_ref, 3)
-        objective.set_objective_function_muscle_controls(objective_functions, 3)
+    def set_objective_function_toe(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
+        objective.set_objective_function_markers(objective_functions, markers_ref, p)
+        objective.set_objective_function_muscle_controls(objective_functions, p)
+        objective.set_objective_function_forces(objective_functions, grf_ref, p)
+
+    @staticmethod
+    def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
+        objective.set_objective_function_markers(objective_functions, markers_ref, p)
+        objective.set_objective_function_muscle_controls(objective_functions, p)
 
 
 
