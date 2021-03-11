@@ -127,42 +127,42 @@ sol.print()
 save_path = './RES/muscle_driven/No_hip/idx_ant/'
 save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
-# --- Compare contact position --- #
-ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
-contact_hip = contact(ocp_hip, sol_hip, muscles=True)
-track_hip = tracking(ocp_hip, sol_hip, data, muscles=True)
-cop_hip = contact_hip.merged_result(contact_hip.cop)
-COP_REF = track_hip.merged_reference(track_hip.cop_ref)
-ocp_decal, sol_decal = gait_muscle_driven.ocp.load('./RES/muscle_driven/decal_contact/cycle.bo')
-contact_decal = contact(ocp_decal, sol_decal, muscles=True)
-cop_decal= contact_decal.merged_result(contact_decal.cop)
-
-# --- plot cop --- #
-fig, axes = plt.subplots(2, 1)
-axes = axes.flatten()
-fig.suptitle('cop position ')
-axes[0].set_title("cop X")
-axes[0].scatter(COP_REF[0, :53], "k--")
-axes[0].scatter(cop_hip["cop_r_X"][:53], "r")
-axes[0].scatter(cop_decal["cop_r_X"][:53], "b")
-for p in range(nb_phases - 1):
-    axes[0].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[0, :]), max(COP_REF[0, :])], "k--")
-
-axes[1].set_title("cop Y")
-axes[1].scatter(COP_REF[1, :53], "k--")
-axes[1].scatter(cop_hip["cop_r_Y"][:53], "r")
-axes[1].scatter(cop_decal["cop_r_Y"][:53], "b")
-for p in range(nb_phases - 1):
-    axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
-axes[1].legend(["reference", "marker position", "decalage"])
+# # --- Compare contact position --- #
+# ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+# contact_hip = contact(ocp_hip, sol_hip, muscles=True)
+# track_hip = tracking(ocp_hip, sol_hip, data, muscles=True)
+# cop_hip = contact_hip.merged_result(contact_hip.cop)
+# COP_REF = track_hip.merged_reference(track_hip.cop_ref)
+# ocp_decal, sol_decal = gait_muscle_driven.ocp.load('./RES/muscle_driven/decal_contact/cycle.bo')
+# contact_decal = contact(ocp_decal, sol_decal, muscles=True)
+# cop_decal= contact_decal.merged_result(contact_decal.cop)
+#
+# # --- plot cop --- #
+# fig, axes = plt.subplots(2, 1)
+# axes = axes.flatten()
+# fig.suptitle('cop position ')
+# axes[0].set_title("cop X")
+# axes[0].scatter(COP_REF[0, :53], "k--")
+# axes[0].scatter(cop_hip["cop_r_X"][:53], "r")
+# axes[0].scatter(cop_decal["cop_r_X"][:53], "b")
+# for p in range(nb_phases - 1):
+#     axes[0].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[0, :]), max(COP_REF[0, :])], "k--")
+#
+# axes[1].set_title("cop Y")
+# axes[1].scatter(COP_REF[1, :53], "k--")
+# axes[1].scatter(cop_hip["cop_r_Y"][:53], "r")
+# axes[1].scatter(cop_decal["cop_r_Y"][:53], "b")
+# for p in range(nb_phases - 1):
+#     axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
+# axes[1].legend(["reference", "marker position", "decalage"])
 
 # --- Load previous results --- #
-ocp_hip, sol_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
+ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
 muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
-ocp_no_hip, sol_no_hip = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_hip/cycle.bo')
-muscle_no_hip = muscle(ocp_no_hip, sol_no_hip)
-ocp_no_rf, sol_no_rf = gait_muscle_driven.ocp.load('./RES/muscle_driven/No_RF/cycle.bo')
-muscle_no_rf = muscle(ocp_no_rf, sol_no_rf)
+ocp_no_hip, sol_no_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_hip/idx_ant/cycle.bo')
+muscle_no_hip = muscle(ocp_no_hip, sol_no_hip.merge_phases())
+ocp_no_rf, sol_no_rf = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_RF/idx_ant/cycle.bo')
+muscle_no_rf = muscle(ocp_no_rf, sol_no_rf.merge_phases())
 
 # --- plot activations --- #
 fig, axes = plt.subplots(4, 5)
@@ -196,4 +196,4 @@ axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
 contact_pos_func = contact_position_func_casadi(biorbd_model[0])
 # --- plot muscle torque --- #
-plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 8, 7, number_shooting_points)
+plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, 9, 15, number_shooting_points)
