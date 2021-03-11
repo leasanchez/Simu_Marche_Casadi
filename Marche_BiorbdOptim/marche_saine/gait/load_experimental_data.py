@@ -1,7 +1,20 @@
 from ezc3d import c3d
 import numpy as np
 from scipy.interpolate import interp1d
+from casadi import MX, Function
 
+
+def markers_func_casadi(model):
+    symbolic_q = MX.sym("q", model.nbQ(), 1)
+    markers_func = []
+    for m in range(model.nbMarkers()):
+        markers_func.append(Function(
+            "ForwardKin",
+            [symbolic_q], [model.marker(symbolic_q, m).to_mx()],
+            ["q"],
+            ["markers"],
+        ).expand())
+    return markers_func
 
 class C3dData:
     def __init__(self, file_path):
@@ -54,9 +67,9 @@ class C3dData:
         self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
         # self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
-        self.indices = [100,109,179,206,285]
+        # self.indices = [100,109,179,206,285]
         # self.indices = self.get_indices()
-        # self.indices = self.get_indices_from_forces()
+        self.indices = self.get_indices_four_phases()
         # self.phase_time = self.get_time_from_forces()
         self.phase_time = self.get_time()
 
@@ -181,6 +194,47 @@ class C3dData:
         idx_2_contacts = idx_start + np.max([idx_meta5[0][0], idx_meta1[0][0]])
         return [idx_start, idx_2_contacts, idx_heel_rise, idx_stop_stance, idx_stop]
 
+    def get_indices_four_phases(self):
+        """
+        find phase indexes
+        indexes corresponding to the event that defines phases :
+        - start : heel strike
+        - 2 contacts : toes on the ground
+        - heel rise : rising of the heel
+        - stop stance : foot off the ground
+        - stop : second heel strike
+        """
+        freq = self.c3d["parameters"]["POINT"]["RATE"]["value"][0]
+        threshold = 0.025
+
+        # get events for start and stop of the cycle
+        rhs, rto = C3dData.get_event_rhs_rto(self.c3d)
+        idx_start = int(round(rhs[0] * freq) + 1)
+        idx_stop_stance = int(round(rto * freq) + 1)
+        idx_stop = int(round(rhs[1] * freq) + 1)
+
+        # get markers position
+        markers = C3dData.get_marker_trajectories(self.c3d, self.marker_names)
+        heel = markers[:, 19, idx_start:idx_stop_stance]
+        meta1 = markers[:, 20, idx_start:idx_stop_stance]
+        meta5 = markers[:, 24, idx_start:idx_stop_stance]
+
+        # Heel rise
+        idx_heel = np.where(heel[2, :] > threshold)
+        idx_heel_rise = idx_start + int(idx_heel[0][0])
+
+        # forefoot
+        idx_meta1 = np.where(meta1[2, :] < threshold)
+        idx_meta5 = np.where(meta5[2, :] < threshold)
+        idx_2_contacts = idx_start + np.min([idx_meta5[0][0], idx_meta1[0][0]])
+
+        # toe
+        idx_meta1 = np.where(meta1[2, :] < threshold)
+        idx_meta5 = np.where(meta5[2, :] < threshold)
+        idx_toe = idx_start + np.max([idx_meta5[0][-1], idx_meta1[0][-1]])
+        return [idx_start, idx_2_contacts, idx_heel_rise, idx_toe, idx_stop_stance, idx_stop]
+
+
     def get_indices_from_forces(self):
         """
         find phase indexes
@@ -261,6 +315,7 @@ class LoadData:
         self.q = load_txt_file(q_file, self.nb_q)
         self.qdot = load_txt_file(qdot_file, self.nb_qdot)
         self.emg=self.dispatch_muscle_activation(self.c3d_data.emg)
+        self.idx = self.get_indices_from_kalman()
 
         # dispatch data
         self.dt = dt
@@ -326,6 +381,30 @@ class LoadData:
             out.append(f(node_t))
         return out
 
+    def get_indices_from_kalman(self):
+        indices = self.c3d_data.get_indices_four_phases()
+        markers_func = markers_func_casadi(self.model)
+        marker_pos = np.empty((3, self.model.nbMarkers(), self.q.shape[1]))
+        for m in range(self.model.nbMarkers()):
+            for n in range(self.q.shape[1]):
+                marker_pos[:, m, n:n + 1] = markers_func[m](self.q[:, n])
+        # from matplotlib import pyplot as plt
+        # plt.figure()
+        # plt.plot(marker_pos[2, -1, indices[0]: indices[-1] + 1], "g")
+        # plt.plot(marker_pos[2, -2, indices[0]: indices[-1] + 1], "r")
+        # plt.plot(marker_pos[2, 24, indices[0]: indices[-1] + 1], "r--")
+        # plt.plot(marker_pos[2, -3, indices[0]: indices[-1] + 1], "b")
+        # plt.plot(marker_pos[2, 20, indices[0]: indices[-1] + 1], "b--")
+        # plt.plot(marker_pos[2, 19, indices[0]: indices[-1] + 1], "k--")
+        # for idx in indices:
+        #     plt.plot([idx - indices[0], idx- indices[0]], [0.0, 0.15], "k--")
+        #
+        # plt.figure()
+        # plt.plot(self.c3d_data.forces[2, indices[0]: indices[-1] + 1], "b")
+        # for idx in indices:
+        #     plt.plot([idx - indices[0], idx- indices[0]], [0.0, 820], "k--")
+        # indices.append(2)
+        return indices
 
     def dispatch_muscle_activation(self, data):
         excitation_ref = np.zeros((self.nb_mus + 7, data.shape[1]))
