@@ -49,15 +49,24 @@ class gait_muscle_driven:
 
         # objective functions
         self.objective_functions = ObjectiveList()
-        self.set_objective_function()
+        if self.n_phases > 4 :
+            self.set_objective_function_four_phases()
+        else:
+            self.set_objective_function()
 
         # dynamics
         self.dynamics = DynamicsList()
-        self.set_dynamics()
+        if self.n_phases > 4:
+            self.set_dynamics_four_phases()
+        else:
+            self.set_dynamics()
 
         # constraints
         self.constraints = ConstraintList()
-        self.set_constraint()
+        if self.n_phases > 4:
+            self.set_constraint_four_phases()
+        else:
+            self.set_constraint()
 
         # parameters
         # self.parameters = ParameterList()
@@ -66,6 +75,10 @@ class gait_muscle_driven:
         # Phase transitions
         self.phase_transition = PhaseTransitionList()
         self.set_phase_transition()
+        # if self.n_phases > 4:
+        #     self.set_phase_transition_four_phases()
+        # else:
+        #     self.set_phase_transition()
 
         # Path constraint
         self.x_bounds = BoundsList()
@@ -100,19 +113,35 @@ class gait_muscle_driven:
 
 
     def set_objective_function(self):
-        objective.set_objective_function_heel_strike(self.objective_functions, self.markers_ref[0], self.grf_ref[0], self.moments_ref[0], self.cop_ref[0])
-        objective.set_objective_function_flatfoot(self.objective_functions, self.markers_ref[1], self.grf_ref[1], self.moments_ref[1], self.cop_ref[1])
-        objective.set_objective_function_forefoot(self.objective_functions, self.markers_ref[2], self.grf_ref[2], self.moments_ref[2], self.cop_ref[2])
-        objective.set_objective_function_swing(self.objective_functions, self.markers_ref[3], self.grf_ref[3], self.moments_ref[3], self.cop_ref[3])
+        objective.set_objective_function_heel_strike(self.objective_functions, self.markers_ref[0], self.grf_ref[0], self.moments_ref[0], self.cop_ref[0], 0)
+        objective.set_objective_function_flatfoot(self.objective_functions, self.markers_ref[1], self.grf_ref[1], self.moments_ref[1], self.cop_ref[1], 1)
+        objective.set_objective_function_forefoot(self.objective_functions, self.markers_ref[2], self.grf_ref[2], self.moments_ref[2], self.cop_ref[2], 2)
+        objective.set_objective_function_swing(self.objective_functions, self.markers_ref[3], self.grf_ref[3], self.moments_ref[3], self.cop_ref[3], 3)
+
+    def set_objective_function_four_phases(self):
+        objective.set_objective_function_heel_strike(self.objective_functions, self.markers_ref[0], self.grf_ref[0], self.moments_ref[0], self.cop_ref[0], 0)
+        objective.set_objective_function_flatfoot(self.objective_functions, self.markers_ref[1], self.grf_ref[1], self.moments_ref[1], self.cop_ref[1], 1)
+        objective.set_objective_function_forefoot(self.objective_functions, self.markers_ref[2], self.grf_ref[2], self.moments_ref[2], self.cop_ref[2], 2)
+        objective.set_objective_function_toe(self.objective_functions, self.markers_ref[3], self.grf_ref[3], self.moments_ref[3], self.cop_ref[3], 3)
+        objective.set_objective_function_swing(self.objective_functions, self.markers_ref[4], self.grf_ref[4], self.moments_ref[4], self.cop_ref[4], 4)
 
 
     def set_dynamics(self):
         dynamics.set_muscle_driven_dynamics(self.dynamics)
 
+    def set_dynamics_four_phases(self):
+        dynamics.set_muscle_driven_dynamics_four_phases(self.dynamics)
+
     def set_constraint(self):
-        constraint.set_constraint_heel_strike(self.constraints)
-        constraint.set_constraint_flatfoot(self.constraints)
-        constraint.set_constraint_forefoot(self.constraints)
+        constraint.set_constraint_heel_strike(self.constraints, 0)
+        constraint.set_constraint_flatfoot(self.constraints, 1)
+        constraint.set_constraint_forefoot(self.constraints, 2)
+
+    def set_constraint_four_phases(self):
+        constraint.set_constraint_heel_strike(self.constraints, 0)
+        constraint.set_constraint_flatfoot(self.constraints, 1)
+        constraint.set_constraint_forefoot_four_phases(self.constraints, 2)
+        constraint.set_constraint_toe(self.constraints, 3)
 
     def set_parameters(self):
         parameter.set_parameters_f_iso(self.parameters, self.models[0])
@@ -121,6 +150,11 @@ class gait_muscle_driven:
     def set_phase_transition(self):
         self.phase_transition.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=0)
         self.phase_transition.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=1)
+
+    def set_phase_transition_four_phases(self):
+        self.phase_transition.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=0)
+        self.phase_transition.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=1)
+        self.phase_transition.add(PhaseTransitionFcn.IMPACT, phase_pre_idx=2)
 
     def set_bounds(self):
         for p in range(self.n_phases):
@@ -131,7 +165,7 @@ class gait_muscle_driven:
             # self.u_bounds[p].max[self.nb_tau + 6, :]=0.001
             # self.u_bounds[p].max[self.nb_tau + 7, :] = 0.001
             # without rectus femoris
-            self.u_bounds[p].max[self.nb_tau + 11, :]=0.001
+            # self.u_bounds[p].max[self.nb_tau + 11, :]=0.001
 
     def set_initial_guess(self):
         n_shoot=0
