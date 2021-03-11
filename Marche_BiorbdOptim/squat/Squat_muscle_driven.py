@@ -46,23 +46,23 @@ nb_mus = model.nbMuscleTotal()
 nb_shooting = 30
 final_time = 1.0
 
-# # --- Subject positions and initial trajectories --- #
-# position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
-#                 [0], [0], [0.37], [-0.13], [0], [0.11],
-#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
-# position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
-#                 0, 0, 1.53, -1.55, 0, 0.68,
-#                 0, 0, 1.53, -1.55, 0, 0.68]
-
-# --- Subject positions and initial trajectories avec tronc --- #
+# --- Subject positions and initial trajectories --- #
 position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
-                 [0], [0], [0.21],
                 [0], [0], [0.37], [-0.13], [0], [0.11],
                 [0], [0], [0.37], [-0.13], [0], [0.11]]
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
-                0, 0, 0.21,
                 0, 0, 1.53, -1.55, 0, 0.68,
                 0, 0, 1.53, -1.55, 0, 0.68]
+
+# # --- Subject positions and initial trajectories avec tronc --- #
+# position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
+#                  [0], [0], [0.21],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
+# position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
+#                 0, 0, 0.21,
+#                 0, 0, 1.53, -1.55, 0, 0.68,
+#                 0, 0, 1.53, -1.55, 0, 0.68]
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", nb_q, 1))
@@ -72,7 +72,7 @@ CoM_low = compute_CoM(np.array(position_low))
 # --- Define Optimal Control Problem --- #
 # Objective function
 objective_functions = ObjectiveList()
-objective_functions = objective.set_objectif_function(objective_functions)
+objective_functions = objective.set_objectif_function(objective_functions, position_high)
 
 # Dynamics
 dynamics = DynamicsList()
@@ -85,20 +85,20 @@ constraints = constraint.set_constraints(constraints)
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high, mapping=False)
+x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, mapping=False)
 
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
-# x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
-#                                                                         x_init,
-#                                                                         u_init,
-#                                                                         save_path='./RES/muscle_driven/pelvis_cstr/',
-#                                                                         nb_shooting=nb_shooting,
-#                                                                         mapping=True)
+# x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
+x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
+                                                                        x_init,
+                                                                        u_init,
+                                                                        save_path='./RES/muscle_driven/symetry_by_grf/',
+                                                                        nb_shooting=nb_shooting,
+                                                                        mapping=False)
 # Remove pelvis torque
-# u_mapping = bounds.set_mapping()
+u_mapping = bounds.set_mapping()
 
 # ------------- #
 ocp = OptimalControlProgram(
@@ -117,7 +117,7 @@ ocp = OptimalControlProgram(
 )
 
 # # --- Load previous solution --- #
-# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/tronc/cycle.bo')
+# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/symetry_by_grf/cycle.bo')
 # plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
 # plot_result.plot_q_symetry()
 # plot_result.plot_tau_symetry()
@@ -141,7 +141,7 @@ sol = ocp.solve(
 toc = time() - tic
 
 # --- Save results ---
-save_path = './RES/muscle_driven/tronc/'
+save_path = './RES/muscle_driven/CoM_cstr/'
 save_results(ocp, sol, save_path)
 
 # --- Show results --- #
