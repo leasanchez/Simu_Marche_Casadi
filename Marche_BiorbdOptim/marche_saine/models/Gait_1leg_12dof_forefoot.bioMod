@@ -354,21 +354,10 @@ marker	R_FMP5
 endmarker
 
 // ---- Contact
-//contact    Meta_1_r
-//	parent    foot_marker_r
-//	position    0.144628	 -0.02	 -0.0223195
-//	axis    xz
-//endcontact
-//contact    Meta_5_r
-//	parent    foot_marker_r
-//	position   0.096359 	-0.02	 0.0432144
-//	axis    xyz
-//endcontact
-
 contact    Meta_1_r
 	parent      foot_marker_r
 	position    0.18973	 -0.02	  -0.0223195
-	axis    xyz
+	axis    z
 endcontact
 contact    Meta_5_r
 	parent    foot_marker_r
@@ -378,7 +367,7 @@ endcontact
 contact    Toe_r
 	parent    foot_marker_r
 	position  0.24	     -0.02    -0.0323195
-	axis    z
+	axis    xyz
 endcontact
 
 // --------------------------------------------------------------------------------------------------------
