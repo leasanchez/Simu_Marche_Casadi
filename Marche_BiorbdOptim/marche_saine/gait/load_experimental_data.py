@@ -67,7 +67,7 @@ class C3dData:
         self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
         # self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
-        # self.indices = [100,109,179,206,285]
+        self.indices_ant = [100,109,179,206,285]
         # self.indices = self.get_indices()
         self.indices = self.get_indices_four_phases()
         # self.phase_time = self.get_time_from_forces()
@@ -383,12 +383,13 @@ class LoadData:
 
     def get_indices_from_kalman(self):
         indices = self.c3d_data.get_indices_four_phases()
+        indices_ant = self.c3d_data.indices_ant
         markers_func = markers_func_casadi(self.model)
         marker_pos = np.empty((3, self.model.nbMarkers(), self.q.shape[1]))
         for m in range(self.model.nbMarkers()):
             for n in range(self.q.shape[1]):
                 marker_pos[:, m, n:n + 1] = markers_func[m](self.q[:, n])
-        # from matplotlib import pyplot as plt
+        from matplotlib import pyplot as plt
         # plt.figure()
         # plt.plot(marker_pos[2, -1, indices[0]: indices[-1] + 1], "g")
         # plt.plot(marker_pos[2, -2, indices[0]: indices[-1] + 1], "r")
