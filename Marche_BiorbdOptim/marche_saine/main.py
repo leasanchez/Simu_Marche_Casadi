@@ -113,19 +113,19 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
                                                         cop_ref=cop_ref,
                                                         save_path='./RES/muscle_driven/Hip_muscle/grf_idx/',
                                                         n_threads=8)
-tic = time()
-# --- Solve the program --- #
-sol = gait_muscle_driven_markers_tracking.solve()
-toc = time() - tic
-
-# --- Show results --- #
-sol.animate()
-sol.graphs()
-sol.print()
-
-# --- Save results --- #
-save_path = './RES/muscle_driven/No_hip/idx_ant/'
-save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
+# tic = time()
+# # --- Solve the program --- #
+# sol = gait_muscle_driven_markers_tracking.solve()
+# toc = time() - tic
+#
+# # --- Show results --- #
+# sol.animate()
+# sol.graphs()
+# sol.print()
+#
+# # --- Save results --- #
+# save_path = './RES/muscle_driven/No_hip/idx_ant/'
+# save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
 # # --- Compare contact position --- #
 # ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
@@ -157,27 +157,49 @@ save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 # axes[1].legend(["reference", "marker position", "decalage"])
 
 # --- Load previous results --- #
-ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
 muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
-ocp_no_hip, sol_no_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_hip/idx_ant/cycle.bo')
-muscle_no_hip = muscle(ocp_no_hip, sol_no_hip.merge_phases())
-ocp_no_rf, sol_no_rf = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_RF/idx_ant/cycle.bo')
-muscle_no_rf = muscle(ocp_no_rf, sol_no_rf.merge_phases())
+ocp_hip_ant, sol_hip_ant = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+muscle_hip_ant = muscle(ocp_hip_ant, sol_hip_ant.merge_phases())
 
+activations_hip = np.load('./RES/muscle_driven/Hip_muscle/muscle.npy')
+activations_hip_ant = np.load('./RES/muscle_driven/Hip_muscle/idx_ant/muscle.npy')
 # --- plot activations --- #
 fig, axes = plt.subplots(4, 5)
 axes = axes.flatten()
 fig.suptitle('Muscle activations')
-for (m, muscle) in enumerate(muscle_hip.muscle_name):
-    axes[m].set_title(muscle)
-    axes[m].plot(muscle_hip.activations[m, :], "r")
-    axes[m].plot(muscle_no_hip.activations[m, :], "b")
-    axes[m].plot(muscle_no_rf.activations[m, :], "g")
+for m in range(nb_mus):
+    # axes[m].set_title(muscle)
+    axes[m].plot(activations_hip[m, :], "r")
+    axes[m].plot(activations_hip_ant[m, :], "b")
     axes[m].set_ylim([0.0, 1.0])
-    axes[m].set_xlim([0.0, muscle_hip.n_shooting + 1])
+    axes[m].set_xlim([0.0, activations_hip.shape[1]])
     for p in range(nb_phases):
         axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, 1.0], "k--")
-axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
+axes[-2].legend(["iliopsoas", "iliopsoas decalage ant"])
+
+# # --- Load previous results --- #
+# ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+# muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
+# ocp_no_hip, sol_no_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_hip/idx_ant/cycle.bo')
+# muscle_no_hip = muscle(ocp_no_hip, sol_no_hip.merge_phases())
+# ocp_no_rf, sol_no_rf = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/No_RF/idx_ant/cycle.bo')
+# muscle_no_rf = muscle(ocp_no_rf, sol_no_rf.merge_phases())
+#
+# # --- plot activations --- #
+# fig, axes = plt.subplots(4, 5)
+# axes = axes.flatten()
+# fig.suptitle('Muscle activations')
+# for (m, muscle) in enumerate(muscle_hip.muscle_name):
+#     axes[m].set_title(muscle)
+#     axes[m].plot(muscle_hip.activations[m, :], "r")
+#     axes[m].plot(muscle_no_hip.activations[m, :], "b")
+#     axes[m].plot(muscle_no_rf.activations[m, :], "g")
+#     axes[m].set_ylim([0.0, 1.0])
+#     axes[m].set_xlim([0.0, muscle_hip.n_shooting + 1])
+#     for p in range(nb_phases):
+#         axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, 1.0], "k--")
+# axes[-2].legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
 # --- plot muscle forces --- #
 fig, axes = plt.subplots(4, 5)
