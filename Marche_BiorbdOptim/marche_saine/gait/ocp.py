@@ -45,7 +45,7 @@ class gait_muscle_driven:
         self.nb_tau=models[0].nbGeneralizedTorque()
         self.nb_mus=models[0].nbMuscleTotal()
         self.torque_min, self.torque_max, self.torque_init = -1000, 1000, 0
-        self.activation_min, self.activation_max, self.activation_init = 1e-3, 1.0, 0.1
+        self.activation_min, self.activation_max, self.activation_init = 1e-3, 0.99, 0.1
 
         # objective functions
         self.objective_functions = ObjectiveList()
