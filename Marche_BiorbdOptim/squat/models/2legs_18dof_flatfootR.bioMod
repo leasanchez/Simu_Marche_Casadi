@@ -118,6 +118,13 @@ segment torso
 		0	1	0	 -0.028679
 		0	0	1	  0.0
 		0	0	0	  1
+		//rotations	yxz
+        //rangesQ -pi/2 pi/2
+        //        -pi/2 pi/2
+        //        -pi/2 pi/2
+        //rangesQdot -5.2360 5.2360
+        //           -5.2360 5.2360
+        //           -5.2360 5.2360
         mass 34.28542425
         inertia
             2.342567     0.0          0.0
