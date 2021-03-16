@@ -38,22 +38,9 @@ class constraint:
         # --- CoM displacements --- #
         constraints.add(
             custom_CoM_position,
-            min_bound=-0.35,
-            max_bound=-0.25,
             node=Node.MID,
+            max_bound=-0.29,
+            min_bound=-0.35,
         )
 
-        # --- CoM init and final --- #
-        constraints.add(
-            custom_CoM_position,
-            min_bound=-0.02,
-            max_bound=0.0,
-            node=Node.START,
-        )
-        constraints.add(
-            custom_CoM_position,
-            min_bound=-0.02,
-            max_bound=0.0,
-            node=Node.END,
-        )
         return constraints
