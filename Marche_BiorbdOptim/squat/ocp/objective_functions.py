@@ -1,6 +1,7 @@
 from bioptim import ObjectiveFcn, Node, PenaltyNodes
 from casadi import MX, vertcat
 import numpy as np
+import biorbd
 
 def sym_forces(pn: PenaltyNodes) -> MX:
     ns = pn.nlp.ns # number of shooting points
@@ -14,30 +15,51 @@ def sym_forces(pn: PenaltyNodes) -> MX:
             val = vertcat(val, (force[c]**2 - force[c+int(nc/2)]**2))
     return val
 
+def custom_CoM_position(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
+    com = compute_CoM(pn.x[0][:nq])
+    return com[2]
 
 class objective:
     @staticmethod
     def set_objectif_function(objective_functions, position_high):
+        # --- control minimize --- #
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                                 quadratic=True,
                                 node=Node.ALL,
-                                weight=10)
+                                weight=1)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
                                 quadratic=True,
                                 node=Node.ALL,
-                                weight=100)
+                                weight=10)
+
+        # --- initial position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
                                 quadratic=True,
                                 node=Node.START,
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
-                                weight=1)
+                                weight=1000)
+        objective_functions.add(custom_CoM_position,
+                                custom_type=ObjectiveFcn.Mayer,
+                                node=Node.START,
+                                quadratic=True,
+                                weight=100)
+
+        # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
                                 quadratic=True,
                                 node=Node.END,
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
-                                weight=1)
+                                weight=1000)
+        objective_functions.add(custom_CoM_position,
+                                custom_type=ObjectiveFcn.Mayer,
+                                node=Node.END,
+                                quadratic=True,
+                                weight=100)
+
         # objective_functions.add(sym_forces,
         #                         custom_type=ObjectiveFcn.Lagrange,
         #                         node=Node.ALL,
