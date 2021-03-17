@@ -13,11 +13,38 @@ def emg_processed(file_path, name):
     )
     return emg_process
 
+def emg_processed_exp(file_path, name, mvc):
+    emg = Analogs.from_c3d(file_path, usecols=name)
+    emg_process = []
+    for (i, e) in enumerate(emg):
+        e_process = (
+            e.meca.band_pass(order=2, cutoff=[10, 425])
+                .meca.center()
+                .meca.abs()
+                .meca.low_pass(order=4, cutoff=5, freq=e.rate)
+                .meca.normalize(mvc[i])
+        )
+        emg_process.append(e_process)
+    return emg_process
+
 def get_mvc_value(data):
     max = 0
     for d in data:
         max+=np.max(d)
     return max/len(data)
+
+def plot_muscle_activation(title, emg_process, label_muscle):
+    fig, axes = plt.subplots(2, 5, sharex=True)
+    fig.suptitle(title)
+    axes = axes.flatten()
+    for (i, e_process) in enumerate(emg_process):
+        axes[i].plot(e_process.time.data, e_process.data)
+        axes[i].set_title(label_muscle[i])
+        axes[i].set_ylabel('% activation')
+        axes[i].set_ylim([0.0, 100.0])
+    for a in range(5, 10):
+        axes[a].set_xlabel("time")
+
 
 path = 'Data_test/MVC/'
 emg_mvc_path = path + 'MVC_GlutMax.c3d'
@@ -86,9 +113,9 @@ MVC.append(mvc_gastroc_med)
 # --- Tibial anterieur --- #
 LABEL_MUSCLE.append("Tibial anterieur")
 tib_ant = emg_processed(file_path=path + 'MVC_TibAnt.c3d', name="TA.IM EMG9")
-tib_ant01 = emg_processed(file_path=path + 'MVC_TibAnt01.c3d', name="TA.IM EMG9")
+# tib_ant01 = emg_processed(file_path=path + 'MVC_TibAnt01.c3d', name="TA.IM EMG9")
 tib_ant02 = emg_processed(file_path=path + 'MVC_TibAnt02.c3d', name="TA.IM EMG9")
-mvc_tib_ant = get_mvc_value((tib_ant.data, tib_ant01.data, tib_ant02.data))
+mvc_tib_ant = get_mvc_value((tib_ant.data, tib_ant02.data)) #tib_ant01.data,
 MVC.append(mvc_tib_ant)
 
 # --- Long fibulaire --- #
@@ -100,3 +127,27 @@ MVC.append(mvc_long_fib)
 
 for (i,m) in enumerate(MVC):
     print(f"MVC {LABEL_MUSCLE[i]} : {m}")
+
+# --- experience --- #
+path_exp = "Data_test/test_exp/"
+control01_path = "squat_control03.c3d"
+control01 = emg_processed_exp(file_path=path_exp + control01_path, name=EMG_NAME, mvc=MVC)
+plot_muscle_activation('controle 01', control01, LABEL_MUSCLE)
+
+niv01_path = "squat_niv1_01.c3d"
+niv01 = emg_processed_exp(file_path=path_exp + niv01_path, name=EMG_NAME, mvc=MVC)
+plot_muscle_activation('niveau 01', niv01, LABEL_MUSCLE)
+
+niv02_path = "squat_niv2_02.c3d"
+niv02 = emg_processed_exp(file_path=path_exp + niv02_path, name=EMG_NAME, mvc=MVC)
+plot_muscle_activation('niveau 02', niv02, LABEL_MUSCLE)
+
+niv03_path = "squat_niv3_03.c3d"
+niv03 = emg_processed_exp(file_path=path_exp + niv03_path, name=EMG_NAME, mvc=MVC)
+plot_muscle_activation('niveau 03', niv03, LABEL_MUSCLE)
+
+control02_path = "squat_control04.c3d"
+control02 = emg_processed_exp(file_path=path_exp + control02_path, name=EMG_NAME, mvc=MVC)
+plot_muscle_activation('controle 02', control02, LABEL_MUSCLE)
+
+plt.show()
