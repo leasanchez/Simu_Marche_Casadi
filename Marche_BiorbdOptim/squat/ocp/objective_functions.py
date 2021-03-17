@@ -15,11 +15,11 @@ def sym_forces(pn: PenaltyNodes) -> MX:
             val = vertcat(val, (force[c]**2 - force[c+int(nc/2)]**2))
     return val
 
-def custom_CoM_position(pn: PenaltyNodes) -> MX:
+def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[0][:nq])
-    return com[2]
+    return com[2]**2 - value**2
 
 class objective:
     @staticmethod
@@ -41,9 +41,12 @@ class objective:
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
                                 weight=1000)
+
+        # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                node=Node.START,
+                                value=-0.25,
+                                node=Node.MID,
                                 quadratic=True,
                                 weight=100)
 
@@ -54,17 +57,6 @@ class objective:
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
                                 weight=1000)
-        objective_functions.add(custom_CoM_position,
-                                custom_type=ObjectiveFcn.Mayer,
-                                node=Node.END,
-                                quadratic=True,
-                                weight=100)
-
-        # objective_functions.add(sym_forces,
-        #                         custom_type=ObjectiveFcn.Lagrange,
-        #                         node=Node.ALL,
-        #                         weight=0.0001,
-        #                         quadratic=True)
         return objective_functions
 
     @staticmethod
