@@ -113,6 +113,25 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
                                                         moments_ref=moments_ref,
                                                         cop_ref=cop_ref,
                                                         n_threads=6)
+
+ocp_prev, sol_prev = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/four_phases/cycle.bo')
+sol_prev.animate()
+
+muscles_3phases = np.load('./RES/muscle_driven/Hip_muscle/muscle.npy')
+muscles_4phases = np.load('./RES/muscle_driven/four_phases/muscle.npy')
+fig, axes = plt.subplots(4, 5)
+axes = axes.flatten()
+fig.suptitle('Muscle activations')
+for m in range(nb_mus):
+    axes[m].set_title(biorbd_model[0].muscle(m).name().to_string())
+    axes[m].plot(muscles_3phases[m, :], "r")
+    axes[m].plot(muscles_4phases[m, :], "b")
+    axes[m].set_ylim([0.0, 1.0])
+    axes[m].set_xlim([0.0, muscles_3phases.shape[1]])
+    for p in range(nb_phases):
+        axes[m].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [0.0, 1.0], "k--")
+axes[-2].legend(["3 phases", "4 phases"])
+
 tic = time()
 # --- Solve the program --- #
 sol = gait_muscle_driven_markers_tracking.solve()
