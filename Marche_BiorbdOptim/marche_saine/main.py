@@ -156,11 +156,11 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
 #     axes[1].plot([sum(number_shooting_points[:p+1]), sum(number_shooting_points[:p+1])], [min(COP_REF[1, :]), max(COP_REF[1, :])], "k--")
 # axes[1].legend(["reference", "marker position", "decalage"])
 
-# --- Load previous results --- #
-ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
-muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
-ocp_hip_ant, sol_hip_ant = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
-muscle_hip_ant = muscle(ocp_hip_ant, sol_hip_ant.merge_phases())
+# # --- Load previous results --- #
+# ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/cycle.bo')
+# muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
+# ocp_hip_ant, sol_hip_ant = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
+# muscle_hip_ant = muscle(ocp_hip_ant, sol_hip_ant.merge_phases())
 
 activations_hip = np.load('./RES/muscle_driven/Hip_muscle/muscle.npy')
 activations_hip_ant = np.load('./RES/muscle_driven/Hip_muscle/idx_ant/muscle.npy')
@@ -169,7 +169,7 @@ fig, axes = plt.subplots(4, 5)
 axes = axes.flatten()
 fig.suptitle('Muscle activations')
 for m in range(nb_mus):
-    # axes[m].set_title(muscle)
+    axes[m].set_title(biorbd_model[0].muscle(m).name().to_string())
     axes[m].plot(activations_hip[m, :], "r")
     axes[m].plot(activations_hip_ant[m, :], "b")
     axes[m].set_ylim([0.0, 1.0])
