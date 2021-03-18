@@ -67,6 +67,50 @@ def plot_muscular_torque(muscle_hip, muscle_no_hip, muscle_no_rf, idx_q, idx_mus
     plt.legend(["iliopsoas", "no iliopsoas", "no rectus femoris"])
 
 
+def compute_muscle_jacobian(model, q):
+    muscle_jacobian = np.zeros((model.nbMuscleTotal(), model.nbQ(), q.shape[1]))
+    muscle_jacobian_func = biorbd.to_casadi_func("momentarm", model.musclesLengthJacobian, MX.sym("q", nb_q, 1))
+    for n in range(q.shape[1]):
+        muscle_jacobian[:, :, n] = muscle_jacobian_func(q[:, n])
+    return muscle_jacobian
+
+def plot_moment_arm(model, q, idx_q, idx_muscle, phase_time):
+    muscle_jacobian = compute_muscle_jacobian(model, q)
+    fig_1 = plt.figure()
+    fig_1.suptitle(f"Bras de levier {model.muscle(idx_muscle).name().to_string()} en fonction du temps")
+    t = np.linspace(0, q.shape[1]*0.01, q.shape[1])
+    plt.plot(t, -muscle_jacobian[idx_muscle, idx_q, :])
+    plt.xlim([0.0, q.shape[1]*0.01])
+    plt.xlabel('time (sec)')
+    plt.ylabel('bras de levier (m)')
+    for p in range(len(phase_time)):
+        plt.plot([sum(phase_time[:p + 1]), sum(phase_time[:p + 1])],
+                 [min(-muscle_jacobian[idx_muscle, idx_q, :]), max(-muscle_jacobian[idx_muscle, idx_q, :])],
+                 "k--")
+
+
+    q_name = get_q_name(model)
+    fig_2 = plt.figure()
+    fig_2.suptitle(f"Bras de levier {model.muscle(idx_muscle).name().to_string()} en fonction de {q_name[idx_q]}")
+    plt.plot(q[idx_q, :]*180/np.pi, -muscle_jacobian[idx_muscle, idx_q, :])
+    plt.xlim([min(q[idx_q, :]*180/np.pi), max(q[idx_q, :]*180/np.pi)])
+    plt.xlabel(f"{q_name[idx_q]} (deg)")
+    plt.ylabel('bras de levier (m)')
+
+    fig_3 = plt.figure()
+    fig_3.suptitle(f"Trajectoire {q_name[idx_q]} en fonction du temps ")
+    plt.plot(t, q[idx_q, :]*180/np.pi)
+    plt.xlim([0.0, q.shape[1]*0.01])
+    plt.xlabel('time (sec)')
+    plt.ylim([min(q[idx_q, :]*180/np.pi), max(q[idx_q, :]*180/np.pi)])
+    plt.ylabel(f"{q_name[idx_q]} (deg)")
+    for p in range(len(phase_time)):
+        plt.plot([sum(phase_time[:p + 1]), sum(phase_time[:p + 1])],
+                 [min(q[idx_q, :]*180/np.pi), max(q[idx_q, :]*180/np.pi)],
+                 "k--")
+
+
+
 # Define the problem -- model path
 biorbd_model = (
     biorbd.Model("models/Gait_1leg_12dof_heel.bioMod"),
@@ -161,6 +205,9 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
 # muscle_hip = muscle(ocp_hip, sol_hip.merge_phases())
 # ocp_hip_ant, sol_hip_ant = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
 # muscle_hip_ant = muscle(ocp_hip_ant, sol_hip_ant.merge_phases())
+
+q_hip = np.load('./RES/muscle_driven/Hip_muscle/q.npy')
+plot_moment_arm(biorbd_model[0], q_hip, idx_q=9, idx_muscle=11, phase_time=phase_time)
 
 activations_hip = np.load('./RES/muscle_driven/Hip_muscle/muscle.npy')
 activations_hip_ant = np.load('./RES/muscle_driven/Hip_muscle/idx_ant/muscle.npy')
