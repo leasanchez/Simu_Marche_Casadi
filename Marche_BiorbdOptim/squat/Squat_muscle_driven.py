@@ -91,13 +91,13 @@ x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, mapping=False)
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
-# x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
-#                                                                         x_init,
-#                                                                         u_init,
-#                                                                         save_path='./RES/muscle_driven/symetry_by_grf/',
-#                                                                         nb_shooting=nb_shooting,
-#                                                                         mapping=False)
+# x_init, u_init = initial_guess.set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
+x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
+                                                                        x_init,
+                                                                        u_init,
+                                                                        save_path='./RES/muscle_driven/symetry_by_grf/',
+                                                                        nb_shooting=nb_shooting,
+                                                                        mapping=False)
 # Remove pelvis torque
 u_mapping = bounds.set_mapping()
 
@@ -117,22 +117,22 @@ ocp = OptimalControlProgram(
     # tau_mapping=u_mapping,
 )
 
-# --- Load previous solution --- #
-ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
-plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
-plot_result.plot_q_symetry()
-plot_result.plot_tau_symetry()
-plot_result.plot_qdot_symetry()
-plot_result.plot_individual_forces()
-plot_result.plot_muscles_symetry()
-# --- Plot CoP --- #
-q = sol_prev.states["q"]
-cop = np.zeros((3, q.shape[1]))
-for n in range(q.shape[1]):
-    cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
-plt.figure()
-plt.plot(cop[2, :])
-sol_prev.animate()
+# # --- Load previous solution --- #
+# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
+# plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
+# plot_result.plot_q_symetry()
+# plot_result.plot_tau_symetry()
+# plot_result.plot_qdot_symetry()
+# plot_result.plot_individual_forces()
+# plot_result.plot_muscles_symetry()
+# # --- Plot CoP --- #
+# q = sol_prev.states["q"]
+# cop = np.zeros((3, q.shape[1]))
+# for n in range(q.shape[1]):
+#     cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
+# plt.figure()
+# plt.plot(cop[2, :])
+# sol_prev.animate()
 
 # --- Solve the program --- #
 tic = time()
