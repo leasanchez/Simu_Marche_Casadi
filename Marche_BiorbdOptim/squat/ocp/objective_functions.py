@@ -19,7 +19,7 @@ def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
     com = compute_CoM(pn.x[0][:nq])
-    return com[2]**2 - value**2
+    return com[2] - value
 
 class objective:
     @staticmethod
@@ -48,7 +48,7 @@ class objective:
                                 value=-0.25,
                                 node=Node.MID,
                                 quadratic=True,
-                                weight=100)
+                                weight=100000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
