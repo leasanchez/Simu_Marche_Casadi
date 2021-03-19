@@ -45,10 +45,10 @@ class objective:
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                value=-0.25,
+                                value=-0.35,
                                 node=Node.MID,
                                 quadratic=True,
-                                weight=100000)
+                                weight=1000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
