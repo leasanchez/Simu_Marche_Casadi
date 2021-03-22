@@ -150,7 +150,7 @@ sol = ocp.solve(
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/CoM_obj/'
+save_path = './RES/muscle_driven/inequality/'
 save_results(ocp, sol, save_path)
 
 # --- Plot CoP --- #
@@ -158,6 +158,15 @@ q = sol.states["q"]
 cop = np.zeros((3, q.shape[1]))
 for n in range(q.shape[1]):
     cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
+plt.plot(cop[2, :])
+
+# --- Plot CoP --- #
+plot_result = Affichage(ocp, sol, muscles=True)
+plot_result.plot_q_symetry()
+plot_result.plot_tau_symetry()
+plot_result.plot_qdot_symetry()
+plot_result.plot_individual_forces()
+plot_result.plot_muscles_symetry()
 
 # --- Show results --- #
 sol.animate()
