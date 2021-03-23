@@ -44,6 +44,7 @@ nb_q = model.nbQ()
 nb_qdot = model.nbQdot()
 nb_tau = model.nbGeneralizedTorque() - model.nbRoot()
 nb_mus = model.nbMuscleTotal()
+nb_mark = model.nbMarkers()
 nb_shooting = 30
 final_time = 1.0
 
@@ -118,7 +119,7 @@ ocp = OptimalControlProgram(
 )
 
 # # --- Load previous solution --- #
-# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
+# ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
 # plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
 # plot_result.plot_q_symetry()
 # plot_result.plot_tau_symetry()
@@ -160,7 +161,16 @@ for n in range(q.shape[1]):
     cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
 plt.plot(cop[2, :])
 
-# --- Plot CoP --- #
+# --- Plot markers --- #
+markers = biorbd.to_casadi_func("markers", model.markers, MX.sym("q", nb_q, 1))
+contact_idx_right = (31, 32, 33)
+contact_idx_left = (55, 56, 57)
+q = sol.states["q"]
+markers_pos = np.zeros((3, nb_mark, q.shape[1]))
+for n in range(q.shape[1]):
+    markers_pos[:, :, n] = markers(q[:, n:n+1])
+
+# --- Plot Symetry --- #
 plot_result = Affichage(ocp, sol, muscles=True)
 plot_result.plot_q_symetry()
 plot_result.plot_tau_symetry()

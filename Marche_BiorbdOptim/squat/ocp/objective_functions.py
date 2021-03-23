@@ -1,4 +1,4 @@
-from bioptim import ObjectiveFcn, Node, PenaltyNodes
+from bioptim import ObjectiveFcn, Node, PenaltyNodes, Axis
 from casadi import MX, vertcat
 import numpy as np
 import biorbd
@@ -45,10 +45,15 @@ class objective:
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                value=-0.35,
+                                value=-0.4,
                                 node=Node.MID,
                                 quadratic=True,
                                 weight=1000)
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
+        #                         node=Node.MID,
+        #                         axis=Axis.Z,
+        #                         quadratic=True,
+        #                         weight=1000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
