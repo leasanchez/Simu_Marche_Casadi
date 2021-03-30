@@ -3,6 +3,7 @@ import seaborn
 from matplotlib import pyplot as plt
 from .Utils_start import utils
 from .Contact_Forces import contact
+from .Muscles import muscle
 
 class Affichage:
     def __init__(self, ocp, sol, muscles=False):
@@ -38,6 +39,9 @@ class Affichage:
 
         # contact
         self.contact_data = contact(self.ocp, self.sol, self.muscles)
+
+        # muscle params
+        self.muscle_params = muscle(self.ocp, self.sol)
 
     def plot_individual_forces(self):
         forces = self.contact_data.individual_forces
@@ -241,15 +245,15 @@ class Affichage:
         axes=axes.flatten()
         for i in range(6):
             axes[i].set_title(pelvis_label[i])
+            axes[i].plot(self.t, self.muscle_params.muscle_tau[i, :], color="red")
+            axes[i].plot(self.t, self.tau[i, :], color="green")
+            axes[i].set_xlim([self.t[0], self.t[-1]])
             if (i<3):
-                axes[i].plot(self.t, self.tau[i, :], color="red")
                 axes[i].set_ylabel("Force (N)")
-                axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
-                axes[i].plot(self.t, self.tau[i, :], color="red")
                 axes[i].set_ylabel("Torque (N.m)")
-                axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
+        plt.legend(["muscular torque", "residual torque"])
 
         # --- plot leg Dofs --- #
         figure, axes = plt.subplots(2, 3, sharex=True)
@@ -263,14 +267,16 @@ class Affichage:
         axes=axes.flatten()
         for i in range(6):
             axes[i].set_title(leg_label[i])
-            axes[i].plot(self.t, self.tau[i + 6, :], color="red")
-            axes[i].plot(self.t, self.tau[i + 12, :], color="blue")
+            axes[i].plot(self.t, self.muscle_params.muscle_tau[i + 6, :], color="red")
+            axes[i].plot(self.t, self.tau[i + 6, :], color="red", linestyle="--")
+            axes[i].plot(self.t, self.muscle_params.muscle_tau[i + 12, :], color="blue")
+            axes[i].plot(self.t, self.tau[i + 12, :], color="blue", linestyle="--")
             axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("Torque (N.m)")
         axes[4].set_xlabel("time (s)")
-        axes[-1].legend(["Right", "Left"])
+        axes[-1].legend(["Right muscular torque", "Right residual torque", "Left muscular torque", "Left residual torque"])
 
-    def plot_muscles_symetry(self):
+    def plot_muscles_activation_symetry(self):
         figure, axes = plt.subplots(4, 5, sharex=True, sharey=True)
         figure.suptitle("Muscle activity")
         axes = axes.flatten()
@@ -284,3 +290,28 @@ class Affichage:
         for i in range(4):
             axes[i*5].set_ylabel("activation")
             axes[15 + i].set_xlabel("time (s)")
+
+    def plot_muscles_force_symetry(self):
+        figure, axes = plt.subplots(4, 5, sharex=True)
+        figure.suptitle("Muscle force")
+        axes = axes.flatten()
+        for i in range(len(axes) - 1):
+            axes[i].set_title(self.ocp.nlp[0].model.muscle(i).name().to_string())
+            axes[i].plot(self.t, self.muscle_params.muscle_force[i, :], color="red")
+            axes[i].plot(self.t, self.muscle_params.muscle_force[i + 19, :], color="blue")
+            axes[i].plot([self.t[0], self.t[-1]], [self.muscle_params.f_iso[i], self.muscle_params.f_iso[i]], color="black", linestyle="--")
+            axes[i].set_xlim([self.t[0], self.t[-1]])
+            # axes[i].set_ylim([0.0, self.muscle_params.f_iso[i]])
+        axes[-2].legend(["Right", "Left"])
+        for i in range(4):
+            axes[i*5].set_ylabel("force (N)")
+            axes[15 + i].set_xlabel("time (s)")
+
+    def plot_momentarm(self, idx_muscle):
+        idx_q = np.where(np.sqrt(self.muscle_params.muscle_jacobian[idx_muscle, :, 0] ** 2) > 1e-10)[0]
+        for i_q in idx_q:
+           figure = plt.figure(self.q_name[i_q])
+           figure.suptitle(self.model.muscle(idx_muscle).name().to_string())
+           plt.plot(self.t, self.muscle_params.muscle_jacobian[idx_muscle, i_q, :], color="red")
+           plt.xlabel("time (s)")
+           plt.ylabel("moment arm (m)")
