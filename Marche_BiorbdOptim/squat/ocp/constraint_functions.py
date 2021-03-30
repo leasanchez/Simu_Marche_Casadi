@@ -18,6 +18,10 @@ def custom_foot_inequality(pn: PenaltyNodes, inequality_value: float) -> MX:
     nq = pn.nlp.shape["q"]
     val = []
     markers = biorbd.to_casadi_func("markers", pn.nlp.model.markers, pn.nlp.q)
+    # all points same level for 1 foot
+    val.append((markers(pn.x[0][:nq])[2, 31]) - markers(pn.x[0][:nq])[2, 32])
+    val.append((markers(pn.x[0][:nq])[2, 31]) - markers(pn.x[0][:nq])[2, 33])
+
     val.append((markers(pn.x[0][:nq])[2, 31] + inequality_value) - markers(pn.x[0][:nq])[2, 55])  # heel
     val.append((markers(pn.x[0][:nq])[2, 32] + inequality_value) - markers(pn.x[0][:nq])[2, 56])  # meta1
     val.append((markers(pn.x[0][:nq])[2, 33] + inequality_value) - markers(pn.x[0][:nq])[2, 57])  # meta5
