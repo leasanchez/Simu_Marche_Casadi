@@ -77,3 +77,18 @@ class objective:
                                 index=(3, 4, 6, 7, 10, 12, 13, 16),
                                 weight=0.01)
         return objective_functions
+
+    @staticmethod
+    def set_objectif_function_position(objective_functions):
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+                                quadratic=True,
+                                node=Node.ALL,
+                                index=(5),
+                                weight=0.1)
+
+        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+        #                         quadratic=True,
+        #                         node=Node.ALL,
+        #                         index=(6, 7, 12, 13),
+        #                         weight=0.01)
+        return objective_functions
