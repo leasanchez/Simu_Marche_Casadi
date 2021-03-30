@@ -30,14 +30,15 @@ def custom_foot_position(pn: PenaltyNodes) -> MX:
 
     # --- toe --- #
     val.append(markers(pn.x[0][:nq])[0, 31] - markers(pn.x[0][:nq])[0, 55])
-    val.append(markers(pn.x[0][:nq])[1, 31] + markers(pn.x[0][:nq])[1, 55])
+    # val.append((-markers(pn.x[0][:nq])[1, 31]) - markers(pn.x[0][:nq])[1, 55])
     # --- meta 1 --- #
     val.append(markers(pn.x[0][:nq])[0, 32] - markers(pn.x[0][:nq])[0, 56])
-    val.append(markers(pn.x[0][:nq])[1, 32] + markers(pn.x[0][:nq])[1, 56])
+    # val.append((-markers(pn.x[0][:nq])[1, 32]) - markers(pn.x[0][:nq])[1, 56])
     # --- meta 5 --- #
     val.append(markers(pn.x[0][:nq])[0, 33] - markers(pn.x[0][:nq])[0, 57])
-    val.append(markers(pn.x[0][:nq])[1, 33] + markers(pn.x[0][:nq])[1, 57])
+    # val.append((-markers(pn.x[0][:nq])[1, 33]) - markers(pn.x[0][:nq])[1, 57])
     return vertcat(*val)
+
 
 class constraint:
     @staticmethod
