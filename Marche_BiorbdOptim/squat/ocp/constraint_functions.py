@@ -92,3 +92,43 @@ class constraint:
             node=Node.START,
         )
         return constraints
+
+    @staticmethod
+    def set_constraints_position(constraints, inequality_value=0.0):
+        # --- contact forces --- #
+        contact_z_axes = (2, 3, 5, 8, 9, 11)
+        for c in contact_z_axes:
+            constraints.add(  # positive vertical forces
+                ConstraintFcn.CONTACT_FORCE,
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL,
+                contact_force_idx=c,
+            )
+
+        # # --- CoM initial and final --- #
+        # constraints.add(
+        #     custom_CoM_position,
+        #     node=Node.START,
+        #     max_bound=0.02,
+        #     min_bound=-0.02,
+        # )
+        #
+        # constraints.add(
+        #     custom_foot_position,
+        #     node=Node.START,
+        # )
+        #
+        # constraints.add(  # non sliding contact point
+        #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
+        #     node=Node.START,
+        #     index=(31, 32, 55, 56),
+        # )
+
+        # --- Inequality foot --- #
+        constraints.add(
+            custom_foot_inequality,
+            inequality_value=inequality_value,
+            node=Node.START,
+        )
+        return constraints
