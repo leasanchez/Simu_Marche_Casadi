@@ -34,19 +34,17 @@ def custom_foot_position(pn: PenaltyNodes) -> MX:
 
     # --- toe --- #
     val.append(markers(pn.x[0][:nq])[0, 31] - markers(pn.x[0][:nq])[0, 55])
-    # val.append((-markers(pn.x[0][:nq])[1, 31]) - markers(pn.x[0][:nq])[1, 55])
     # --- meta 1 --- #
     val.append(markers(pn.x[0][:nq])[0, 32] - markers(pn.x[0][:nq])[0, 56])
-    # val.append((-markers(pn.x[0][:nq])[1, 32]) - markers(pn.x[0][:nq])[1, 56])
     # --- meta 5 --- #
     val.append(markers(pn.x[0][:nq])[0, 33] - markers(pn.x[0][:nq])[0, 57])
-    # val.append((-markers(pn.x[0][:nq])[1, 33]) - markers(pn.x[0][:nq])[1, 57])
+
     return vertcat(*val)
 
 
 class constraint:
     @staticmethod
-    def set_constraints(constraints):
+    def set_constraints(constraints, inequality_value=0.0):
         # --- contact forces --- #
         contact_z_axes = (2, 3, 5, 8, 9, 11)
         for c in contact_z_axes:
@@ -66,23 +64,18 @@ class constraint:
             node=Node.ALL,
         )
 
-        # --- CoM initial and final --- #
+        # --- Initial position --- #
         constraints.add(
             custom_CoM_position,
             node=Node.START,
-            max_bound=0.0,
+            max_bound=0.02,
             min_bound=-0.02,
         )
+
+        # --- Foot --- #
         constraints.add(
             custom_foot_position,
             node=Node.START,
-        )
-
-        constraints.add(
-            custom_CoM_position,
-            node=Node.END,
-            max_bound=0.0,
-            min_bound=-0.02,
         )
         constraints.add(  # non sliding contact point
             ConstraintFcn.TRACK_MARKERS_VELOCITY,
@@ -93,15 +86,23 @@ class constraint:
         # --- Inequality foot --- #
         constraints.add(
             custom_foot_inequality,
-            inequality_value=0.03,
+            inequality_value=inequality_value,
             node=Node.START,
+        )
+
+        # --- Final position --- #
+        constraints.add(
+            custom_CoM_position,
+            node=Node.END,
+            max_bound=0.02,
+            min_bound=-0.02,
         )
         return constraints
 
     @staticmethod
-    def set_constraints_position(constraints, inequality_value=0.0):
+    def set_constraints_position_basse(constraints, inequality_value=0.0):
         # --- contact forces --- #
-        contact_z_axes = (2, 3, 5, 8, 9, 11)
+        contact_z_axes = (1, 3, 4, 6, 8, 9)
         for c in contact_z_axes:
             constraints.add(  # positive vertical forces
                 ConstraintFcn.CONTACT_FORCE,
@@ -111,29 +112,45 @@ class constraint:
                 contact_force_idx=c,
             )
 
-        # # --- CoM initial and final --- #
+        constraints.add(
+            get_last_contact_force,
+            contact_force_idx=contact_z_axes,
+            min_bound=0,
+            max_bound=np.inf,
+            node=Node.ALL,
+        )
+
+        # --- Foot --- #
+        constraints.add(
+            custom_foot_position,
+            node=Node.START,
+        )
+
+        constraints.add(  # non sliding contact point
+            ConstraintFcn.TRACK_MARKERS_VELOCITY,
+            node=Node.START,
+            index=(31, 32, 55, 56),
+        )
+
+        # constraints.add(
+        #     ConstraintFcn.TIME_CONSTRAINT,
+        #     node=Node.END,
+        #     min_bound=0.3,
+        #     max_bound=1.0
+        # )
+        #
+        # # --- Inequality foot --- #
+        # constraints.add(
+        #     custom_foot_inequality,
+        #     inequality_value=inequality_value,
+        #     node=Node.START,
+        # )
+        #
+        # # --- Initial position --- #
         # constraints.add(
         #     custom_CoM_position,
         #     node=Node.START,
-        #     max_bound=0.02,
-        #     min_bound=-0.02,
+        #     max_bound=0.002,
+        #     min_bound=-0.002,
         # )
-        #
-        # constraints.add(
-        #     custom_foot_position,
-        #     node=Node.START,
-        # )
-        #
-        # constraints.add(  # non sliding contact point
-        #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
-        #     node=Node.START,
-        #     index=(31, 32, 55, 56),
-        # )
-
-        # --- Inequality foot --- #
-        constraints.add(
-            custom_foot_inequality,
-            inequality_value=inequality_value,
-            node=Node.START,
-        )
         return constraints
