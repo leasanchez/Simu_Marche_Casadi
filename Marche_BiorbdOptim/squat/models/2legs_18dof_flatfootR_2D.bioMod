@@ -54,19 +54,13 @@ segment pelvis
 		0	0	-1	0
 		0	1	0	0
 		0	0	0	1
-	translations	xyz
-	rotations	yxz
+	translations	xy
+	rotations z
         rangesQ -15    15
                 -15    15
-                -15    15
-                -pi+1  pi+1
-                -pi+1  pi+1
                 -pi+1  pi+1
         rangesQdot -150        150
  	               -150        150
-                   -150        150
-                   -(pi+1)*10  (pi+1)*10
-                   -(pi+1)*10  (pi+1)*10
                    -(pi+1)*10  (pi+1)*10
 	mass	7.8384
 	inertia
@@ -118,13 +112,6 @@ segment torso
 		0	1	0	 -0.028679
 		0	0	1	  0.0
 		0	0	0	  1
-		//rotations	yxz
-        //rangesQ -pi/2 pi/2
-        //        -pi/2 pi/2
-        //        -pi/2 pi/2
-        //rangesQdot -5.2360 5.2360
-        //           -5.2360 5.2360
-        //           -5.2360 5.2360
         mass 34.28542425
         inertia
             2.342567     0.0          0.0
@@ -181,13 +168,9 @@ segment femur_r
 		0	1	0	-0.09161
 		0	0	1	 0.082232
 		0	0	0	 1
-	rotations	xyz
-    rangesQ    -pi/2  pi/2
-               -pi/2  pi/2
-               -pi/2  pi/2+pi/3
-    rangesQdot -4    4.5
-               -4    4.5
-               -4    4.5
+	rotations	z
+    rangesQ    -pi/2  pi/2+pi/3
+    rangesQdot -7    7
 	mass	9.8454
 	inertia
 		0.14317	  0	        0
@@ -247,8 +230,8 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-        rangesQ    -pi/2-pi/6  pi/6
-        rangesQdot -7     7
+    rangesQ    -pi/2-pi/6  pi/6
+    rangesQdot  -7         7
 	mass	3.0385
 	inertia
 		0.027795	0	        0
@@ -336,11 +319,9 @@ segment talus_r
 		0	1	0	-0.42392
 		0	0	1	0
 		0	0	0	1
-	rotations	yz
-    rangesQ -pi/6 pi/6
-            -pi/6 pi/6
+	rotations	z
+    rangesQ  -pi/6 pi/6
     rangesQdot -5.2360 5.2360
-               -5.2360 5.2360
 	mass	0.042104
 	inertia
 		2.7894e-06	0	        0
@@ -437,17 +418,12 @@ endmarker
 contact    Heel_r
 	parent      foot_marker_r
 	position    0.0254278	 -0.02	   0.00220395
-	axis    xyz
+	axis    xz
 endcontact
 contact    Meta_1_r
 	parent      foot_marker_r
 	position    0.19973	 -0.02	  -0.0323195
 	axis    z
-endcontact
-contact    Meta_5_r
-	parent     foot_marker_r
-	position   0.156485	 -0.02	   0.0638694
-	axis    xz
 endcontact
 
 // ---- Markers
@@ -500,13 +476,9 @@ segment femur_l
 		0	1	0	-0.09161
 		0	0	1	-0.082232
 		0	0	0	 1
-	rotations	xyz
-        rangesQ    -pi/2  pi/2
-                   -pi/2  pi/2
-                   -pi/2  pi/2+pi/3
-        rangesQdot -4    4.5
-                   -4    4.5
-                   -4    4.5
+	rotations	z
+    rangesQ    -pi/2  pi/2+pi/3
+    rangesQdot -5    5
 	mass	9.8454
 	inertia
 		0.14317	  0	        0
@@ -568,7 +540,7 @@ segment tibia_l
 		0	0	0	1
 	rotations	z
 	rangesQ    -pi/2-pi/6  pi/6
-	rangesQdot -7 7
+	rangesQdot -7  7
 	mass	3.0385
 	inertia
 		0.027795	0	        0
@@ -653,11 +625,9 @@ segment talus_l
 		0	1	0      -0.42392
 		0	0	1	0
 		0	0	0	1
-	rotations	yz
-    rangesQ -pi/6 pi/6
-            -pi/6 pi/6
+	rotations	z
+    rangesQ    -pi/6 pi/6
     rangesQdot -5.2360 5.2360
-               -5.2360 5.2360
 	mass	0.042104
 	inertia
 		2.7894e-06	0	        0
@@ -750,17 +720,12 @@ endmarker
 contact    Heel_l   //FCC decale
 	parent      foot_marker_l
 	position    0.0254278	 -0.02	   -0.00220395
-	axis    xyz
+	axis    xz
 endcontact
 contact    Meta_1_l //FM1
 	parent      foot_marker_l
 	position    0.19973	 -0.02	    0.0323195
 	axis    z
-endcontact
-contact    Meta_5_l //FM5
-	parent     foot_marker_l
-	position   0.156485	 -0.02	   -0.0638694
-	axis    xz
 endcontact
 
 // ---- Markers
