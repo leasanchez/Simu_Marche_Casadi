@@ -19,18 +19,33 @@ class initial_guess:
         return x_init, u_init
 
     @staticmethod
-    def set_initial_guess_position(model, x_init, u_init, position_high, nb_shooting, mapping=False):
+    def set_initial_guess_position_basse(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
         init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
         for i in range(model.nbQ()):
-            init_x[i, :] = np.repeat(position_high[i], nb_shooting + 1)
+            init_x[i, :] = np.concatenate(np.linspace(position_high[i], position_low[i], nb_shooting + 1)).squeeze()
         init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
         x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-        # x_init.add(position_high + [0]*model.nbQ())
+
         if mapping:
             u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * model.nbMuscleTotal())
         else:
             u_init.add([0] * model.nbGeneralizedTorque() + [0.1] * model.nbMuscleTotal())
         return x_init, u_init
+
+    @staticmethod
+    def set_initial_guess_position_basse_torque_driven(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
+        init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
+        for i in range(model.nbQ()):
+            init_x[i, :] = np.concatenate(np.linspace(position_high[i], position_low[i], nb_shooting + 1)).squeeze()
+        init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
+        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+
+        if mapping:
+            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()))
+        else:
+            u_init.add([0] * model.nbGeneralizedTorque())
+        return x_init, u_init
+
 
     @staticmethod
     def set_initial_guess_torque_driven(model, x_init, u_init, position_high, position_low, nb_shooting):
