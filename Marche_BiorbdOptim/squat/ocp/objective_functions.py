@@ -45,15 +45,10 @@ class objective:
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                value=-0.4,
+                                value=-0.25,
                                 node=Node.MID,
                                 quadratic=True,
-                                weight=1000)
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
-        #                         node=Node.MID,
-        #                         axis=Axis.Z,
-        #                         quadratic=True,
-        #                         weight=1000)
+                                weight=10000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
@@ -79,16 +74,52 @@ class objective:
         return objective_functions
 
     @staticmethod
-    def set_objectif_function_position(objective_functions):
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=(5),
-                                weight=0.1)
-
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+    def set_objectif_function_position_basse_torque_driven(objective_functions, position_high):
+        nq = len(position_high)
+        # # --- control minimize --- #
+        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
         #                         quadratic=True,
         #                         node=Node.ALL,
-        #                         index=(6, 7, 12, 13),
-        #                         weight=0.01)
+        #                         weight=0.001)
+
+        # # --- initial position --- #
+        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        #                         quadratic=True,
+        #                         node=Node.START,
+        #                         index=range(len(position_high)),
+        #                         target=np.array(position_high),
+        #                         weight=1000)
+        # --- initial position --- #
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.START,
+                                index=(4, 7),
+                                target=np.array([[-0.3], [-0.3]]),
+                                weight=1)
+        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
+                                quadratic=True,
+                                node=Node.START,
+                                index=range(nq, (nq + nq)),
+                                weight=0.1)
+
+        # --- final position --- #
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=(4, 7),
+                                target=np.array([[-1.40], [-1.40]]),
+                                weight=10)
+        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=range(nq, (nq + nq)),
+                                weight=0.1)
+
+        # # --- com displacement --- #
+        # objective_functions.add(custom_CoM_position,
+        #                         custom_type=ObjectiveFcn.Mayer,
+        #                         value=-0.05,
+        #                         node=Node.END,
+        #                         quadratic=True,
+        #                         weight=10)
         return objective_functions
