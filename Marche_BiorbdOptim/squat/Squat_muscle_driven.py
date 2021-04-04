@@ -19,6 +19,7 @@ from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
 from Compute_Results.Plot_results import Affichage
+from Compute_Results.Muscles import muscle
 
 
 def get_results(sol):
@@ -52,6 +53,12 @@ final_time = 1.0
 position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
                 [0], [0], [0.37], [-0.13], [0], [0.11],
                 [0], [0], [0.37], [-0.13], [0], [0.11]]
+position_high_2 = np.array([ 4.26785743e-04, -3.27607996e-02, -1.36233663e-10,
+                             1.60515474e-09, 2.40204561e-16, -1.17170696e-02,
+                             0.00000000e+00,  0.00000000e+00, 5.07870681e-01,
+                             -9.97518168e-01,  0.00000000e+00,  5.01364556e-01,
+                             3.76415789e-11, -3.21009090e-09,  5.07870682e-01,
+                             -9.97518168e-01, 0.00000000e+00,  5.01364556e-01])
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
                 0, 0, 1.53, -1.55, 0, 0.68,
                 0, 0, 1.53, -1.55, 0, 0.68]
@@ -87,7 +94,7 @@ constraints = constraint.set_constraints(constraints)
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, mapping=False)
+x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high, mapping=False)
 
 # Initial guess
 x_init = InitialGuessList()
@@ -96,7 +103,7 @@ u_init = InitialGuessList()
 x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
                                                                         x_init,
                                                                         u_init,
-                                                                        save_path='./RES/muscle_driven/symetry_by_grf/',
+                                                                        save_path='./RES/muscle_driven/CoM_obj/',
                                                                         nb_shooting=nb_shooting,
                                                                         mapping=False)
 # Remove pelvis torque
@@ -119,13 +126,19 @@ ocp = OptimalControlProgram(
 )
 
 # # --- Load previous solution --- #
-# ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
+# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
 # plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
+# muscle_prev = muscle(ocp_prev, sol_prev)
+# plot_result.plot_momentarm(idx_muscle=11)
+# plot_result.plot_muscles_activation_symetry()
+# plot_result.plot_muscles_force_symetry()
+# plot_result.plot_tau_symetry()
+
 # plot_result.plot_q_symetry()
 # plot_result.plot_tau_symetry()
 # plot_result.plot_qdot_symetry()
 # plot_result.plot_individual_forces()
-# plot_result.plot_muscles_symetry()
+
 # # --- Plot CoP --- #
 # q = sol_prev.states["q"]
 # cop = np.zeros((3, q.shape[1]))
@@ -151,7 +164,7 @@ sol = ocp.solve(
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/inequality/'
+save_path = './RES/muscle_driven/CoM_obj/'
 save_results(ocp, sol, save_path)
 
 # --- Plot CoP --- #
