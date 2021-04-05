@@ -66,11 +66,7 @@ class C3dData:
         self.cop = self.get_cop(self.c3d)
         self.emg = self.get_emg(self.c3d, self.muscle_names)
         self.events = self.get_event_rhs_rto(self.c3d)
-        # self.cycle_indices = self.get_rhs_rto_from_forces(self.forces)
-        self.indices_ant = [100,109,179,206,285]
-        # self.indices = self.get_indices()
-        self.indices = self.get_indices_four_phases()
-        # self.phase_time = self.get_time_from_forces()
+        self.indices = self.get_indices()
         self.phase_time = self.get_time()
 
     @staticmethod
@@ -315,12 +311,10 @@ class LoadData:
         self.q = load_txt_file(q_file, self.nb_q)
         self.qdot = load_txt_file(qdot_file, self.nb_qdot)
         self.emg=self.dispatch_muscle_activation(self.c3d_data.emg)
-        self.idx = self.get_indices_from_kalman()
 
         # dispatch data
         self.dt = dt
         self.phase_time = self.c3d_data.get_time()
-        # self.phase_time = self.c3d_data.get_time_from_forces()
         self.number_shooting_points = self.get_shooting_numbers()
         if interpolation:
             self.q_ref = self.dispatch_data_interpolation(data=self.q)
@@ -382,8 +376,7 @@ class LoadData:
         return out
 
     def get_indices_from_kalman(self):
-        indices = self.c3d_data.get_indices_four_phases()
-        indices_ant = self.c3d_data.indices_ant
+        indices = self.c3d_data.get_indices()
         markers_func = markers_func_casadi(self.model)
         marker_pos = np.empty((3, self.model.nbMarkers(), self.q.shape[1]))
         for m in range(self.model.nbMarkers()):
