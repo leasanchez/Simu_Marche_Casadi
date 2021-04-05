@@ -24,25 +24,25 @@ gravity 0 0 -9.8
 // Variables
 // --------------------------------------------------------------------------------------------------------
 variables
-	$fiso_01 573 //1047 //glut_max_1
-	$fiso_02 819 //1496 //glut_max_2
-	$fiso_03 552 //1008 //glut_max_3
-	$fiso_04 1119 //1163 //glut_med_1
-	$fiso_05 873 //814 //glut_med_2
-	$fiso_06 1000 //927 //glut_med_3
-	$fiso_07 1288 //2342 // semimem
-	$fiso_08 410 //629 //semiten
-	$fiso_09 2700 //1397 // bi fem lh
-	$fiso_10 1169 //1397 //rectus fem
-	$fiso_11 1294 //2924 //vaste med
-	$fiso_12 1365 //1806 //vaste int
-	$fiso_13 1871 //5479 //vaste lat
-	$fiso_14 1600 //3315 //gas med
-	$fiso_15 700 //1676 //gas lat
-	$fiso_16 4000 //6593 //soleus
-	$fiso_17 3000 //1306 //tib ant
-	$fiso_18 2000 //1086 //iliacus
-	$fiso_19 3000 //1518 //psoas
+	$fiso_01 1047 //573 //glut_max_1
+	$fiso_02 1496 //819 //glut_max_2
+	$fiso_03 1008 //552 //glut_max_3
+	$fiso_04 1163 //1119 //glut_med_1
+	$fiso_05 814 //873 //glut_med_2
+	$fiso_06 927 //1000 //glut_med_3
+	$fiso_07 2342 //1288 //semimem
+	$fiso_08 629 //410 //semiten
+	$fiso_09 1397 //2700 //bi fem lh
+	$fiso_10 2332 //1169 //rectus fem
+	$fiso_11 2924 //1294 //vaste med
+	$fiso_12 1806 //1365 //vaste int
+	$fiso_13 5479 //1871 //vaste lat
+	$fiso_14 3315 //1600 //gas med
+	$fiso_15 1676 //700 //gas lat
+	$fiso_16 6593 //4000 //soleus
+	$fiso_17 3000 //1306 //3000 //tib ant
+	$fiso_18 2000 //1086 //2000 //iliacus
+	$fiso_19 3000 // 1518 //3000 //psoas
 endvariables
 
 // --------------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ segment tibia_r
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-    rangesQ -pi/2 0.0873
+    rangesQ    -pi/2 0.0873
     rangesQdot -15   15
 	mass	3.0385
 	inertia
@@ -261,8 +261,8 @@ segment talus_r
 		0	0	1	0
 		0	0	0	1
 	rotations	yz
-    	rangesQ -pi/6 pi/9 
-		-pi/6 pi/9
+    	rangesQ -pi/6 pi/6
+		        -pi/6 pi/6
     	rangesQdot -15   15
 		           -15   15
 	mass	0.042104
