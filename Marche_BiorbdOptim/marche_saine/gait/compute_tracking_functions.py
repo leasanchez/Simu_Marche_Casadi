@@ -1,6 +1,8 @@
 import numpy as np
+import biorbd
 from casadi import MX, Function
 from .contact_forces_function import contact
+from matplotlib import pyplot as plt
 
 def markers_func_casadi(model):
     symbolic_q = MX.sym("q", model.nbQ(), 1)
@@ -25,12 +27,14 @@ class tracking:
         self.n_markers = ocp.nlp[0].model.nbMarkers()
 
         # reference tracked
+        self.data = data
         self.q_ref = data.q_ref
         self.qdot_ref = data.qdot_ref
         self.markers_ref = data.markers_ref
         self.grf_ref = data.grf_ref
         self.moments_ref = data.moments_ref
         self.cop_ref = data.cop_ref
+        self.nb_phases = len(self.q_ref)
 
         # markers indices
         self.markers_pelvis = [0, 1, 2, 3]
@@ -39,6 +43,7 @@ class tracking:
         self.markers_pied = [19, 20, 21, 22, 23, 24, 25]
 
         # results data
+        self.time = self.get_time_vector()
         self.model = []
         self.number_shooting_points = []
         self.q = []
@@ -65,13 +70,27 @@ class tracking:
         muscle = self.sol_merged.controls["muscles"]
         return q, qdot, tau, muscle
 
+    def get_time_vector(self):
+        t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
+        for p in range(1, self.nb_phases):
+            t = np.concatenate((t[:-1], t[-1] + np.linspace(0, self.ocp.nlp[p].tf, self.ocp.nlp[p].ns + 1)))
+        return t
+
     def merged_reference(self, x):
-        x_merged = np.empty((x[0].shape[0], sum(self.number_shooting_points) + 1))
-        for i in range(x[0].shape[0]):
-            n_shoot = 0
-            for phase in range(self.n_phases):
-                x_merged[i, n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = x[phase][i, :]
-                n_shoot += self.number_shooting_points[phase]
+        if (len(x[0].shape) == 3):
+            x_merged = np.empty((x[0].shape[0], x[0].shape[1], sum(self.number_shooting_points) + 1))
+            for i in range(x[0].shape[1]):
+                n_shoot = 0
+                for phase in range(self.n_phases):
+                    x_merged[:, i, n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = x[phase][:, i, :]
+                    n_shoot += self.number_shooting_points[phase]
+        else:
+            x_merged = np.empty((x[0].shape[0], sum(self.number_shooting_points) + 1))
+            for i in range(x[0].shape[0]):
+                n_shoot = 0
+                for phase in range(self.n_phases):
+                    x_merged[i, n_shoot:n_shoot + self.number_shooting_points[phase] + 1] = x[phase][i, :]
+                    n_shoot += self.number_shooting_points[phase]
         return x_merged
 
     def compute_error_force_tracking_per_phase(self):
@@ -92,6 +111,27 @@ class tracking:
         diff_grf.append(np.sqrt(np.mean((forces_sim["forces_r_Y"][:sum(self.number_shooting_points[:-1])] - grf[1, :sum(self.number_shooting_points[:-1])]) ** 2)))
         diff_grf.append(np.sqrt(np.mean((forces_sim["forces_r_Z"][:sum(self.number_shooting_points[:-1])] - grf[2, :sum(self.number_shooting_points[:-1])]) ** 2)))
         return diff_grf
+
+    def plot_grf_comparison(self):
+        grf = self.merged_reference(self.grf_ref)
+        forces_sim = self.contact.merged_result(self.contact.forces)
+        fig, axes = plt.subplots(1, 3)
+        axes = axes.flatten()
+        axes[0].plot(self.time, grf[0, :], 'b')
+        axes[0].plot(self.time, forces_sim["forces_r_X"], 'r')
+
+        axes[1].plot(self.time, grf[1, :], 'b')
+        axes[1].plot(self.time, forces_sim["forces_r_Y"], 'r')
+
+        axes[2].plot(self.time, grf[2, :], 'b')
+        axes[2].plot(self.time, forces_sim["forces_r_Z"], 'r')
+        plt.legend(['reference', 'simulation'])
+        for i in range(3):
+            pt = 0
+            for p in range(self.nb_phases):
+                pt += self.ocp.nlp[p].tf
+                axes[i].plot([pt, pt], [min(grf[i, :]), max(grf[i, :])], 'k--')
+
 
     def compute_error_q_tracking_per_phase(self):
         diff_q_tot = []
@@ -129,20 +169,46 @@ class tracking:
         return diff_marker_tot
 
     def compute_error_markers_tracking(self):
+        markers_ref = self.merged_reference(self.data.markers_ref)
+        q = self.sol_merged.states["q"]
+        markers = biorbd.to_casadi_func("markers", self.model[0].markers, MX.sym("q", self.model[0].nbQ(), 1))
+        markers_pos = np.zeros((3, self.model[0].nbMarkers(), q.shape[1]))
+        for n in range(q.shape[1]):
+            markers_pos[:, :, n] = markers(q[:, n:n + 1])
+
         diff_marker_tot = []
-        err_per_phase = self.compute_error_markers_tracking_per_phase()
-        for i in range(self.n_markers - 4):
-            err = 0
-            for phase in range(self.n_phases):
-                err += err_per_phase[phase][i]
-            diff_marker_tot.append(err/self.n_phases)
+        for m in range(self.model[0].nbMarkers()):
+            x = np.mean(np.sqrt((markers_ref[0, m, :] - markers_pos[0, m, :])**2))
+            y = np.mean(np.sqrt((markers_ref[1, m, :] - markers_pos[1, m, :]) ** 2))
+            z = np.mean(np.sqrt((markers_ref[2, m, :] - markers_pos[2, m, :]) ** 2))
+            diff_marker_tot.append(np.mean([x, y, z]))
         return diff_marker_tot
 
     def compute_error_markers_tracking_per_objectif(self):
         diff_marker_tot = {}
         err_markers = self.compute_error_markers_tracking()
-        diff_marker_tot["markers_pelvis"] = np.mean(err_markers[self.markers_pelvis])
-        diff_marker_tot["markers_pied"] = np.mean(err_markers[self.markers_pied])
-        diff_marker_tot["markers_anat"] = np.mean(err_markers[self.markers_anat])
-        diff_marker_tot["markers_tissus"] = np.mean(err_markers[self.markers_tissus])
+
+        diff_marker_tot["markers_pelvis"] = np.mean([err_markers[0], err_markers[1], err_markers[2], err_markers[3]])
+        diff_marker_tot["markers_pied"] = np.mean([err_markers[19:]])
+        diff_marker_tot["markers_anat"] = np.mean([err_markers[4], err_markers[9], err_markers[10], err_markers[11],
+                                                   err_markers[12], err_markers[17], err_markers[18]])
+        diff_marker_tot["markers_tissus"] = np.mean([err_markers[5], err_markers[6], err_markers[7], err_markers[8],
+                                                     err_markers[13], err_markers[14], err_markers[15], err_markers[16]])
         return diff_marker_tot
+
+    def plot_markers_error(self):
+        err_markers = self.compute_error_markers_tracking()
+        label_markers = self.data.c3d_data.marker_names
+        x = np.arange(len(label_markers))
+        plt.bar(x, err_markers, color='tab:red')
+        plt.xticks(x, labels=label_markers)
+
+    def plot_markers_error_per_objectif(self):
+        err_markers = self.compute_error_markers_tracking_per_objectif()
+        label_markers = ["pelvis", "anatomique", "tissus", "pied"]
+        y = [err_markers["markers_pelvis"], err_markers["markers_anat"], err_markers["markers_tissus"], err_markers["markers_pied"]]
+        x = np.arange(len(label_markers))
+        plt.bar(x, y, color='tab:red')
+        plt.xticks(x, labels=label_markers)
+
+
