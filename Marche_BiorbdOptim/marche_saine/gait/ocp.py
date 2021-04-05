@@ -75,10 +75,6 @@ class gait_muscle_driven:
         # Phase transitions
         self.phase_transition = PhaseTransitionList()
         self.set_phase_transition()
-        # if self.n_phases > 4:
-        #     self.set_phase_transition_four_phases()
-        # else:
-        #     self.set_phase_transition()
 
         # Path constraint
         self.x_bounds = BoundsList()

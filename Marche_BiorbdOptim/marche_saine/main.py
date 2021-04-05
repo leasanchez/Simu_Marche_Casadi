@@ -27,6 +27,15 @@ def contact_position_func_casadi(model):
                 ["contact_pos"]).expand())
     return contact_pos_func
 
+def merged_reference(x, number_shooting_points):
+    x_merged = np.empty((x[0].shape[0], x[0].shape[1], sum(number_shooting_points) + 1))
+    for i in range(x[0].shape[1]):
+        n_shoot = 0
+        for phase in range(len(x)):
+            x_merged[:, i, n_shoot:n_shoot + number_shooting_points[phase] + 1] = x[phase][:, i, :]
+            n_shoot += number_shooting_points[phase]
+    return x_merged
+
 def get_q_name(model):
     q_name = []
     for s in range(model.nbSegment()):
@@ -155,21 +164,72 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
                                                         grf_ref=grf_ref,
                                                         moments_ref=moments_ref,
                                                         cop_ref=cop_ref,
-                                                        save_path='./RES/muscle_driven/Hip_muscle/grf_idx/',
                                                         n_threads=8)
 # tic = time()
 # # --- Solve the program --- #
 # sol = gait_muscle_driven_markers_tracking.solve()
 # toc = time() - tic
 #
-# # --- Show results --- #
-# sol.animate()
-# sol.graphs()
-# sol.print()
-#
 # # --- Save results --- #
-# save_path = './RES/muscle_driven/No_hip/idx_ant/'
+# save_path = './RES/muscle_driven/Hip_muscle/OpenSim2/'
 # save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
+
+ocp_prev, sol = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/OpenSim/cycle.bo')
+# --- Show results --- #
+sol.animate()
+sol.graphs()
+sol.print()
+
+contact_result = contact(gait_muscle_driven_markers_tracking.ocp, sol, muscles=True)
+muscle_result = muscle(gait_muscle_driven_markers_tracking.ocp, sol.merge_phases())
+tracking_result = tracking(gait_muscle_driven_markers_tracking.ocp, sol, data, muscles=True)
+grf_merged = tracking_result.merged_reference(grf_ref)
+forces_sim_merged = tracking_result.contact.merged_result(contact_result.forces)
+
+# --- Plot markers --- #
+sol_merged = sol.merge_phases()
+q = sol_merged.states["q"]
+markers = biorbd.to_casadi_func("markers", biorbd_model[0].markers, MX.sym("q", nb_q, 1))
+markers_pos = np.zeros((3, nb_markers, q.shape[1]))
+for n in range(q.shape[1]):
+    markers_pos[:, :, n] = markers(q[:, n:n+1])
+
+Mark_ref = merged_reference(markers_ref, number_shooting_points)
+diff_marker_tot = []
+for m in range(26):
+    x = np.mean(np.sqrt((Mark_ref[0, m, :] - markers_pos[0, m, :]) ** 2))
+    y = np.mean(np.sqrt((Mark_ref[1, m, :] - markers_pos[1, m, :]) ** 2))
+    z = np.mean(np.sqrt((Mark_ref[2, m, :] - markers_pos[2, m, :]) ** 2))
+    diff_marker_tot.append(np.mean([x, y, z]))
+
+err_force = tracking_result.compute_error_force_tracking()
+t = np.linspace(0, gait_muscle_driven_markers_tracking.ocp.nlp[0].tf, gait_muscle_driven_markers_tracking.ocp.nlp[0].ns + 1)
+for p in range(1, nb_phases):
+    t = np.concatenate((t[:-1], t[-1] + np.linspace(0, gait_muscle_driven_markers_tracking.ocp.nlp[p].tf, gait_muscle_driven_markers_tracking.ocp.nlp[p].ns + 1)))
+plt.figure()
+plt.plot(t, grf_merged[0, :], 'k')
+plt.plot(t, forces_sim_merged["forces_r_X"], 'b')
+plt.plot(t, grf_merged[1, :], 'k')
+plt.plot(t, forces_sim_merged["forces_r_Y"], 'g')
+plt.plot(t, grf_merged[2, :], 'k')
+plt.plot(t, forces_sim_merged["forces_r_Z"], 'r')
+pt = 0
+for p in range(nb_phases):
+    pt += gait_muscle_driven_markers_tracking.ocp.nlp[p].tf
+    plt.plot([pt, pt],[-200, 840],'k--')
+
+err_markers = tracking_result.compute_error_markers_tracking()
+err_pelvis = np.mean([diff_marker_tot[0], diff_marker_tot[1], diff_marker_tot[2], diff_marker_tot[3]]) * 1e3 # passage en mm
+err_anat = np.mean([diff_marker_tot[4], diff_marker_tot[9], diff_marker_tot[10], diff_marker_tot[11], diff_marker_tot[12], diff_marker_tot[17], diff_marker_tot[18]]) * 1e3
+err_tissus = np.mean([diff_marker_tot[5], diff_marker_tot[6], diff_marker_tot[7], diff_marker_tot[8], diff_marker_tot[13], diff_marker_tot[14], diff_marker_tot[15], diff_marker_tot[16]]) * 1e3
+err_pied = np.mean([diff_marker_tot[19:]]) * 1e3
+
+plt.figure()
+label_markers = ["pelvis", "anatomique", "tissus", "pied"]
+err_plot = [err_pelvis, err_anat, err_tissus, err_pied]
+x = np.arange(len(label_markers))
+plt.bar(x, err_plot, color='tab:blue', alpha=0.8)
+plt.xticks(x, labels=label_markers)
 
 # # --- Compare contact position --- #
 # ocp_hip, sol_hip = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/idx_ant/cycle.bo')
@@ -207,9 +267,23 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
 # muscle_hip_ant = muscle(ocp_hip_ant, sol_hip_ant.merge_phases())
 
 q_hip = np.load('./RES/muscle_driven/Hip_muscle/q.npy')
-plot_moment_arm(biorbd_model[0], q_hip, idx_q=9, idx_muscle=11, phase_time=phase_time)
-
+qdot_hip = np.load('./RES/muscle_driven/Hip_muscle/qdot.npy')
+tau_hip = np.load('./RES/muscle_driven/Hip_muscle/tau.npy')
 activations_hip = np.load('./RES/muscle_driven/Hip_muscle/muscle.npy')
+
+# --- Plot markers --- #
+markers = biorbd.to_casadi_func("markers", biorbd_model[0].markers, MX.sym("q", nb_q, 1))
+markers_pos = np.zeros((3, nb_markers, q_hip.shape[1]))
+for n in range(q_hip.shape[1]):
+    markers_pos[:, :, n] = markers(q_hip[:, n:n+1])
+
+Mark_ref = merged_reference(markers_ref, number_shooting_points)
+
+
+
+
+
+plot_moment_arm(biorbd_model[0], q_hip, idx_q=9, idx_muscle=11, phase_time=phase_time)
 activations_hip_ant = np.load('./RES/muscle_driven/Hip_muscle/idx_ant/muscle.npy')
 # --- plot activations --- #
 fig, axes = plt.subplots(4, 5)

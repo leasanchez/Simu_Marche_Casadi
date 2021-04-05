@@ -177,7 +177,7 @@ class tracking:
             markers_pos[:, :, n] = markers(q[:, n:n + 1])
 
         diff_marker_tot = []
-        for m in range(self.model[0].nbMarkers()):
+        for m in range(markers_ref.shape[1]):
             x = np.mean(np.sqrt((markers_ref[0, m, :] - markers_pos[0, m, :])**2))
             y = np.mean(np.sqrt((markers_ref[1, m, :] - markers_pos[1, m, :]) ** 2))
             z = np.mean(np.sqrt((markers_ref[2, m, :] - markers_pos[2, m, :]) ** 2))
