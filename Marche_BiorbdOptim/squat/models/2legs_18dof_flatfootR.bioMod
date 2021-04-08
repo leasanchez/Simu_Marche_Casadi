@@ -56,18 +56,18 @@ segment pelvis
 		0	0	0	1
 	translations	xyz
 	rotations	yxz
-        rangesQ -15    15
-                -15    15
-                -15    15
-                -pi+1  pi+1
-                -pi+1  pi+1
-                -pi+1  pi+1
-        rangesQdot -150        150
- 	               -150        150
-                   -150        150
-                   -(pi+1)*10  (pi+1)*10
-                   -(pi+1)*10  (pi+1)*10
-                   -(pi+1)*10  (pi+1)*10
+        rangesQ -1    1
+                -1    1
+                -1    1
+                -pi  pi
+                -pi  pi
+                -pi  pi
+        rangesQdot -10        10
+ 	               -10        10
+                   -10        10
+                   -pi*10     pi*10
+                   -pi*10     pi*10
+                   -pi*10     pi*10
 	mass	7.8384
 	inertia
 		0.058836	0	        0
