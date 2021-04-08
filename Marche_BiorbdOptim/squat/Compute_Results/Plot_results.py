@@ -1,5 +1,7 @@
 import numpy as np
 import seaborn
+import biorbd
+from casadi import MX
 from matplotlib import pyplot as plt
 from .Utils_start import utils
 from .Contact_Forces import contact
@@ -28,7 +30,7 @@ class Affichage:
         if self.muscles:
             self.nb_muscle = ocp.nlp[0].model.nbMuscleTotal()
         self.nb_markers = ocp.nlp[0].model.nbMarkers()
-        self.t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
+        self.t = self.get_time_vector()
 
         # params model
         self.model=ocp.nlp[0].model
@@ -43,9 +45,24 @@ class Affichage:
         # muscle params
         self.muscle_params = muscle(self.ocp, self.sol)
 
+    def get_time_vector(self):
+        t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
+        if (len(self.ocp.nlp)>1):
+            t = np.concatenate((t[:-1], t[-1] + np.linspace(0, self.ocp.nlp[1].tf, self.ocp.nlp[1].ns + 1)))
+        return t
+
+    def plot_CoM_displacement(self, target):
+        compute_CoM = biorbd.to_casadi_func("CoM", self.model.CoM, MX.sym("q", self.nb_q, 1))
+        cop = np.zeros((3, self.q.shape[1]))
+        for n in range(self.q.shape[1]):
+            cop[:, n:n + 1] = compute_CoM(self.q[:, n:n + 1])
+        plt.plot(self.t, cop[2, :])
+        plt.plot([self.t[0], self.t[-1]], [target, target], 'k--')
+
+
     def plot_individual_forces(self):
         forces = self.contact_data.individual_forces
-        figure, axes = plt.subplots(3, 3, sharey=True, sharex=True)
+        figure, axes = plt.subplots(3, 3, sharey=False, sharex=True)
         figure.suptitle('Contact forces')
 
         # --- plot heel --- #
@@ -62,6 +79,7 @@ class Affichage:
         axes[2, 0].plot(self.t, forces["Heel_l_Z"], color="blue")
         axes[2, 0].plot([self.t[0], self.t[-1]], [0, 0], color="black")
         axes[2, 0].set_ylabel("Forces in Z (N)")
+        axes[2, 0].set_ylim([-10, 300])
         axes[2, 0].set_xlabel("Time (s)")
 
         # --- plot meta 1 --- #
@@ -75,6 +93,7 @@ class Affichage:
         axes[2, 1].plot(self.t, forces["Meta_1_r_Z"], color="red")
         axes[2, 1].plot(self.t, forces["Meta_1_l_Z"], color="blue")
         axes[2, 1].plot([self.t[0], self.t[-1]], [0, 0], color="black")
+        axes[2, 1].set_ylim([-10, 300])
         axes[2, 1].set_xlabel("Time (s)")
 
         # --- plot meta 5 --- #
@@ -88,6 +107,7 @@ class Affichage:
         axes[2, 2].plot(self.t, forces["Meta_5_r_Z"], color="red")
         axes[2, 2].plot(self.t, forces["Meta_5_l_Z"], color="blue")
         axes[2, 2].plot([self.t[0], self.t[-1]], [0, 0], color="black")
+        axes[2, 2].set_ylim([-10, 300])
         axes[2, 2].set_xlabel("Time (s)")
         axes[2, 2].legend(["Right", "Left"])
 
@@ -96,7 +116,7 @@ class Affichage:
         figure.suptitle('Contact forces')
 
         # --- plot x --- #
-        axes[0, 0].set_title("forces X")
+        axes[0].set_title("forces X")
         axes[0, 0].plot(self.t, self.contact_data.forces["forces_r_X"], color="red")
         axes[0, 0].plot(self.t, self.contact_data.forces["forces_l_X"], color="blue")
         axes[0, 0].set_xlim([self.t[0], self.t[-1]])
@@ -155,12 +175,12 @@ class Affichage:
             axes[i].set_title(pelvis_label[i])
             if (i<3):
                 axes[i].plot(self.t, self.q[i, :], color="red")
-                axes[i].set_ylim([self.q_min[i], self.q_max[i]])
+                # axes[i].set_ylim([self.q_min[i], self.q_max[i]])
                 axes[i].set_ylabel("distance (m)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q[i, :] * 180/np.pi, color="red")
-                axes[i].set_ylim([self.q_min[i] * 180/np.pi, self.q_max[i] * 180/np.pi])
+                # axes[i].set_ylim([self.q_min[i] * 180/np.pi, self.q_max[i] * 180/np.pi])
                 axes[i].set_ylabel("rotation (degrees)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
@@ -179,7 +199,7 @@ class Affichage:
             axes[i].set_title(leg_label[i])
             axes[i].plot(self.t, self.q[i + 6, :] * 180/np.pi, color="red")
             axes[i].plot(self.t, self.q[i + 12, :] * 180 / np.pi, color="blue")
-            axes[i].set_ylim([self.q_min[i + 6] * 180/np.pi, self.q_max[i + 6] * 180/np.pi])
+            # axes[i].set_ylim([self.q_min[i + 6] * 180/np.pi, self.q_max[i + 6] * 180/np.pi])
             axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("rotation (degrees)")
         axes[4].set_xlabel("time (s)")

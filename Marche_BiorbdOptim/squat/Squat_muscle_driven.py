@@ -53,12 +53,6 @@ final_time = 1.0
 position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
                 [0], [0], [0.37], [-0.13], [0], [0.11],
                 [0], [0], [0.37], [-0.13], [0], [0.11]]
-position_high_2 = np.array([ 4.26785743e-04, -3.27607996e-02, -1.36233663e-10,
-                             1.60515474e-09, 2.40204561e-16, -1.17170696e-02,
-                             0.00000000e+00,  0.00000000e+00, 5.07870681e-01,
-                             -9.97518168e-01,  0.00000000e+00,  5.01364556e-01,
-                             3.76415789e-11, -3.21009090e-09,  5.07870682e-01,
-                             -9.97518168e-01, 0.00000000e+00,  5.01364556e-01])
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
                 0, 0, 1.53, -1.55, 0, 0.68,
                 0, 0, 1.53, -1.55, 0, 0.68]
@@ -89,12 +83,12 @@ dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT)
 
 # Constraints
 constraints = ConstraintList()
-constraints = constraint.set_constraints(constraints)
+constraints = constraint.set_constraints(constraints, inequality_value=0.00)
 
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, position_high, mapping=False)
+x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, mapping=False)
 
 # Initial guess
 x_init = InitialGuessList()
@@ -121,12 +115,12 @@ ocp = OptimalControlProgram(
     u_bounds=u_bounds,
     objective_functions=objective_functions,
     constraints=constraints,
-    n_threads=6,
+    n_threads=8,
     # tau_mapping=u_mapping,
 )
 
-# # --- Load previous solution --- #
-# ocp_prev, sol_prev = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
+# --- Load previous solution --- #
+ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
 # plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
 # muscle_prev = muscle(ocp_prev, sol_prev)
 # plot_result.plot_momentarm(idx_muscle=11)
@@ -148,24 +142,24 @@ ocp = OptimalControlProgram(
 # plt.plot(cop[2, :])
 # sol_prev.animate()
 
-# --- Solve the program --- #
-tic = time()
-sol = ocp.solve(
-    solver=Solver.IPOPT,
-    solver_options={
-        "ipopt.tol": 1e-6,
-        "ipopt.max_iter": 5000,
-        "ipopt.hessian_approximation": "exact",
-        "ipopt.limited_memory_max_history": 50,
-        "ipopt.linear_solver": "ma57",
-    },
-    show_online_optim=False,
-)
-toc = time() - tic
-
-# --- Save results --- #
-save_path = './RES/muscle_driven/CoM_obj/'
-save_results(ocp, sol, save_path)
+# # --- Solve the program --- #
+# tic = time()
+# sol = ocp.solve(
+#     solver=Solver.IPOPT,
+#     solver_options={
+#         "ipopt.tol": 1e-6,
+#         "ipopt.max_iter": 5000,
+#         "ipopt.hessian_approximation": "exact",
+#         "ipopt.limited_memory_max_history": 50,
+#         "ipopt.linear_solver": "ma57",
+#     },
+#     show_online_optim=False,
+# )
+# toc = time() - tic
+#
+# # --- Save results --- #
+# save_path = './RES/muscle_driven/inequality/3cm/'
+# save_results(ocp, sol, save_path)
 
 # --- Plot CoP --- #
 q = sol.states["q"]
@@ -189,7 +183,7 @@ plot_result.plot_q_symetry()
 plot_result.plot_tau_symetry()
 plot_result.plot_qdot_symetry()
 plot_result.plot_individual_forces()
-plot_result.plot_muscles_symetry()
+plot_result.plot_muscles_activation_symetry()
 
 # --- Show results --- #
 sol.animate()
