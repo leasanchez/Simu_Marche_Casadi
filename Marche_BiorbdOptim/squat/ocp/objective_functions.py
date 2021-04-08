@@ -23,16 +23,68 @@ def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
 
 class objective:
     @staticmethod
-    def set_objectif_function(objective_functions, position_high):
-        # --- control minimize --- #
+    def set_minimize_muscle_driven_torque(objective_functions, phase=0):
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                                 quadratic=True,
                                 node=Node.ALL,
-                                weight=1)
+                                weight=1,
+                                phase=phase)
         objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
                                 quadratic=True,
                                 node=Node.ALL,
-                                weight=10)
+                                weight=10,
+                                phase=phase)
+    @staticmethod
+    def set_objectif_function_fall(objective_functions, position_high, phase=0):
+        # --- control minimize --- #
+        objective.set_minimize_muscle_driven_torque(objective_functions, phase)
+
+        # --- initial position --- #
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.START,
+                                index=range(len(position_high)),
+                                target=np.array(position_high),
+                                weight=1000,
+                                phase=0)
+
+        # --- com displacement --- #
+        objective_functions.add(custom_CoM_position,
+                                custom_type=ObjectiveFcn.Mayer,
+                                value=-0.3,
+                                node=Node.END,
+                                quadratic=True,
+                                weight=1000,
+                                phase=0)
+
+    @staticmethod
+    def set_objectif_function_climb(objective_functions, position_high, phase=0):
+        # --- control minimize --- #
+        objective.set_minimize_muscle_driven_torque(objective_functions, phase)
+
+        # --- initial position --- #
+        objective_functions.add(custom_CoM_position,
+                                custom_type=ObjectiveFcn.Mayer,
+                                value=-0.3,
+                                node=Node.START,
+                                quadratic=True,
+                                weight=1000,
+                                phase=phase)
+
+        # --- final position --- #
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=range(len(position_high)),
+                                target=np.array(position_high),
+                                weight=1000,
+                                phase=phase)
+
+
+    @staticmethod
+    def set_objectif_function(objective_functions, position_high):
+        # --- control minimize --- #
+        objective.set_minimize_muscle_driven_torque(objective_functions)
 
         # --- initial position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
@@ -45,10 +97,10 @@ class objective:
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                value=-0.25,
+                                value=-0.3,
                                 node=Node.MID,
                                 quadratic=True,
-                                weight=10000)
+                                weight=1000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
@@ -57,6 +109,14 @@ class objective:
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
                                 weight=1000)
+        return objective_functions
+
+    @staticmethod
+    def set_objectif_function_multiphase(objective_functions, position_high):
+        # --- fall --- #
+        objective.set_objectif_function_fall(objective_functions, position_high, phase=0)
+        # --- climb --- #
+        objective.set_objectif_function_climb(objective_functions, position_high, phase=1)
         return objective_functions
 
     @staticmethod
@@ -76,11 +136,12 @@ class objective:
     @staticmethod
     def set_objectif_function_position_basse_torque_driven(objective_functions, position_high):
         nq = len(position_high)
-        # # --- control minimize --- #
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-        #                         quadratic=True,
-        #                         node=Node.ALL,
-        #                         weight=0.001)
+        rampe_knee = np.linspace(-0.1, -1.53, 21)
+        # --- control minimize --- #
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                                quadratic=True,
+                                node=Node.ALL,
+                                weight=0.001)
 
         # # --- initial position --- #
         # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
@@ -90,11 +151,17 @@ class objective:
         #                         target=np.array(position_high),
         #                         weight=1000)
         # --- initial position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
                                 quadratic=True,
-                                node=Node.START,
-                                index=(4, 7),
-                                target=np.array([[-0.3], [-0.3]]),
+                                node=Node.ALL,
+                                index=9,
+                                target=rampe_knee.reshape((1, 21)),
+                                weight=1)
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.ALL,
+                                index=15,
+                                target=rampe_knee.reshape((1, 21)),
                                 weight=1)
         objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
                                 quadratic=True,
@@ -103,23 +170,16 @@ class objective:
                                 weight=0.1)
 
         # --- final position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.END,
-                                index=(4, 7),
-                                target=np.array([[-1.40], [-1.40]]),
-                                weight=10)
+        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        #                         quadratic=True,
+        #                         node=Node.END,
+        #                         index=(4, 7),
+        #                         target=np.array([[-1.40], [-1.40]]),
+        #                         weight=10)
         objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
                                 quadratic=True,
                                 node=Node.END,
                                 index=range(nq, (nq + nq)),
                                 weight=0.1)
 
-        # # --- com displacement --- #
-        # objective_functions.add(custom_CoM_position,
-        #                         custom_type=ObjectiveFcn.Mayer,
-        #                         value=-0.05,
-        #                         node=Node.END,
-        #                         quadratic=True,
-        #                         weight=10)
         return objective_functions
