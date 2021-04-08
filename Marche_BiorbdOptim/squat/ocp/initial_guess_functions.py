@@ -3,6 +3,38 @@ from bioptim import InterpolationType
 
 class initial_guess:
     @staticmethod
+    def set_initial_guess_fall(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
+        init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
+        for i in range(model.nbQ()):
+            init_x[i, :] = np.concatenate(np.linspace(position_high[i], position_low[i], nb_shooting + 1)).squeeze()
+        init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
+        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+
+        if mapping:
+            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * model.nbMuscleTotal())
+        else:
+            u_init.add([0] * model.nbGeneralizedTorque() + [0.1] * model.nbMuscleTotal())
+
+    @staticmethod
+    def set_initial_guess_climb(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
+        init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
+        for i in range(model.nbQ()):
+            init_x[i, :] = np.concatenate(np.linspace(position_low[i], position_high[i], nb_shooting + 1)).squeeze()
+        init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
+        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+
+        if mapping:
+            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * model.nbMuscleTotal())
+        else:
+            u_init.add([0] * model.nbGeneralizedTorque() + [0.1] * model.nbMuscleTotal())
+
+    @staticmethod
+    def set_initial_guess_multiphase(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
+        initial_guess.set_initial_guess_fall(model[0], x_init, u_init, position_high, position_low, nb_shooting[0], mapping)
+        initial_guess.set_initial_guess_climb(model[1], x_init, u_init, position_high, position_low, nb_shooting[1], mapping)
+        return x_init, u_init
+
+    @staticmethod
     def set_initial_guess(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
         init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
         for i in range(model.nbQ()):
