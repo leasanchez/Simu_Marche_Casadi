@@ -25,7 +25,6 @@ class bounds:
         torque_min, torque_max = -1000, 1000
 
         x_bounds.add(bounds=QAndQDotBounds(model))
-        # x_bounds[0][model.nbQ():, (0, -1)] = 0
 
         u_bounds.add(
             [torque_min] * model.nbGeneralizedTorque(),

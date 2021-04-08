@@ -81,7 +81,7 @@ class contact:
 
     def compute_individual_forces(self):
         forces = np.empty((self.model.nbContacts(), self.q.shape[1]))
-        for n in range(self.ocp.nlp[0].ns + 1):
+        for n in range(self.q.shape[1]):
             x = np.concatenate([self.q[:, n], self.q_dot[:, n]])
             if self.muscles:
                 u = np.concatenate([self.tau[:, n], self.activations[:, n]])

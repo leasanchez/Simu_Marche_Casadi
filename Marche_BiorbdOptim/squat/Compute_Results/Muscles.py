@@ -86,21 +86,21 @@ class muscle:
     def set_muscle_force(self):
         muscle_force = np.zeros((self.nmus, self.nshooting + 1))
         muscle_force_fcn = muscular_force(self.model)
-        for n in range(self.nshooting + 1):
+        for n in range(self.q.shape[1]):
             muscle_force[:, n:n+1] = muscle_force_fcn(self.q[:, n], self.q_dot[:, n], self.activations[:, n])
         return muscle_force
 
     def set_muscle_tau(self):
         muscle_tau = np.zeros((self.nq, self.nshooting + 1))
         muscle_tau_fcn = muscular_torque(self.model)
-        for n in range(self.nshooting + 1):
+        for n in range(self.q.shape[1]):
             muscle_tau[:, n:n+1] = muscle_tau_fcn(self.q[:, n], self.q_dot[:, n], self.activations[:, n])
         return muscle_tau
 
     def set_muscle_jacobian(self):
-        muscle_jacobian = np.zeros((self.nmus, self.nq, self.nshooting + 1))
+        muscle_jacobian = np.zeros((self.nmus, self.nq, self.q.shape[1]))
         muscle_jacobian_fcn = muscles_jac(self.model)
-        for n in range(self.nshooting + 1):
+        for n in range(self.q.shape[1]):
             muscle_jacobian[:, :, n] = muscle_jacobian_fcn(self.q[:, n])
         return muscle_jacobian
 
