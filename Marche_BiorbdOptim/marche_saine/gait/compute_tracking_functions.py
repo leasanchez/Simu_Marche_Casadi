@@ -146,6 +146,31 @@ class tracking:
             plt.plot([pt, pt], [0, 40], 'k--')
         plt.xlim([self.time[0], self.time[-1]])
 
+    def plot_cop(self, reference=True):
+        pos_heel = self.contact.compute_contact_position(0)[:, 26, 0]
+        pos_m1 = self.contact.compute_contact_position(1)[:, 27, 0]
+        pos_m5 = self.contact.compute_contact_position(1)[:, 28, 0]
+        pos_toe = self.contact.compute_contact_position(2)[:, 29, 0]
+
+        plt.figure()
+        plt.scatter([pos_heel[0], pos_m1[0], pos_m5[0], pos_toe[0]], [pos_heel[1], pos_m1[1], pos_m5[1], pos_toe[1]], color='k')
+        if reference:
+            cop = self.merged_reference(self.data.cop_ref)
+            plt.scatter(cop[0, :self.number_shooting_points[0]], cop[1, :self.number_shooting_points[0]], color='g')
+            plt.scatter(cop[0, self.number_shooting_points[0]:sum(self.number_shooting_points[:2])],
+                        cop[1, self.number_shooting_points[0]:sum(self.number_shooting_points[:2])], color='b')
+            plt.scatter(cop[0, sum(self.number_shooting_points[:2]):sum(self.number_shooting_points[:3])],
+                        cop[1, sum(self.number_shooting_points[:2]):sum(self.number_shooting_points[:3])], color='r')
+        else:
+            cop = self.contact.cop
+            plt.scatter(cop['cop_r_X'][0], cop['cop_r_Y'][0], color='g')
+            plt.scatter(cop['cop_r_X'][1], cop['cop_r_Y'][1], color='b')
+            plt.scatter(cop['cop_r_X'][2][:-2], cop['cop_r_Y'][2][:-2], color='r')
+        plt.yticks(np.arange(0.04, 0.22, step=0.02))
+        plt.xticks(np.arange(0.7, 0.98, step=0.02))
+
+
+
 
     def compute_error_q_tracking_per_phase(self):
         diff_q_tot = []

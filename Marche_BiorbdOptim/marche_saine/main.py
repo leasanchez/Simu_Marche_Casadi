@@ -175,14 +175,15 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
 # save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
 ocp_prev, sol = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/OpenSim/cycle.bo')
-# --- Show results --- #
-sol.animate()
-sol.graphs()
-sol.print()
+# # --- Show results --- #
+# sol.animate()
+# sol.graphs()
+# sol.print()
 
 contact_result = contact(gait_muscle_driven_markers_tracking.ocp, sol, muscles=True)
 muscle_result = muscle(gait_muscle_driven_markers_tracking.ocp, sol.merge_phases())
 tracking_result = tracking(gait_muscle_driven_markers_tracking.ocp, sol, data, muscles=True)
+tracking_result.plot_cop(reference=False)
 grf_merged = tracking_result.merged_reference(grf_ref)
 forces_sim_merged = tracking_result.contact.merged_result(contact_result.forces)
 
