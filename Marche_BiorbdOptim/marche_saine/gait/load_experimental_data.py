@@ -309,7 +309,7 @@ class LoadData:
         self.c3d_data = C3dData(c3d_file)
         self.q = load_txt_file(q_file, self.nb_q)
         self.qdot = load_txt_file(qdot_file, self.nb_qdot)
-        self.emg=self.dispatch_muscle_activation(self.c3d_data.emg)
+        self.emg = self.dispatch_muscle_activation(self.c3d_data.emg)
 
         # dispatch data
         self.dt = dt
@@ -322,6 +322,7 @@ class LoadData:
             self.grf_ref = self.dispatch_data_interpolation(data=self.c3d_data.forces)
             self.moments_ref = self.dispatch_data_interpolation(data=self.c3d_data.moments)
             self.cop_ref = self.dispatch_data_interpolation(data=self.c3d_data.cop)
+            self.excitation_ref = self.dispatch_data_interpolation(data=self.emg)
         else:
             self.q_ref = self.dispatch_data(data=self.q)
             self.qdot_ref = self.dispatch_data(data=self.qdot)
@@ -329,6 +330,7 @@ class LoadData:
             self.grf_ref = self.dispatch_data(data=self.c3d_data.forces)
             self.moments_ref = self.dispatch_data(data=self.c3d_data.moments)
             self.cop_ref = self.dispatch_data(data=self.c3d_data.cop)
+            self.excitation_ref = self.dispatch_data(data=self.emg)
 
     def dispatch_data(self, data):
         """
@@ -400,25 +402,27 @@ class LoadData:
         return indices
 
     def dispatch_muscle_activation(self, data):
-        excitation_ref = np.zeros((self.nb_mus + 7, data.shape[1]))
+        excitation_ref = np.zeros((self.nb_mus, data.shape[1]))
 
-        excitation_ref[0, :] = data[0, :]  # glut_max1_r
-        excitation_ref[1, :] = data[0, :]  # glut_max2_r
-        excitation_ref[2, :] = data[0, :]  # glut_max3_r
-        excitation_ref[3, :] = data[1, :]  # glut_med1_r
-        excitation_ref[4, :] = data[1, :]  # glut_med2_r
-        excitation_ref[5, :] = data[1, :]  # glut_med3_r
-        excitation_ref[6, :] = data[2, :]  # semimem_r
-        excitation_ref[7, :] = data[2, :]  # semiten_r
-        excitation_ref[8, :] = data[3, :]  # bi_fem_r
-        excitation_ref[9, :] = data[4, :]  # rectus_fem_r
-        excitation_ref[10, :] = data[5, :]  # vas_med_r
-        excitation_ref[11, :] = data[5, :]  # vas_int_r
-        excitation_ref[12, :] = data[5, :]  # vas_lat_r
-        excitation_ref[13, :] = data[6, :]  # gas_med_r
-        excitation_ref[14, :] = data[7, :]  # gas_lat_r
-        excitation_ref[15, :] = data[8, :]  # soleus_r
-        excitation_ref[16, :] = data[9, :]  # tib_ant_r
+        excitation_ref[0, :] = data[9, :]  # glut_max1_r
+        excitation_ref[1, :] = data[9, :]  # glut_max2_r
+        excitation_ref[2, :] = data[9, :]  # glut_max3_r
+        excitation_ref[3, :] = data[8, :]  # glut_med1_r
+        excitation_ref[4, :] = data[8, :]  # glut_med2_r
+        excitation_ref[5, :] = data[8, :]  # glut_med3_r
+        excitation_ref[6, :] = np.zeros(data.shape[1])  # iliacus_r
+        excitation_ref[7, :] = np.zeros(data.shape[1])  # psoas_r
+        excitation_ref[8, :] = np.zeros(data.shape[1])  # semimem_r
+        excitation_ref[9, :] = data[7, :]  # semiten_r
+        excitation_ref[10, :] = data[6, :]  # bi_fem_r
+        excitation_ref[11, :] = data[5, :]  # rectus_fem_r
+        excitation_ref[12, :] = data[4, :]  # vas_med_r
+        excitation_ref[13, :] = np.zeros(data.shape[1])  # vas_int_r
+        excitation_ref[14, :] = np.zeros(data.shape[1])  # vas_lat_r
+        excitation_ref[15, :] = data[3, :]  # gas_med_r
+        excitation_ref[16, :] = data[2, :]  # gas_lat_r
+        excitation_ref[17, :] = data[1, :]  # soleus_r
+        excitation_ref[18, :] = data[0, :]  # tib_ant_r
         return excitation_ref
 
     def get_shooting_numbers(self):
