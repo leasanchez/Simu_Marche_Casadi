@@ -25,6 +25,7 @@ class tracking:
         self.n_phases = len(ocp.nlp)
         self.n_q = ocp.nlp[0].model.nbQ()
         self.n_markers = ocp.nlp[0].model.nbMarkers()
+        self.n_muscles = ocp.nlp[0].model.nbMuscleTotal()
 
         # reference tracked
         self.data = data
@@ -215,17 +216,26 @@ class tracking:
         for n in range(q.shape[1]):
             markers_pos[:, :, n] = markers(q[:, n:n + 1])
 
-        diff_marker_tot = []
-        for m in range(markers_ref.shape[1]):
-            x = np.mean(np.sqrt((markers_ref[0, m, :] - markers_pos[0, m, :])**2))
-            y = np.mean(np.sqrt((markers_ref[1, m, :] - markers_pos[1, m, :]) ** 2))
-            z = np.mean(np.sqrt((markers_ref[2, m, :] - markers_pos[2, m, :]) ** 2))
-            diff_marker_tot.append(np.mean([x, y, z]))
+        diff_marker_tot = np.zeros((3, self.n_markers, q.shape[1]))
+        for m in range(self.n_markers-4):
+            diff_marker_tot[0, m, :] = np.sqrt((markers_ref[0, m, :] - markers_pos[0, m, :])**2)
+            diff_marker_tot[1, m, :] = np.sqrt((markers_ref[1, m, :] - markers_pos[1, m, :]) ** 2)
+            diff_marker_tot[2, m, :] = np.sqrt((markers_ref[2, m, :] - markers_pos[2, m, :]) ** 2)
         return diff_marker_tot
+
+    def compute_mean_error_markers(self):
+        diff_marker_tot = self.compute_error_markers_tracking()
+        mean_diff_marker_tot = []
+        for m in range(self.n_markers):
+            x = np.mean(diff_marker_tot[0, m, :])
+            y = np.mean(diff_marker_tot[1, m, :])
+            z = np.mean(diff_marker_tot[2, m, :])
+            mean_diff_marker_tot.append(np.mean([x, y, z]))
+        return mean_diff_marker_tot
 
     def compute_error_markers_tracking_per_objectif(self):
         diff_marker_tot = {}
-        err_markers = self.compute_error_markers_tracking()
+        err_markers = self.compute_mean_error_markers()
 
         diff_marker_tot["markers_pelvis"] = np.mean([err_markers[0], err_markers[1], err_markers[2], err_markers[3]])
         diff_marker_tot["markers_pied"] = np.mean([err_markers[19:]])
@@ -236,11 +246,16 @@ class tracking:
         return diff_marker_tot
 
     def plot_markers_error(self):
-        err_markers = self.compute_error_markers_tracking()
+        err_markers = self.compute_mean_error_markers()
         label_markers = self.data.c3d_data.marker_names
         x = np.arange(len(label_markers))
         plt.bar(x, err_markers, color='tab:red')
         plt.xticks(x, labels=label_markers)
+
+    def plot_heatmap_markers(self, axis=0, markers_idx=range(26)):
+        err_markers = self.compute_error_markers_tracking()
+        fig, ax = plt.subplots()
+        im = ax.imshow(err_markers[axis, markers_idx, :])
 
     def plot_markers_error_per_objectif(self):
         err_markers = self.compute_error_markers_tracking_per_objectif()
@@ -249,5 +264,22 @@ class tracking:
         x = np.arange(len(label_markers))
         plt.bar(x, y, color='tab:red')
         plt.xticks(x, labels=label_markers)
+
+    def plot_comp_emg(self):
+        emg_ref = self.merged_reference(self.data.excitation_ref)
+        emg = self.sol_merged.controls["muscles"]
+        fig, axes = plt.subplots(4, 5, sharex=True, sharey=True)
+        axes = axes.flatten()
+        for m in range(self.n_muscles):
+            axes[m].set_title(self.model[0].muscle(m).name().to_string())
+            axes[m].plot(self.time, emg_ref[m, :], 'k')
+            axes[m].plot(self.time, emg[m, :], 'r')
+            pt = 0
+            for p in range(self.nb_phases):
+                pt += self.ocp.nlp[p].tf
+                axes[m].plot([pt, pt], [0, 1], 'k--')
+            axes[m].set_xlim([self.time[0], self.time[-1]])
+            axes[m].set_ylim([0, 1])
+        plt.legend(['reference', 'simulation'])
 
 

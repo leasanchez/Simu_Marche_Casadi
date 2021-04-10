@@ -183,6 +183,8 @@ ocp_prev, sol = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_drive
 contact_result = contact(gait_muscle_driven_markers_tracking.ocp, sol, muscles=True)
 muscle_result = muscle(gait_muscle_driven_markers_tracking.ocp, sol.merge_phases())
 tracking_result = tracking(gait_muscle_driven_markers_tracking.ocp, sol, data, muscles=True)
+tracking_result.plot_comp_emg()
+tracking_result.plot_heatmap_markers()
 tracking_result.plot_cop(reference=False)
 grf_merged = tracking_result.merged_reference(grf_ref)
 forces_sim_merged = tracking_result.contact.merged_result(contact_result.forces)
