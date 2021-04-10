@@ -171,7 +171,7 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
 # toc = time() - tic
 #
 # # --- Save results --- #
-# save_path = './RES/muscle_driven/Hip_muscle/OpenSim2/'
+# save_path = './RES/muscle_driven/Hip_muscle/OpenSim/'
 # save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
 ocp_prev, sol = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/OpenSim/cycle.bo')

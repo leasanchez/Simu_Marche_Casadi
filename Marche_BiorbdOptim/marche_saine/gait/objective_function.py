@@ -175,10 +175,10 @@ class objective:
 
     @staticmethod
     def set_objective_function_muscle_controls(objective_functions, p):
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e-2, index=(10), phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=1e1, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=1e2, phase=p, quadratic=True)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=1e-1, phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=0.001, index=(10), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=10, index=(6, 7, 8, 9, 11), phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=100, phase=p, quadratic=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE_DERIVATIVE, weight=0.1, phase=p, quadratic=True)
 
     @staticmethod
     def set_objective_function_forces(objective_functions, grf_ref, p):

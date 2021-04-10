@@ -29,21 +29,21 @@ class gait_muscle_driven:
         self.n_phases = len(models)
         self.nb_shooting = nb_shooting
         self.phase_time = phase_time
-        self.n_threads=n_threads
+        self.n_threads = n_threads
 
         # Element for the tracking
-        self.q_ref=q_ref
-        self.qdot_ref=qdot_ref
+        self.q_ref = q_ref
+        self.qdot_ref = qdot_ref
         self.markers_ref = markers_ref
-        self.grf_ref=grf_ref
-        self.moments_ref=moments_ref
-        self.cop_ref=cop_ref
+        self.grf_ref = grf_ref
+        self.moments_ref = moments_ref
+        self.cop_ref = cop_ref
 
         # Element from the model
-        self.nb_q=models[0].nbQ()
-        self.nb_qdot=models[0].nbQdot()
-        self.nb_tau=models[0].nbGeneralizedTorque()
-        self.nb_mus=models[0].nbMuscleTotal()
+        self.nb_q = models[0].nbQ()
+        self.nb_qdot = models[0].nbQdot()
+        self.nb_tau = models[0].nbGeneralizedTorque()
+        self.nb_mus = models[0].nbMuscleTotal()
         self.torque_min, self.torque_max, self.torque_init = -1000, 1000, 0
         self.activation_min, self.activation_max, self.activation_init = 1e-3, 0.99, 0.1
 
@@ -194,7 +194,7 @@ class gait_muscle_driven:
             solver=Solver.IPOPT,
             solver_options={
                 "ipopt.tol": 1e-3,
-                "ipopt.max_iter": 1000,
+                "ipopt.max_iter": 2000,
                 "ipopt.hessian_approximation": "exact",
                 "ipopt.limited_memory_max_history": 50,
                 "ipopt.linear_solver": "ma57",
