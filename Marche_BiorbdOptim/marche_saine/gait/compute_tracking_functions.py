@@ -107,30 +107,44 @@ class tracking:
         diff_grf = []
         grf = self.merged_reference(self.grf_ref)
         forces_sim = self.contact.merged_result(self.contact.forces)
-        diff_grf.append(np.sqrt(np.mean((forces_sim["forces_r_X"][:sum(self.number_shooting_points[:-1])] - grf[0, :sum(self.number_shooting_points[:-1])])**2)))
-        diff_grf.append(np.sqrt(np.mean((forces_sim["forces_r_Y"][:sum(self.number_shooting_points[:-1])] - grf[1, :sum(self.number_shooting_points[:-1])]) ** 2)))
-        diff_grf.append(np.sqrt(np.mean((forces_sim["forces_r_Z"][:sum(self.number_shooting_points[:-1])] - grf[2, :sum(self.number_shooting_points[:-1])]) ** 2)))
+        diff_grf.append(np.sqrt((forces_sim["forces_r_X"][:sum(self.number_shooting_points[:-1])] - grf[0, :sum(self.number_shooting_points[:-1])])**2))
+        diff_grf.append(np.sqrt((forces_sim["forces_r_Y"][:sum(self.number_shooting_points[:-1])] - grf[1, :sum(self.number_shooting_points[:-1])]) ** 2))
+        diff_grf.append(np.sqrt((forces_sim["forces_r_Z"][:sum(self.number_shooting_points[:-1])] - grf[2, :sum(self.number_shooting_points[:-1])]) ** 2))
         return diff_grf
 
-    def plot_grf_comparison(self):
-        grf = self.merged_reference(self.grf_ref)
+    def compute_mean_error_force_tracking(self):
+        mean_diff_grf = []
+        diff_grf = self.compute_error_force_tracking()
+        mean_diff_grf.append(np.mean(diff_grf[0]))
+        mean_diff_grf.append(np.mean(diff_grf[1]))
+        mean_diff_grf.append(np.mean(diff_grf[2]))
+        return mean_diff_grf
+
+    def plot_grf(self):
         forces_sim = self.contact.merged_result(self.contact.forces)
-        fig, axes = plt.subplots(1, 3)
-        axes = axes.flatten()
-        axes[0].plot(self.time, grf[0, :], 'b')
-        axes[0].plot(self.time, forces_sim["forces_r_X"], 'r')
+        plt.figure()
+        plt.plot(self.time, forces_sim["forces_r_X"], 'g')
+        plt.plot(self.time, forces_sim["forces_r_Y"], 'b')
+        plt.plot(self.time, forces_sim["forces_r_Z"], 'r')
+        plt.legend(['X', 'Y', 'Z'])
+        pt = 0
+        for p in range(self.nb_phases):
+            pt += self.ocp.nlp[p].tf
+            plt.plot([pt, pt], [-200, 850], 'k--')
+        plt.xlim([self.time[0], self.time[-1]])
 
-        axes[1].plot(self.time, grf[1, :], 'b')
-        axes[1].plot(self.time, forces_sim["forces_r_Y"], 'r')
-
-        axes[2].plot(self.time, grf[2, :], 'b')
-        axes[2].plot(self.time, forces_sim["forces_r_Z"], 'r')
-        plt.legend(['reference', 'simulation'])
-        for i in range(3):
-            pt = 0
-            for p in range(self.nb_phases):
-                pt += self.ocp.nlp[p].tf
-                axes[i].plot([pt, pt], [min(grf[i, :]), max(grf[i, :])], 'k--')
+    def plot_diff_grf(self):
+        diff_grf = self.compute_error_force_tracking()
+        plt.figure()
+        plt.plot(self.time, np.concatenate([diff_grf[0], np.zeros(self.number_shooting_points[-1] + 1)]), 'g')
+        plt.plot(self.time, np.concatenate([diff_grf[1], np.zeros(self.number_shooting_points[-1] + 1)]), 'b')
+        plt.plot(self.time, np.concatenate([diff_grf[2], np.zeros(self.number_shooting_points[-1] + 1)]), 'r')
+        plt.legend(['X', 'Y', 'Z'])
+        pt = 0
+        for p in range(self.nb_phases):
+            pt += self.ocp.nlp[p].tf
+            plt.plot([pt, pt], [0, 40], 'k--')
+        plt.xlim([self.time[0], self.time[-1]])
 
 
     def compute_error_q_tracking_per_phase(self):

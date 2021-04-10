@@ -65,7 +65,6 @@ class C3dData:
         self.moments = self.get_moment(self.c3d)
         self.cop = self.get_cop(self.c3d)
         self.emg = self.get_emg(self.c3d, self.muscle_names)
-        self.events = self.get_event_rhs_rto(self.c3d)
         self.indices = self.get_indices()
         self.phase_time = self.get_time()
 
