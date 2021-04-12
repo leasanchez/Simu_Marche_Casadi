@@ -223,6 +223,33 @@ class tracking:
             diff_q_tot.append(np.sqrt(np.mean((q[i, :] - q_ref[i, :]) ** 2)))
         return diff_q_tot
 
+    def plot_q_comp(self):
+        q_ref = self.merged_reference(self.q_ref)
+        q = self.sol_merged.states["q"]
+        fig, ax = plt.subplots(3, 4)
+        ax = ax.flatten()
+        for t in range(3):
+            ax[t].set_title(self.q_name[t])
+            ax[t].plot(self.time, q[t, :], 'r')
+            ax[t].plot(self.time, q_ref[t, :], 'k')
+            ax[t].set_xlim([self.time[0], self.time[-1]])
+            ax[t].set_ylim([self.q_min[t], self.q_max[t]])
+            pt = 0
+            for p in range(self.nb_phases):
+                pt += self.ocp.nlp[p].tf
+                ax[t].plot([pt, pt], [self.q_min[t], self.q_max[t]], 'k--')
+
+        for r in range(3, q_ref.shape[0]):
+            ax[r].set_title(self.q_name[r])
+            ax[r].plot(self.time, q[r, :] * 180/np.pi, 'r')
+            ax[r].plot(self.time, q_ref[r, :] * 180/np.pi, 'k')
+            ax[r].set_xlim([self.time[0], self.time[-1]])
+            ax[r].set_ylim([self.q_min[r] * 180/np.pi, self.q_max[r] * 180/np.pi])
+            pt = 0
+            for p in range(self.nb_phases):
+                pt += self.ocp.nlp[p].tf
+                ax[r].plot([pt, pt], [self.q_min[r]*180/np.pi, self.q_max[r]*180/np.pi], 'k--')
+
     def compute_marker_position(self, phase):
         markers_func = markers_func_casadi(self.model[phase])
         marker_pos = np.empty((3, self.model[phase].nbMarkers(), self.q[phase].shape[1]))
@@ -285,10 +312,27 @@ class tracking:
         plt.bar(x, err_markers, color='tab:red')
         plt.xticks(x, labels=label_markers)
 
-    def plot_heatmap_markers(self, axis=0, markers_idx=range(26)):
+    def plot_heatmap_markers(self, markers_idx=range(26)):
         err_markers = self.compute_error_markers_tracking()
+        mean_err_marker = (err_markers[0, :, :] + err_markers[1, :, :] +err_markers[2, :, :])/3
+
+        # --- plot heatmap -- #
         fig, ax = plt.subplots()
-        im = ax.imshow(err_markers[axis, markers_idx, :])
+        im = ax.imshow(mean_err_marker[markers_idx, :])
+
+        # --- create colorbar --- #
+        cbar = ax.figure.colorbar(im, ax=ax)
+        cbar.ax.set_ylabel('error markers', rotation=-90)
+
+        # --- label ticks --- #
+        marker_label = self.data.c3d_data.marker_names
+        marker_label_plot = []
+        for m in markers_idx:
+            marker_label_plot.append(marker_label[m])
+        ax.set_yticks(np.arange(len(marker_label_plot)))
+        ax.set_yticklabels(marker_label_plot)
+
+
 
     def plot_markers_error_per_objectif(self):
         err_markers = self.compute_error_markers_tracking_per_objectif()
