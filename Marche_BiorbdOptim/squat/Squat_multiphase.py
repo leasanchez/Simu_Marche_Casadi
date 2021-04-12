@@ -53,8 +53,8 @@ final_time = (0.6, 0.6)
 
 # --- Subject positions and initial trajectories --- #
 position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
-                [0], [0], [0.37], [-0.13], [0], [0.11],
-                [0], [0], [0.37], [-0.13], [0], [0.11]]
+                [0], [0], [0.37], [-0.13], [0], [0], [0.11],
+                [0], [0], [0.37], [-0.13], [0], [0], [0.11]]
 position_high_3 = [[0], [-0.14], [0], [-0.03], [0.16], [-0.37],
                 [-0.15], [-0.06], [0.35], [-0.09], [0], [0.10],
                 [-0.15], [-0.06], [0.41], [-0.20], [0], [0.16]]
@@ -65,8 +65,8 @@ position_high_5 = [[0], [-0.14], [0], [-0.05], [0.24], [-0.35],
                 [-0.23], [-0.08], [0.33], [-0.08], [0], [0.10],
                 [-0.22], [-0.08], [0.45], [-0.33], [0], [0.22]]
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
-                0, 0, 1.53, -1.55, 0, 0.68,
-                0, 0, 1.53, -1.55, 0, 0.68]
+                0, 0, 1.53, -1.55, 0, 0, 0.68,
+                0, 0, 1.53, -1.55, 0, 0, 0.68]
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", nb_q, 1))
@@ -84,7 +84,7 @@ CoM_low = compute_CoM(np.array(position_low))
 # --- Define Optimal Control Problem --- #
 # Objective function
 objective_functions = ObjectiveList()
-objective_functions = objective.set_objectif_function_multiphase(objective_functions, position_high_3)
+objective_functions = objective.set_objectif_function_multiphase(objective_functions, position_high)
 
 # Dynamics
 dynamics = DynamicsList()
@@ -93,7 +93,7 @@ dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phas
 
 # Constraints
 constraints = ConstraintList()
-constraints = constraint.set_constraints_multiphase(constraints, inequality_value=0.03)
+constraints = constraint.set_constraints_multiphase(constraints, inequality_value=0.0)
 
 # Path constraints
 x_bounds = BoundsList()
@@ -105,7 +105,7 @@ x_bounds[0][nb_q:, 0]=0
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = initial_guess.set_initial_guess_multiphase(model, x_init, u_init, position_high_3, position_low, nb_shooting,mapping=False)
+x_init, u_init = initial_guess.set_initial_guess_multiphase(model, x_init, u_init, position_high, position_low, nb_shooting,mapping=False)
 
 # ------------- #
 ocp = OptimalControlProgram(
@@ -161,7 +161,7 @@ sol = ocp.solve(
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/multiphase/3cm/'
+save_path = './RES/muscle_driven/multiphase/ankle/'
 save_results(ocp, sol, save_path)
 
 # # --- Plot markers --- #
