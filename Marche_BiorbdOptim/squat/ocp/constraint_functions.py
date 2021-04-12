@@ -9,6 +9,12 @@ def custom_CoM_position(pn: PenaltyNodes) -> MX:
     com = compute_CoM(pn.x[0][:nq])
     return com[2]
 
+def custom_CoM_velocity(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM_dot = biorbd.to_casadi_func("CoM_dot", pn.nlp.model.CoMdot, pn.nlp.q, pn.nlp.qdot)
+    com_dot = compute_CoM_dot(pn.x[-1][:nq], pn.x[-1][nq:])
+    return com_dot[2]
+
 def get_last_contact_force(pn: PenaltyNodes, contact_force_idx) -> MX:
     force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
     return force[contact_force_idx]
@@ -45,67 +51,61 @@ def custom_foot_position(pn: PenaltyNodes) -> MX:
 class constraint:
     @staticmethod
     def set_constraints_fall(constraints, inequality_value=0.0, phase=0):
-        # # --- contact forces --- #
-        # contact_z_axes = (2, 3, 5, 8, 9, 11)
-        # for c in contact_z_axes:
-        #     constraints.add(  # positive vertical forces
-        #         ConstraintFcn.CONTACT_FORCE,
-        #         min_bound=0,
-        #         max_bound=np.inf,
-        #         node=Node.ALL,
-        #         contact_force_idx=c,
-        #     )
-        #
-        # constraints.add(
-        #     get_last_contact_force,
-        #     contact_force_idx=contact_z_axes,
-        #     min_bound=0,
-        #     max_bound=np.inf,
-        #     node=Node.ALL,
-        # )
-        # --- Foot --- #
+        # --- contact forces --- #
+        contact_z_axes = (2, 3, 5, 8, 9, 11)
+        for c in contact_z_axes:
+            constraints.add(  # positive vertical forces
+                ConstraintFcn.CONTACT_FORCE,
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL,
+                contact_force_idx=c,
+            )
+
         constraints.add(
-            custom_foot_position,
-            node=Node.START,
+            get_last_contact_force,
+            contact_force_idx=contact_z_axes,
+            min_bound=0,
+            max_bound=np.inf,
+            node=Node.ALL,
         )
+        # --- Foot --- #
+        # constraints.add(
+        #     custom_foot_position,
+        #     node=Node.START,
+        # )
         constraints.add(
             custom_foot_inequality,
             inequality_value=inequality_value,
             node=Node.START,
             phase=phase,
         )
-        # constraints.add(  # non sliding contact point
-        #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
-        #     node=Node.START,
-        #     index=(31, 55),
-        # )
+        constraints.add(  # non sliding contact point
+            ConstraintFcn.TRACK_MARKERS_VELOCITY,
+            node=Node.START,
+            index=(31, 55),
+        )
 
 
     @staticmethod
     def set_constraints_climb(constraints, inequality_value=0.0, phase=0):
-        # # --- contact forces --- #
-        # contact_z_axes = (2, 3, 5, 8, 9, 11)
-        # for c in contact_z_axes:
-        #     constraints.add(  # positive vertical forces
-        #         ConstraintFcn.CONTACT_FORCE,
-        #         min_bound=0,
-        #         max_bound=np.inf,
-        #         node=Node.ALL,
-        #         contact_force_idx=c,
-        #     )
-        #
-        # constraints.add(
-        #     get_last_contact_force,
-        #     contact_force_idx=contact_z_axes,
-        #     min_bound=0,
-        #     max_bound=np.inf,
-        #     node=Node.ALL,
-        # )
+        # --- contact forces --- #
+        contact_z_axes = (2, 3, 5, 8, 9, 11)
+        for c in contact_z_axes:
+            constraints.add(  # positive vertical forces
+                ConstraintFcn.CONTACT_FORCE,
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL,
+                contact_force_idx=c,
+            )
+
         constraints.add(
-            custom_foot_inequality,
-            inequality_value=inequality_value,
-            node=Node.START,
-            phase=phase,
+            get_last_contact_force,
+            contact_force_idx=contact_z_axes,
+            min_bound=0,
+            max_bound=np.inf,
+            node=Node.ALL,
         )
 
     @staticmethod
@@ -177,22 +177,29 @@ class constraint:
             node=Node.ALL,
         )
 
-        # --- Foot --- #
         constraints.add(
-            custom_foot_position,
-            node=Node.START,
+            custom_CoM_velocity,
+            min_bound=0,
+            max_bound=np.inf,
+            node=Node.ALL,
         )
 
-        constraints.add(  # non sliding contact point
-            ConstraintFcn.TRACK_MARKERS_VELOCITY,
-            node=Node.START,
-            index=(31, 55),
-        )
+        # # --- Foot --- #
+        # constraints.add(
+        #     custom_foot_position,
+        #     node=Node.START,
+        # )
+        #
+        # # --- Inequality foot --- #
+        # constraints.add(
+        #     custom_foot_inequality,
+        #     inequality_value=inequality_value,
+        #     node=Node.START,
+        # )
 
-        constraints.add(
-            ConstraintFcn.TIME_CONSTRAINT,
-            node=Node.END,
-            min_bound=0.3,
-            max_bound=1.0
-        )
+        # constraints.add(  # non sliding contact point
+        #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
+        #     node=Node.START,
+        #     index=(31, 55),
+        # )
         return constraints
