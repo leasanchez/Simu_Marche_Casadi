@@ -335,3 +335,31 @@ class Affichage:
            plt.plot(self.t, self.muscle_params.muscle_jacobian[idx_muscle, i_q, :], color="red")
            plt.xlabel("time (s)")
            plt.ylabel("moment arm (m)")
+
+    def compute_markers_position(self):
+        markers = biorbd.to_casadi_func("markers", self.model.markers, MX.sym("q", self.nb_q, 1))
+        markers_pos = np.zeros((3, self.nb_markers, self.q.shape[1]))
+        for n in range(self.q.shape[1]):
+            markers_pos[:, :, n] = markers(self.q[:, n:n + 1])
+        return markers_pos
+
+    def compute_com_position(self):
+        compute_CoM = biorbd.to_casadi_func("CoM", self.model.CoM, MX.sym("q", self.nb_q, 1))
+        com = np.zeros((3, self.q.shape[1]))
+        for n in range(self.q.shape[1]):
+            com[:, n:n + 1] = compute_CoM(self.q[:, n:n + 1])
+        return com
+
+
+    def plot_cop(self):
+        markers_pos = self.compute_markers_position()
+        com = self.compute_com_position()
+
+        plt.figure()
+        plt.scatter([markers_pos[0, 31, 0], markers_pos[0, 32, 0], markers_pos[0, 33, 0]],
+                    [markers_pos[1, 31, 0], markers_pos[1, 32, 0], markers_pos[1, 33, 0]], color='r')
+        plt.scatter(self.contact_data.cop["cop_r_X"], self.contact_data.cop["cop_r_Y"], color='m')
+        plt.scatter(self.contact_data.cop["cop_l_X"], self.contact_data.cop["cop_l_Y"], color='g')
+        plt.scatter([markers_pos[0, 55, 0], markers_pos[0, 56, 0], markers_pos[0, 57, 0]],
+                    [markers_pos[1, 55, 0], markers_pos[1, 56, 0], markers_pos[1, 57, 0]], color='b')
+        plt.scatter(com[0, :], com[1, :], color='k')
