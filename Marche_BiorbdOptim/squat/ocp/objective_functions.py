@@ -134,52 +134,46 @@ class objective:
         return objective_functions
 
     @staticmethod
-    def set_objectif_function_position_basse_torque_driven(objective_functions, position_high):
-        nq = len(position_high)
-        rampe_knee = np.linspace(-0.1, -1.53, 21)
+    def set_objectif_function_position_basse_torque_driven(objective_functions, position_high, time_max, time_min):
+        nb_q = len(position_high)
         # --- control minimize --- #
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                weight=0.001)
+        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+        #                         quadratic=True,
+        #                         node=Node.ALL,
+        #                         weight=0.001)
 
-        # # --- initial position --- #
+        # --- initial position --- #
         # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
         #                         quadratic=True,
         #                         node=Node.START,
-        #                         index=range(len(position_high)),
-        #                         target=np.array(position_high),
+        #                         index=range(nb_q),
+        #                         target=np.array(position_high).reshape(nb_q, 1),
         #                         weight=1000)
-        # --- initial position --- #
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=9,
-                                target=rampe_knee.reshape((1, 21)),
-                                weight=1)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=15,
-                                target=rampe_knee.reshape((1, 21)),
-                                weight=1)
-        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
-                                quadratic=True,
-                                node=Node.START,
-                                index=range(nq, (nq + nq)),
-                                weight=0.1)
-
-        # --- final position --- #
-        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
         #                         quadratic=True,
-        #                         node=Node.END,
-        #                         index=(4, 7),
-        #                         target=np.array([[-1.40], [-1.40]]),
-        #                         weight=10)
+        #                         node=Node.START,
+        #                         index=range(nb_q, (2*nb_q)),
+        #                         weight=1000)
+
+        # # --- com displacement --- #
         objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
                                 quadratic=True,
                                 node=Node.END,
-                                index=range(nq, (nq + nq)),
-                                weight=0.1)
+                                weight=1000)
+
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_PREDICTED_COM_HEIGHT,
+        #                         node=Node.END,
+        #                         weight=-100)
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
+        #                         quadratic=True,
+        #                         node=Node.END,
+        #                         index=range(nb_q, (2*nb_q)),
+        #                         weight=1000)
+
+        # # --- minimize time --- #
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_TIME,
+        #                         weight=0.1,
+        #                         min_bound=time_min,
+        #                         max_bound=time_max,)
 
         return objective_functions
