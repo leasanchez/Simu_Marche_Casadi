@@ -66,12 +66,12 @@ class initial_guess:
 
     @staticmethod
     def set_initial_guess_position_basse_torque_driven(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
-        init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
-        for i in range(model.nbQ()):
-            init_x[i, :] = np.concatenate(np.linspace(position_high[i], position_low[i], nb_shooting + 1)).squeeze()
-        init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
-        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-
+        # init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
+        # for i in range(model.nbQ()):
+        #     init_x[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
+        # init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
+        # x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
+        x_init.add(np.concatenate([position_low, np.zeros(model.nbQ())]))
         if mapping:
             u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()))
         else:
