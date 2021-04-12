@@ -16,6 +16,35 @@ def markers_func_casadi(model):
         ).expand())
     return markers_func
 
+def get_q_name(model):
+    q_name = []
+    for s in range(model.nbSegment()):
+        seg_name = model.segment(s).name().to_string()
+        for d in range(model.segment(s).nbDof()):
+            dof_name = model.segment(s).nameDof(d).to_string()
+            q_name.append(seg_name + "_" + dof_name)
+    return q_name
+
+def get_q_range(model):
+    q_max = []
+    q_min = []
+    for s in range(model.nbSegment()):
+        q_range = model.segment(s).QRanges()
+        for r in q_range:
+            q_max.append(r.max())
+            q_min.append(r.min())
+    return q_min, q_max
+
+def get_qdot_range(model):
+    qdot_max = []
+    qdot_min = []
+    for s in range(model.nbSegment()):
+        qdot_range = model.segment(s).QDotRanges()
+        for r in qdot_range:
+            qdot_max.append(r.max())
+            qdot_min.append(r.min())
+    return qdot_min, qdot_max
+
 class tracking:
     def __init__(self, ocp, sol, data, muscles=False):
         self.muscles = muscles
@@ -23,9 +52,6 @@ class tracking:
         self.sol = sol
         self.sol_merged = sol.merge_phases()
         self.n_phases = len(ocp.nlp)
-        self.n_q = ocp.nlp[0].model.nbQ()
-        self.n_markers = ocp.nlp[0].model.nbMarkers()
-        self.n_muscles = ocp.nlp[0].model.nbMuscleTotal()
 
         # reference tracked
         self.data = data
@@ -62,6 +88,13 @@ class tracking:
             if self.muscles:
                 self.activations.append(sol.controls[p]["muscles"])
 
+        # model data
+        self.q_name = get_q_name(self.model[0])
+        self.q_min, self.q_max = get_q_range(self.model[0])
+        self.qdot_min, self.qdot_max = get_qdot_range(self.model[0])
+        self.n_q = ocp.nlp[0].model.nbQ()
+        self.n_markers = ocp.nlp[0].model.nbMarkers()
+        self.n_muscles = ocp.nlp[0].model.nbMuscleTotal()
         self.contact = contact(self.ocp, self.sol, self.muscles)
 
     def get_results(self):
