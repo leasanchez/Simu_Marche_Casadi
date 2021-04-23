@@ -14,11 +14,9 @@ from bioptim import (
     QAndQDotBounds,
     InitialGuessList,
     InitialGuess,
-    ShowResult,
     ObjectiveList,
     ObjectiveFcn,
     InterpolationType,
-    Data,
     Node,
     ConstraintList,
     ConstraintFcn,
@@ -26,13 +24,19 @@ from bioptim import (
     PenaltyNodes,
     Axis,
 )
+from ocp.objective_functions import objective
+from ocp.constraint_functions import constraint
+from ocp.bounds_functions import bounds
+from ocp.initial_guess_functions import initial_guess
+from Compute_Results.Plot_results import Affichage
+from Compute_Results.Contact_Forces import contact
 
 
-def custom_CoM_low(pn: PenaltyNodes) -> MX:
+def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
     nq = pn.nlp.shape["q"]
     compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
-    com = compute_CoM(pn.x[31][:nq])
-    return com[2] + 0.30
+    com = compute_CoM(pn.x[0][:nq])
+    return com[2] - value
 
 def custom_CoM_high(pn: PenaltyNodes) -> MX:
     nq = pn.nlp.shape["q"]
@@ -40,31 +44,27 @@ def custom_CoM_high(pn: PenaltyNodes) -> MX:
     com = compute_CoM(pn.x[0][:nq])
     return com[2]
 
+def custom_CoM_velocity(pn: PenaltyNodes) -> MX:
+    nq = pn.nlp.shape["q"]
+    compute_CoM_dot = biorbd.to_casadi_func("CoM_dot", pn.nlp.model.CoMdot, pn.nlp.q, pn.nlp.qdot)
+    com_dot = compute_CoM_dot(pn.x[0][:nq], pn.x[0][nq:])
+    return com_dot[2]
+
 # OPTIMAL CONTROL PROBLEM
-model = biorbd.Model("Modeles_S2M/pyomecaman.bioMod")
+model = biorbd.Model("models/pyomecaman.bioMod")
 c = model.contactNames()
 for (i, name) in enumerate(c):
     print(f"{i} : {name.to_string()}")
-
-# q_name = []
-# for s in range(model.nbSegment()):
-#     seg_name = model.segment(s).name().to_string()
-#     for d in range(model.segment(s).nbDof()):
-#         dof_name = model.segment(s).nameDof(d).to_string()
-#         q_name.append(seg_name + "_" + dof_name)
-# for (i, q) in enumerate(q_name):
-#     print(f"{i} : {q}")
 
 # --- Problem parameters --- #
 nb_q = model.nbQ()
 nb_qdot = model.nbQdot()
 nb_tau = model.nbGeneralizedTorque()
 nb_mus = model.nbMuscleTotal()
-nb_shooting = 62
-final_time=0.8
+nb_shooting = 30
+final_time=1.0
 min_bound, max_bound = 0, np.inf
 torque_min, torque_max, torque_init = -1000, 1000, 0
-activation_min, activation_max, activation_init = 1e-3, 1.0, 0.1
 
 # --- Subject positions and initial trajectories --- #
 position_zeros = [0]*nb_q
@@ -73,22 +73,13 @@ position_high = [[0], [0.07], [-0.52], [0], [1.3], [0], [1.3], [0.37], [-0.13], 
 position_low = [[-0.12], [-0.23], [-1.10], [0], [1.85], [0], [1.85], [2.06], [-1.67], [0.55], [2.06], [-1.67], [0.55]]
 q_init = np.zeros((nb_q, nb_shooting + 1))
 for i in range(nb_q):
-    # q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2))
-    # q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1)
-    q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
+    q_init[i, :int(nb_shooting/2)] = np.linspace(position_high[i], position_low[i], int(nb_shooting/2)).squeeze()
+    q_init[i, int(nb_shooting/2):] = np.linspace(position_low[i], position_high[i], int(nb_shooting/2) + 1).squeeze()
+    # q_init[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
 qdot_init = np.gradient(q_init)[1]
-qddot_init = np.gradient(qdot_init)[1]
 
 # --- Compute CoM position --- #
-symbolic_q = MX.sym("q", nb_q, 1)
-compute_CoM = Function(
-    "ComputeCoM",
-    [symbolic_q],
-    [model.CoM(symbolic_q).to_mx()],
-    ["q"],
-    ["CoM"],
-).expand()
-
+compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", nb_q, 1))
 CoM_high = compute_CoM(np.array(position_high))
 CoM_low = compute_CoM(np.array(position_low))
 
@@ -99,18 +90,19 @@ CoM_low = compute_CoM(np.array(position_low))
 # b.load_movement(q_init)
 # b.exec()
 
-
-# --- Objective function --- #
-objective_functions = ObjectiveList()
-objective_functions.add(custom_CoM_low,
-                        custom_type=ObjectiveFcn.Mayer,
-                        node=Node.ALL,
-                        quadratic=True,
-                        weight=100)
-
 # --- Dynamics --- #
 dynamics = DynamicsList()
 dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
+
+# --- Objective function --- #
+objective_functions = ObjectiveList()
+objective_functions.add(custom_CoM_position,
+                        custom_type=ObjectiveFcn.Mayer,
+                        value=-0.25,
+                        node=Node.MID,
+                        quadratic=True,
+                        weight=100)
+
 
 # --- Constraints --- #
 constraints = ConstraintList()
@@ -125,27 +117,11 @@ for c in contact_z_axes:
         contact_force_idx=c,
     )
 
-# markers_foot = (72, 91)
-# for m in markers_foot:
-#     constraints.add( # null speed for the first phase --> non sliding contact point
-#         ConstraintFcn.TRACK_MARKERS_VELOCITY,
-#         node=Node.START,
-#         index=m,
-#     )
-
-
 # --- Path constraints --- #
 x_bounds = BoundsList()
 x_bounds.add(bounds=QAndQDotBounds(model))
-x_bounds[0].min[:nb_q, 0] = np.array(position_high).squeeze()
-x_bounds[0].max[:nb_q, 0] = np.array(position_high).squeeze()
-# x_bounds[0].min[nb_q:, 0] = [0]*nb_qdot
-# x_bounds[0].max[nb_q:, 0] = [0]*nb_qdot
-
-x_bounds[0].min[:nb_q, -1] = np.array(position_high).squeeze()
-x_bounds[0].max[:nb_q, -1] = np.array(position_high).squeeze()
-# x_bounds[0].min[nb_q:, -1] = [0]*nb_qdot
-# x_bounds[0].max[nb_q:, -1] = [0]*nb_qdot
+x_bounds[0][:, 0] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
+x_bounds[0][:, -1] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
 
 u_bounds = BoundsList()
 u_bounds.add(
@@ -183,7 +159,7 @@ ocp = OptimalControlProgram(
 sol = ocp.solve(
     solver=Solver.IPOPT,
     solver_options={
-        "ipopt.tol": 1e-4,
+        "ipopt.tol": 1e-6,
         "ipopt.max_iter": 5000,
         "ipopt.hessian_approximation": "exact",
         "ipopt.limited_memory_max_history": 50,
@@ -192,19 +168,17 @@ sol = ocp.solve(
     show_online_optim=False,
 )
 
-# --- Get Results --- #
-states_sol, controls_sol = Data.get_data(ocp, sol["x"])
-q = states_sol["q"]
-q_dot = states_sol["q_dot"]
-tau = controls_sol["tau"]
-activation = controls_sol["muscles"]
+plot_result = Affichage(ocp, sol, muscles=False)
 
-# --- Plot CoM --- #
-CoM = np.zeros((3, q.shape[1]))
-for n in range(nb_shooting + 1):
-    CoM[:, n:n+1] = compute_CoM(q[:, n])
-
+compute_CoM_dot = biorbd.to_casadi_func("CoM_dot", model.CoMdot, MX.sym("q", nb_q, 1), MX.sym("qdot", nb_q, 1))
+q = sol.states['q']
+qdot = sol.states['q']
+com_dot = np.zeros((3, q.shape[1]))
+for i in range(q.shape[1]):
+    com_dot[:, i:i+1] = compute_CoM_dot(q[:, i], qdot[:, i])
 # --- Show results --- #
-ShowResult(ocp, sol).animate()
+sol.animate(show_muscles=False)
+sol.graphs()
+sol.print()
 
 
