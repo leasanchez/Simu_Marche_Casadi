@@ -9,9 +9,11 @@ from bioptim import (
     DynamicsFcn,
     BoundsList,
     InitialGuessList,
+    InitialGuess,
     ObjectiveList,
     ConstraintList,
     Solver,
+    InterpolationType,
 )
 
 from ocp.objective_functions import objective
@@ -37,6 +39,45 @@ def save_results(ocp, sol, save_path):
     np.save(save_path + 'tau', tau)
     np.save(save_path + 'muscle', muscle)
 
+def solve(ocp, exact_max_iter=5000):
+    sol = ocp.solve(
+        solver=Solver.IPOPT,
+        solver_options={
+            "ipopt.tol": 1e-6,
+            "ipopt.max_iter": exact_max_iter,
+            "ipopt.hessian_approximation": "exact",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57",
+        },
+        show_online_optim=False,
+    )
+    return sol
+
+def solve_warm_start(ocp, limit_memory_max_iter, exact_max_iter=5000):
+    def warm_start_nmpc(ocp, sol):
+        x_init = InitialGuessList()
+        u_init = InitialGuessList()
+        x_init.add(sol.states['all'], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add(sol.controls['all'][:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        time_init = InitialGuess(sol.parameters['time'], name=time)
+        ocp.update_initial_guess(x_init=x_init, u_init=u_init, param_init=time_init)
+        ocp.solver.set_lagrange_multiplier(sol)
+        return ocp
+
+    sol = ocp.solve(
+        solver=Solver.IPOPT,
+        solver_options={
+            "ipopt.tol": 1e-6,
+            "ipopt.max_iter": limit_memory_max_iter,
+            "ipopt.hessian_approximation": "limited-memory",
+            "ipopt.limited_memory_max_history": 50,
+            "ipopt.linear_solver": "ma57",
+        },
+        show_online_optim=False,
+    )
+    ocp_nmpc = warm_start_nmpc(ocp, sol)
+    sol = solve(ocp_nmpc, exact_max_iter)
+    return sol
 
 model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
 
@@ -47,7 +88,7 @@ nb_tau = model.nbGeneralizedTorque() - model.nbRoot()
 nb_mus = model.nbMuscleTotal()
 nb_mark = model.nbMarkers()
 nb_shooting = 30
-final_time = 1.0
+final_time = 1.2
 
 # --- Subject positions and initial trajectories --- #
 position_high = [[0], [-0.07], [0], [0], [0], [-0.4],
@@ -89,6 +130,8 @@ constraints = constraint.set_constraints(constraints, inequality_value=0.00)
 x_bounds = BoundsList()
 u_bounds = BoundsList()
 x_bounds, u_bounds = bounds.set_bounds(model, x_bounds, u_bounds, mapping=False)
+x_bounds[0][:, 0] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
+# x_bounds[0][:nb_q, -1] = np.array(position_high).squeeze()
 
 # Initial guess
 x_init = InitialGuessList()
@@ -100,8 +143,6 @@ x_init, u_init = initial_guess.set_initial_guess_from_previous_solution(model,
                                                                         save_path='./RES/muscle_driven/CoM_obj/',
                                                                         nb_shooting=nb_shooting,
                                                                         mapping=False)
-# Remove pelvis torque
-u_mapping = bounds.set_mapping()
 
 # ------------- #
 ocp = OptimalControlProgram(
@@ -116,66 +157,24 @@ ocp = OptimalControlProgram(
     objective_functions=objective_functions,
     constraints=constraints,
     n_threads=8,
-    # tau_mapping=u_mapping,
 )
 
 # --- Load previous solution --- #
-ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
-# plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
-# muscle_prev = muscle(ocp_prev, sol_prev)
-# plot_result.plot_momentarm(idx_muscle=11)
-# plot_result.plot_muscles_activation_symetry()
-# plot_result.plot_muscles_force_symetry()
-# plot_result.plot_tau_symetry()
+# ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
 
-# plot_result.plot_q_symetry()
-# plot_result.plot_tau_symetry()
-# plot_result.plot_qdot_symetry()
-# plot_result.plot_individual_forces()
+# --- Solve the program --- #
+tic = time()
+sol = solve(ocp, exact_max_iter=5000)
+# sol = solve_warm_start(ocp, limit_memory_max_iter=200, exact_max_iter=2000)
+toc = time() - tic
 
-# # --- Plot CoP --- #
-# q = sol_prev.states["q"]
-# cop = np.zeros((3, q.shape[1]))
-# for n in range(q.shape[1]):
-#     cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
-# plt.figure()
-# plt.plot(cop[2, :])
-# sol_prev.animate()
-
-# # --- Solve the program --- #
-# tic = time()
-# sol = ocp.solve(
-#     solver=Solver.IPOPT,
-#     solver_options={
-#         "ipopt.tol": 1e-6,
-#         "ipopt.max_iter": 5000,
-#         "ipopt.hessian_approximation": "exact",
-#         "ipopt.limited_memory_max_history": 50,
-#         "ipopt.linear_solver": "ma57",
-#     },
-#     show_online_optim=False,
-# )
-# toc = time() - tic
-#
 # # --- Save results --- #
-# save_path = './RES/muscle_driven/inequality/3cm/'
-# save_results(ocp, sol, save_path)
+save_path = './RES/muscle_driven/'
+save_results(ocp, sol, save_path)
 
-# --- Plot CoP --- #
-q = sol.states["q"]
-cop = np.zeros((3, q.shape[1]))
-for n in range(q.shape[1]):
-    cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
-plt.plot(cop[2, :])
-
-# --- Plot markers --- #
-markers = biorbd.to_casadi_func("markers", model.markers, MX.sym("q", nb_q, 1))
-contact_idx_right = (31, 32, 33)
-contact_idx_left = (55, 56, 57)
-q = sol.states["q"]
-markers_pos = np.zeros((3, nb_mark, q.shape[1]))
-for n in range(q.shape[1]):
-    markers_pos[:, :, n] = markers(q[:, n:n+1])
+# --- Compute cop --- #
+from Compute_Results.Contact_Forces import contact
+contact_data = contact(ocp, sol, muscles=True)
 
 # --- Plot Symetry --- #
 plot_result = Affichage(ocp, sol, muscles=True)
@@ -184,6 +183,8 @@ plot_result.plot_tau_symetry()
 plot_result.plot_qdot_symetry()
 plot_result.plot_individual_forces()
 plot_result.plot_muscles_activation_symetry()
+plot_result.plot_cop()
+plot_result.plot_com(target=-0.2)
 
 # --- Show results --- #
 sol.animate()
