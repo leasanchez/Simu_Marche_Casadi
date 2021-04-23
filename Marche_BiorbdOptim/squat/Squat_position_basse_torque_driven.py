@@ -36,18 +36,19 @@ def save_results(ocp, sol, save_path):
     np.save(save_path + 'tau', tau)
 
 
-model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
+model = (biorbd.Model("models/2legs_18dof_flatfootR.bioMod"),
+         biorbd.Model("models/2legs_18dof_flatfootR.bioMod"), )
 
 # --- Problem parameters --- #
-nb_q = model.nbQ()
-nb_qdot = model.nbQdot()
-nb_tau = model.nbGeneralizedTorque()
-nb_mus = model.nbMuscleTotal()
-nb_mark = model.nbMarkers()
-nb_shooting = 7
-final_time = 0.6
-time_min = 0.2
-time_max = 1.0
+nb_q = model[0].nbQ()
+nb_qdot = model[0].nbQdot()
+nb_tau = model[0].nbGeneralizedTorque()
+nb_mus = model[0].nbMuscleTotal()
+nb_mark = model[0].nbMarkers()
+nb_shooting = (20, 20)
+final_time = (0.5, 0.5)
+time_min = (0.2, 0.2)
+time_max = (1.0, 1.0)
 
 # --- Subject positions and initial trajectories --- #
 position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
@@ -62,7 +63,7 @@ position_low_2 = [-0.06, -0.36, 0, 0, 0, -0.8,
                    0, 0, 1.53, -1.55, 0, 0, 0.68]
 
 # --- Compute CoM position --- #
-compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", nb_q, 1))
+compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", nb_q, 1))
 CoM_high = compute_CoM(np.array(position_high_zeros))
 CoM_low = compute_CoM(np.array(position_low))
 
@@ -74,6 +75,7 @@ objective_functions = objective.set_objectif_function_position_basse_torque_driv
 # Dynamics
 dynamics = DynamicsList()
 dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
+dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
 
 # Constraints
 constraints = ConstraintList()
@@ -82,14 +84,12 @@ constraints = constraint.set_constraints_position_basse(constraints, inequality_
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds_torque_driven(model, position_low, x_bounds, u_bounds)
-x_bounds[0][:nb_q, 0] = position_low
-x_bounds[0][nb_q:, 0] = 0
+x_bounds, u_bounds = bounds.set_bounds_torque_driven(model[0], position_low, x_bounds, u_bounds)
 
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = initial_guess.set_initial_guess_position_basse_torque_driven(model, x_init, u_init, position_high_zeros, position_low, nb_shooting, mapping=False)
+x_init, u_init = initial_guess.set_initial_guess_position_basse_torque_driven(model[0], x_init, u_init, position_high, position_low, nb_shooting, mapping=False)
 
 # ------------- #
 ocp = OptimalControlProgram(
