@@ -71,11 +71,13 @@ class initial_guess:
         #     init_x[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
         # init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
         # x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-        x_init.add(np.concatenate([position_low, np.zeros(model.nbQ())]))
-        if mapping:
-            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()))
-        else:
-            u_init.add([0] * model.nbGeneralizedTorque())
+        n_phases = 2
+        for i in range(n_phases):
+            x_init.add(np.zeros(model.nbQ() + model.nbQ()))
+            if mapping:
+                u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()))
+            else:
+                u_init.add([0] * model.nbGeneralizedTorque())
         return x_init, u_init
 
 

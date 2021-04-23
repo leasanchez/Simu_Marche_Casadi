@@ -23,13 +23,16 @@ class bounds:
     @staticmethod
     def set_bounds_torque_driven(model, position_init, x_bounds, u_bounds):
         torque_min, torque_max = -1000, 1000
+        n_phases = 2
+        for i in range(n_phases):
+            x_bounds.add(bounds=QAndQDotBounds(model))
 
-        x_bounds.add(bounds=QAndQDotBounds(model))
-
-        u_bounds.add(
-            [torque_min] * model.nbGeneralizedTorque(),
-            [torque_max] * model.nbGeneralizedTorque(),
-        )
+            u_bounds.add(
+                [torque_min] * model.nbGeneralizedTorque(),
+                [torque_max] * model.nbGeneralizedTorque(),
+            )
+        x_bounds[0][:model.nbQ(), 0] = position_init
+        x_bounds[1][:model.nbQ(), -1] = position_init
         return x_bounds, u_bounds
 
     @staticmethod
