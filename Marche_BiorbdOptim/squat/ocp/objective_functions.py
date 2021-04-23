@@ -40,13 +40,13 @@ class objective:
         objective.set_minimize_muscle_driven_torque(objective_functions, phase)
 
         # --- initial position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.START,
-                                index=range(len(position_high)),
-                                target=np.array(position_high),
-                                weight=1000,
-                                phase=0)
+        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        #                         quadratic=True,
+        #                         node=Node.START,
+        #                         index=range(len(position_high)),
+        #                         target=np.array(position_high),
+        #                         weight=1000,
+        #                         phase=0)
 
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
@@ -62,15 +62,6 @@ class objective:
         # --- control minimize --- #
         objective.set_minimize_muscle_driven_torque(objective_functions, phase)
 
-        # --- initial position --- #
-        objective_functions.add(custom_CoM_position,
-                                custom_type=ObjectiveFcn.Mayer,
-                                value=-0.3,
-                                node=Node.START,
-                                quadratic=True,
-                                weight=1000,
-                                phase=phase)
-
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
                                 quadratic=True,
@@ -79,6 +70,11 @@ class objective:
                                 target=np.array(position_high),
                                 weight=1000,
                                 phase=phase)
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=range(len(position_high), 2*len(position_high)),
+                                weight=10)
 
 
     @staticmethod
@@ -86,21 +82,21 @@ class objective:
         # --- control minimize --- #
         objective.set_minimize_muscle_driven_torque(objective_functions)
 
-        # --- initial position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.START,
-                                index=range(len(position_high)),
-                                target=np.array(position_high),
-                                weight=1000)
+        # # --- initial position --- #
+        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        #                         quadratic=True,
+        #                         node=Node.START,
+        #                         index=range(len(position_high)),
+        #                         target=np.array(position_high),
+        #                         weight=1000)
 
         # --- com displacement --- #
         objective_functions.add(custom_CoM_position,
                                 custom_type=ObjectiveFcn.Mayer,
-                                value=-0.3,
+                                value=-0.2,
                                 node=Node.MID,
                                 quadratic=True,
-                                weight=1000)
+                                weight=10000)
 
         # --- final position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
@@ -108,14 +104,17 @@ class objective:
                                 node=Node.END,
                                 index=range(len(position_high)),
                                 target=np.array(position_high),
-                                weight=1000)
+                                weight=1)
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                quadratic=True,
+                                node=Node.END,
+                                index=range(len(position_high), 2*len(position_high)),
+                                weight=1)
         return objective_functions
 
     @staticmethod
     def set_objectif_function_multiphase(objective_functions, position_high):
-        # --- fall --- #
         objective.set_objectif_function_fall(objective_functions, position_high, phase=0)
-        # --- climb --- #
         objective.set_objectif_function_climb(objective_functions, position_high, phase=1)
         return objective_functions
 
@@ -135,45 +134,25 @@ class objective:
 
     @staticmethod
     def set_objectif_function_position_basse_torque_driven(objective_functions, position_high, time_max, time_min):
-        nb_q = len(position_high)
-        # --- control minimize --- #
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-        #                         quadratic=True,
-        #                         node=Node.ALL,
-        #                         weight=0.001)
+        n_phases = len(time_min)
+        n_q = len(position_high)
 
-        # --- initial position --- #
-        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-        #                         quadratic=True,
-        #                         node=Node.START,
-        #                         index=range(nb_q),
-        #                         target=np.array(position_high).reshape(nb_q, 1),
-        #                         weight=1000)
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
-        #                         quadratic=True,
-        #                         node=Node.START,
-        #                         index=range(nb_q, (2*nb_q)),
-        #                         weight=1000)
+        for i in range(n_phases):
+            # Minimize time of the phase
+            objective_functions.add(
+                ObjectiveFcn.Mayer.MINIMIZE_TIME,
+                weight=0.1,
+                phase=i,
+                min_bound=time_min[i],
+                max_bound=time_max[i],
+            )
 
-        # # --- com displacement --- #
-        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
-                                quadratic=True,
+        # Minimize com heigh for low position
+        objective_functions.add(custom_CoM_position,
+                                custom_type=ObjectiveFcn.Mayer,
+                                value=-0.25,
                                 node=Node.END,
-                                weight=1000)
-
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_PREDICTED_COM_HEIGHT,
-        #                         node=Node.END,
-        #                         weight=-100)
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_STATE,
-        #                         quadratic=True,
-        #                         node=Node.END,
-        #                         index=range(nb_q, (2*nb_q)),
-        #                         weight=1000)
-
-        # # --- minimize time --- #
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_TIME,
-        #                         weight=0.1,
-        #                         min_bound=time_min,
-        #                         max_bound=time_max,)
-
+                                quadratic=True,
+                                weight=100,
+                                phase=0)
         return objective_functions
