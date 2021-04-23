@@ -43,7 +43,8 @@ class Affichage:
         self.contact_data = contact(self.ocp, self.sol, self.muscles)
 
         # muscle params
-        self.muscle_params = muscle(self.ocp, self.sol)
+        if self.muscles:
+            self.muscle_params = muscle(self.ocp, self.sol)
 
     def get_time_vector(self):
         t = np.linspace(0, self.ocp.nlp[0].tf, self.ocp.nlp[0].ns + 1)
@@ -145,19 +146,19 @@ class Affichage:
         figure.suptitle('Center of pressure')
 
         # --- pied droit --- #
-        plt.scatter(self.contact_data.position["Heel_r"][0, :], self.contact_data.position["Heel_r"][1, :], marker='+', color="red")
-        plt.scatter(self.contact_data.position["Meta_1_r"][0, :], self.contact_data.position["Meta_1_r"][1, :], marker='+',color="red")
-        plt.scatter(self.contact_data.position["Meta_5_r"][0, :], self.contact_data.position["Meta_5_r"][1, :], marker='+', color="red")
-        plt.scatter(self.contact_data.cop["cop_r_X"], self.contact_data.cop["cop_r_Y"], marker='o', color="red")
+        plt.scatter(-self.contact_data.position["Heel_r"][1, :], -self.contact_data.position["Heel_r"][0, :], marker='+', color="red")
+        plt.scatter(-self.contact_data.position["Meta_1_r"][1, :], -self.contact_data.position["Meta_1_r"][0, :], marker='+',color="red")
+        plt.scatter(-self.contact_data.position["Meta_5_r"][1, :], -self.contact_data.position["Meta_5_r"][0, :], marker='+', color="red")
+        plt.scatter(-self.contact_data.cop["cop_r_Y"], -self.contact_data.cop["cop_r_X"], marker='o', color="m")
 
         # --- pied gauche --- #
-        plt.scatter(self.contact_data.position["Heel_l"][0, :], self.contact_data.position["Heel_l"][1, :], marker='+', color="blue")
-        plt.scatter(self.contact_data.position["Meta_1_l"][0, :], self.contact_data.position["Meta_1_l"][1, :], marker='+', color="blue")
-        plt.scatter(self.contact_data.position["Meta_5_l"][0, :], self.contact_data.position["Meta_5_l"][1, :], marker='+', color="blue")
-        plt.scatter(self.contact_data.cop["cop_l_X"], self.contact_data.cop["cop_l_Y"], marker='o', color="blue")
+        plt.scatter(-self.contact_data.position["Heel_l"][1, :], -self.contact_data.position["Heel_l"][0, :], marker='+', color="blue")
+        plt.scatter(-self.contact_data.position["Meta_1_l"][1, :], -self.contact_data.position["Meta_1_l"][0, :], marker='+', color="blue")
+        plt.scatter(-self.contact_data.position["Meta_5_l"][1, :], -self.contact_data.position["Meta_5_l"][0, :], marker='+', color="blue")
+        plt.scatter(-self.contact_data.cop["cop_l_Y"], -self.contact_data.cop["cop_l_X"], marker='o', color="green")
 
-        plt.xlabel("x (m)")
-        plt.ylabel("y (m)")
+        plt.xlabel("y (m)")
+        plt.ylabel("x (m)")
         plt.axis("equal")
 
     def plot_q_symetry(self):
@@ -175,12 +176,12 @@ class Affichage:
             axes[i].set_title(pelvis_label[i])
             if (i<3):
                 axes[i].plot(self.t, self.q[i, :], color="red")
-                # axes[i].set_ylim([self.q_min[i], self.q_max[i]])
+                axes[i].set_ylim([self.q_min[i], self.q_max[i]])
                 axes[i].set_ylabel("distance (m)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
             else:
                 axes[i].plot(self.t, self.q[i, :] * 180/np.pi, color="red")
-                # axes[i].set_ylim([self.q_min[i] * 180/np.pi, self.q_max[i] * 180/np.pi])
+                axes[i].set_ylim([self.q_min[i] * 180/np.pi, self.q_max[i] * 180/np.pi])
                 axes[i].set_ylabel("rotation (degrees)")
                 axes[i].set_xlim([self.t[0], self.t[-1]])
         axes[4].set_xlabel("time (s)")
@@ -199,7 +200,7 @@ class Affichage:
             axes[i].set_title(leg_label[i])
             axes[i].plot(self.t, self.q[i + 6, :] * 180/np.pi, color="red")
             axes[i].plot(self.t, self.q[i + 12, :] * 180 / np.pi, color="blue")
-            # axes[i].set_ylim([self.q_min[i + 6] * 180/np.pi, self.q_max[i + 6] * 180/np.pi])
+            axes[i].set_ylim([self.q_min[i + 6] * 180/np.pi, self.q_max[i + 6] * 180/np.pi])
             axes[i].set_xlim([self.t[0], self.t[-1]])
             axes[i].set_ylabel("rotation (degrees)")
         axes[4].set_xlabel("time (s)")
@@ -351,15 +352,9 @@ class Affichage:
         return com
 
 
-    def plot_cop(self):
-        markers_pos = self.compute_markers_position()
+    def plot_com(self, target=-0.20):
         com = self.compute_com_position()
 
         plt.figure()
-        plt.scatter([markers_pos[0, 31, 0], markers_pos[0, 32, 0], markers_pos[0, 33, 0]],
-                    [markers_pos[1, 31, 0], markers_pos[1, 32, 0], markers_pos[1, 33, 0]], color='r')
-        plt.scatter(self.contact_data.cop["cop_r_X"], self.contact_data.cop["cop_r_Y"], color='m')
-        plt.scatter(self.contact_data.cop["cop_l_X"], self.contact_data.cop["cop_l_Y"], color='g')
-        plt.scatter([markers_pos[0, 55, 0], markers_pos[0, 56, 0], markers_pos[0, 57, 0]],
-                    [markers_pos[1, 55, 0], markers_pos[1, 56, 0], markers_pos[1, 57, 0]], color='b')
-        plt.scatter(com[0, :], com[1, :], color='k')
+        plt.plot(self.t, com[2, :])
+        plt.plot([self.t[0], self.t[-1]], [target, target])
