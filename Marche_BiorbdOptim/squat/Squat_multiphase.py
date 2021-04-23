@@ -49,12 +49,12 @@ nb_tau = model[0].nbGeneralizedTorque()
 nb_mus = model[0].nbMuscleTotal()
 nb_mark = model[0].nbMarkers()
 nb_shooting = (20, 20)
-final_time = (0.6, 0.6)
+final_time = (0.5, 0.5)
 
 # --- Subject positions and initial trajectories --- #
 position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
-                [0], [0], [0.37], [-0.13], [0], [0], [0.11],
-                [0], [0], [0.37], [-0.13], [0], [0], [0.11]]
+                [0], [0], [0.37], [-0.13], [0], [0.11],
+                [0], [0], [0.37], [-0.13], [0], [0.11]]
 position_high_3 = [[0], [-0.14], [0], [-0.03], [0.16], [-0.37],
                 [-0.15], [-0.06], [0.35], [-0.09], [0], [0.10],
                 [-0.15], [-0.06], [0.41], [-0.20], [0], [0.16]]
@@ -65,31 +65,28 @@ position_high_5 = [[0], [-0.14], [0], [-0.05], [0.24], [-0.35],
                 [-0.23], [-0.08], [0.33], [-0.08], [0], [0.10],
                 [-0.22], [-0.08], [0.45], [-0.33], [0], [0.22]]
 position_low = [-0.06, -0.36, 0, 0, 0, -0.8,
-                0, 0, 1.53, -1.55, 0, 0, 0.68,
-                0, 0, 1.53, -1.55, 0, 0, 0.68]
+                0, 0, 1.53, -1.55, 0, 0.68,
+                0, 0, 1.53, -1.55, 0, 0.68]
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", nb_q, 1))
 CoM_high = compute_CoM(np.array(position_high))
 CoM_low = compute_CoM(np.array(position_low))
-
-# # --- Inequality position --- #
-# q = np.load('./RES/muscle_driven/inequality/q.npy')
 #
-#
+# q = np.load('./RES/muscle_driven/multiphase/control/q.npy')
 # # # --- bioviz --- #
 # b = bioviz.Viz(loaded_model=model[0])
 # b.load_movement(np.array(position_high))
 
 # --- Define Optimal Control Problem --- #
-# Objective function
-objective_functions = ObjectiveList()
-objective_functions = objective.set_objectif_function_multiphase(objective_functions, position_high)
-
 # Dynamics
 dynamics = DynamicsList()
 dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=0)
 dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=1)
+
+# Objective function
+objective_functions = ObjectiveList()
+objective_functions = objective.set_objectif_function_multiphase(objective_functions, position_high)
 
 # Constraints
 constraints = ConstraintList()
@@ -100,7 +97,8 @@ x_bounds = BoundsList()
 u_bounds = BoundsList()
 x_bounds, u_bounds = bounds.set_bounds(model[0], x_bounds, u_bounds, mapping=False)
 x_bounds, u_bounds = bounds.set_bounds(model[0], x_bounds, u_bounds, mapping=False)
-x_bounds[0][nb_q:, 0]=0
+x_bounds[0][:, 0] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
+# x_bounds[0][nb_q:, 0]=0
 
 # Initial guess
 x_init = InitialGuessList()
@@ -124,26 +122,6 @@ ocp = OptimalControlProgram(
 
 # --- Load previous solution --- #
 # ocp_prev, sol = ocp.load('./RES/muscle_driven/CoM_obj/cycle.bo')
-# plot_result = Affichage(ocp_prev, sol_prev, muscles=True)
-# muscle_prev = muscle(ocp_prev, sol_prev)
-# plot_result.plot_momentarm(idx_muscle=11)
-# plot_result.plot_muscles_activation_symetry()
-# plot_result.plot_muscles_force_symetry()
-# plot_result.plot_tau_symetry()
-
-# plot_result.plot_q_symetry()
-# plot_result.plot_tau_symetry()
-# plot_result.plot_qdot_symetry()
-# plot_result.plot_individual_forces()
-
-# # --- Plot CoP --- #
-# q = sol_prev.states["q"]
-# cop = np.zeros((3, q.shape[1]))
-# for n in range(q.shape[1]):
-#     cop[:, n:n+1] = compute_CoM(q[:, n:n+1])
-# plt.figure()
-# plt.plot(cop[2, :])
-# sol_prev.animate()
 
 # --- Solve the program --- #
 tic = time()
@@ -164,14 +142,6 @@ toc = time() - tic
 save_path = './RES/muscle_driven/multiphase/ankle/'
 save_results(ocp, sol, save_path)
 
-# # --- Plot markers --- #
-# markers = biorbd.to_casadi_func("markers", model[0].markers, MX.sym("q", nb_q, 1))
-# contact_idx_right = (31, 32, 33)
-# contact_idx_left = (55, 56, 57)
-# markers_pos = np.zeros((3, nb_mark, q.shape[1]))
-# for n in range(q.shape[1]):
-#     markers_pos[:, :, n] = markers(q[:, n:n+1])
-
 # --- Plot Symetry --- #
 sol_merged=sol.merge_phases()
 plot_result = Affichage(ocp, sol_merged, muscles=True)
@@ -181,7 +151,7 @@ plot_result.plot_qdot_symetry()
 plot_result.plot_individual_forces()
 plot_result.plot_sum_forces()
 plot_result.plot_muscles_activation_symetry()
-plot_result.plot_CoM_displacement(target=0.3)
+plot_result.plot_CoM_displacement(target=-0.3)
 
 # --- Show results --- #
 sol.animate()
