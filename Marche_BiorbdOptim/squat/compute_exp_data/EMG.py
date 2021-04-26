@@ -136,7 +136,7 @@ class emg:
         return emg_squat
 
     def interpolate_emg_squat_repetition(self, file_path, index):
-        emg_squat_interp = np.zeros((len(index), self.nb_mus, 5000))
+        emg_squat_interp = np.zeros((len(index)-1, self.nb_mus, 5000))
         emg_squat = self.divide_emg_squat_repetition(file_path, index)
         for (i, emg) in enumerate(emg_squat):
             x_start = np.arange(0, emg[0].shape[0])
