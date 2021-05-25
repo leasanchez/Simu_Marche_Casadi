@@ -6,28 +6,18 @@ from ezc3d import c3d
 from pyomeca import Analogs
 
 def get_mvc_files(path):
-    list_mvc_files = []
-    list_files = os.listdir(path)
-    for file in list_files:
-        if 'MVC' in file:
-            list_mvc_files.append(file)
-    return list_mvc_files
+    return os.listdir(path+'/MVC/')
 
 def get_exp_files(path):
-    list_exp_files = []
-    list_files = os.listdir(path)
-    for file in list_files:
-        if 'squat' in file:
-            list_exp_files.append(file)
-    return list_exp_files
+    return os.listdir(path + '/Squats/')
 
 
 
 class emg:
     def __init__(self, path):
         self.path = path
-        self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.GM_l', # gastrocnemiem medial
-                                     'Voltage.SOL_r', 'Voltage.SOL_l', # soleaire
+        self.list_mvc_files = get_mvc_files(path)
+        self.list_exp_files = get_exp_files(path)
                                      'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
                                      'Voltage.TA_r', 'Voltage.TA_l', # tibial anterieur
                                      'Voltage.VM_r', 'Voltage.VM_l', # vaste medial
@@ -57,9 +47,6 @@ class emg:
                               'Grand fessier',
                               'Long adducteur']
         self.nb_mus = len(self.label_muscles_analog)
-
-        self.list_mvc_files = get_mvc_files(path)
-        self.list_exp_files = get_exp_files(path)
 
         self.emg_raw = []
         self.emg_filtered = []
