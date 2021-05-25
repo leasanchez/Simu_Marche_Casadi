@@ -18,22 +18,14 @@ class emg:
         self.path = path
         self.list_mvc_files = get_mvc_files(path)
         self.list_exp_files = get_exp_files(path)
-                                     'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
-                                     'Voltage.TA_r', 'Voltage.TA_l', # tibial anterieur
-                                     'Voltage.VM_r', 'Voltage.VM_l', # vaste medial
-                                     'Voltage.RF_r', 'Voltage.RF_l', # rectus femoris
-                                     'Voltage.ST_r', 'Voltage.ST_l', # semi tendineux
-                                     # 'Voltage.MF_r', 'Voltage.MF_l', # moyen fessier
-                                     'Voltage.GF_r', 'Voltage.GF_l', # grand fessier
-                                     'Voltage.LA_r', 'Voltage.LA_l'] # long adducteur
-        self.label_muscles_analog_2 = ['Voltage.GM_r', 'Voltage.SOL_l', # gastrocnemiem medial
+        self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.SOL_l', # gastrocnemiem medial
                                        'Voltage.SOL_r', 'Voltage.GM_l', # soleaire
                                        'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
                                        'Voltage.TA_r', 'Voltage.TA_l', # tibial anterieur
                                        'Voltage.VM_r', 'Voltage.VM_l', # vaste medial
                                        'Voltage.RF_r', 'Voltage.RF_l', # rectus femoris
                                        'Voltage.ST_r', 'Voltage.ST_l', # semi tendineux
-                                     # 'Voltage.MF_r', 'Voltage.MF_l', # moyen fessier
+                                       'Voltage.MF_r', 'Voltage.MF_l', # moyen fessier
                                        'Voltage.GF_r', 'Voltage.GF_l', # grand fessier
                                        'Voltage.LA_r', 'Voltage.LA_l'] # long adducteur
         self.label_muscles = ['Gastrocnemien medial',
@@ -43,16 +35,13 @@ class emg:
                               'Vaste medial',
                               'Droit anterieur',
                               'Semitendineux',
-                              # 'Moyen fessier',
+                              'Moyen fessier',
                               'Grand fessier',
                               'Long adducteur']
         self.nb_mus = len(self.label_muscles_analog)
 
-        self.emg_raw = []
         self.emg_filtered = []
-        self.emg_raw_mvc = []
         self.emg_filtered_mvc = []
-        self.emg_raw_exp = []
         self.emg_filtered_exp = []
         self.emg_normalized_exp = []
         for file in self.list_mvc_files:
@@ -80,11 +69,11 @@ class emg:
 
 
     def get_raw_emg(self, file_path):
-        emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog_2)
+        emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog)
         return emg
 
     def get_filtered_emg(self, file_path):
-        emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog_2)
+        emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog)
         emg_process = (
             emg.meca.band_pass(order=2, cutoff=[10, 425])
                 .meca.center()
