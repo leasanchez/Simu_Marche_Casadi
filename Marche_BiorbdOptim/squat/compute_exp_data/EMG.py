@@ -66,6 +66,7 @@ class emg:
 
     def get_filtered_emg(self, file_path):
         emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog)
+        self.freq = 1/np.array(emg.time)[1]
         emg_process = (
             emg.meca.band_pass(order=2, cutoff=[10, 425])
                 .meca.center()
@@ -87,11 +88,11 @@ class emg:
             )
         return emg_norm
 
-    def get_mvc_value(self, emg_data, idx_muscle):
+    def get_mvc_value(self, idx_muscle):
         a = []
-        for emg in emg_data:
+        for emg in self.emg_filtered:
             a = np.concatenate([a, emg[idx_muscle].data])
-        return np.mean(np.sort(a)[-2000:])
+        return np.mean(np.sort(a)[-int(self.freq):])
 
     def divide_emg_squat_repetition(self, file_path, index):
         file_idx = self.list_exp_files.index(file_path)
@@ -133,14 +134,15 @@ class emg:
                 axes[i].plot(emg[i].time.data, emg[i].data)
 
     def plot_squat(self, emg_data, title):
-        fig, axes = plt.subplots(3, 3)
+        fig, axes = plt.subplots(2, 5)
         axes = axes.flatten()
         fig.suptitle(title)
         for i in range(int(self.nb_mus/2)):
             axes[i].set_title(self.label_muscles[i])
             axes[i].plot(emg_data[2*i].time.data, emg_data[2*i].data)
             axes[i].plot(emg_data[2*i + 1].time.data, emg_data[2*i + 1].data)
-        plt.legend(['r', 'l'])
+            axes[i].set_ylim([0, 100])
+        plt.legend(['right', 'left'])
 
     def plot_squat_repetition(self, file_path, index):
         emg_squat_interp = self.interpolate_emg_squat_repetition(file_path, index)
