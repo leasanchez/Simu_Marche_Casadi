@@ -45,26 +45,18 @@ class emg:
         self.emg_filtered_exp = []
         self.emg_normalized_exp = []
         for file in self.list_mvc_files:
-            if file == 'MVC_VM_l_1.c3d':
-                pass
-            else:
-                self.emg_raw.append(self.get_raw_emg(file_path=self.path + file))
-                self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + file))
-                self.emg_raw_mvc.append(self.get_raw_emg(file_path=self.path + file))
-                self.emg_filtered_mvc.append(self.get_filtered_emg(file_path=self.path + file))
+            self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/MVC/' + file))
+            self.emg_filtered_mvc.append(self.get_filtered_emg(file_path=self.path + '/MVC/' + file))
         for file in self.list_exp_files:
-            self.emg_raw.append(self.get_raw_emg(file_path=self.path + file))
-            self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + file))
-            self.emg_raw_exp.append(self.get_raw_emg(file_path=self.path + file))
-            self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + file))
+            self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
+            self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
 
         self.mvc_value = []
         for i in range(self.nb_mus):
-            self.mvc_value.append(self.get_mvc_value(self.emg_filtered, idx_muscle=i))
-        self.mvc_value[7] = self.mvc_value[6]
+            self.mvc_value.append(self.get_mvc_value(idx_muscle=i))
 
         for file in self.list_exp_files:
-            self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + file))
+            self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
 
 
