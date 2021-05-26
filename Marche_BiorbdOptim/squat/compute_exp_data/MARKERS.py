@@ -38,33 +38,23 @@ class markers:
             markers_position.append(c["data"]["points"])
         return markers_position
 
+
     def get_events(self):
         events=[]
         markers_position = self.get_markers_position()
 
-        init_L_ASIS = int(np.mean(markers_position[-1][2, 0, :101]))
-        init_R_ASIS = int(np.mean(markers_position[-1][2, 5, :101]))
-        init_CENTER = int(np.mean(np.mean(markers_position[-1][2, :6, :101], axis=0)))
+        for mark in markers_position:
+            indices = find_indices(mark)
 
-        index_L_ASIS = np.where(markers_position[-1][2, 0, :] > init_L_ASIS)
-        index_R_ASIS = np.where(markers_position[-1][2, 5, :] > init_R_ASIS)
-        index_CENTER = np.where(np.mean(markers_position[-1][2, :6, :], axis=0) > init_CENTER)
+            pelvis_center = np.mean(mark[2, :6, :], axis=0)
+            init_CENTER = find_initial_height(pelvis_center)
+            events.append(indices)
 
-        plt.figure()
-        plt.plot(markers_position[-1][2, 0, :])
-        plt.plot(markers_position[-1][2, 5, :])
-        plt.plot(np.mean(markers_position[-1][2, :6, :], axis=0))
-        plt.plot([0, 1600], [init_L_ASIS - 5, init_L_ASIS - 5], 'k--')
-        plt.plot([0, 1600], [init_R_ASIS - 5, init_R_ASIS - 5], 'k--')
-        plt.plot([0, 1600], [init_CENTER - 5, init_CENTER - 5], 'k--')
-        plt.legend(['L_ASIS', 'R_ASIS', 'CENTER'])
-
-        fig = plt.figure()
-        ax = plt.axes(projection='3d')
-        for i in range(6):
-            ax.scatter3D(markers_position[-1][0, i, :], markers_position[-1][1, i, :], markers_position[-1][2, i, :])
-        ax.scatter3D(np.mean(markers_position[-1][0, :6, :], axis=0),
-                     np.mean(markers_position[-1][1, :6, :], axis=0),
-                     np.mean(markers_position[-1][2, :6, :], axis=0),)
+            plt.figure()
+            plt.plot(pelvis_center)
+            plt.plot([0, 1900], [init_CENTER - 5, init_CENTER - 5], 'k--')
+            for idx in indices:
+                plt.plot([idx, idx], [700, 1050], 'g--')
+            plt.show()
 
         return events
