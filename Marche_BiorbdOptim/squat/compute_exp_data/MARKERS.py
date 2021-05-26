@@ -10,6 +10,12 @@ def get_exp_files(path):
 def find_initial_height(marker_position):
     return int(np.mean(marker_position[:101]))
 
+def find_indices(markers_position):
+    pelvis_center = np.mean(markers_position[2, :6, :], axis=0)
+    index_CENTER = np.where(pelvis_center > (find_initial_height(pelvis_center) - 5))[0]
+    discontinuities_idx = np.where(np.gradient(index_CENTER) > 1)[0]
+    return index_CENTER[discontinuities_idx]
+
 class markers:
     def __init__(self, path):
         self.path = path
