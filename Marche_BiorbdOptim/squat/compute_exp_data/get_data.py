@@ -4,19 +4,24 @@ import os
 from ezc3d import c3d
 from EMG import emg
 from FORCE_PLATFORM import force_platform
+from MARKERS import markers
 
 
-path = '../Data_test/Eve/20042021/'
-c=c3d(path + 'squat_controle_3.c3d')
-index_controle_0 = (7000,11200,15600,19200,24600,29200)
-index_controle_post = (7500,11200,14800,18300,22000,27400)
-index_3cm = (6800,10500,14400,18900,23000,27400)
-index_4cm = (6600,10400,13800,17700,21500,25900)
-index_5cm = (6300,10400,14600,18900,23800)
+path = '../Data_test/AmeCeg'
+# c=c3d(path + 'squat_controle_3.c3d')
+# index_controle_0 = (7000,11200,15600,19200,24600,29200)
+# index_controle_post = (7500,11200,14800,18300,22000,27400)
+# index_3cm = (6800,10500,14400,18900,23000,27400)
+# index_4cm = (6600,10400,13800,17700,21500,25900)
+# index_5cm = (6300,10400,14600,18900,23800)
 
-contact = force_platform(path)
+# contact = force_platform(path)
 emg_test = emg(path)
-files_exp = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
+markers_test = markers(path)
+
+emg_test.plot_squat(emg_data=emg_test.emg_normalized_exp[-1], title=emg_test.list_exp_files[-1])
+
+
 index_exp = [index_controle_0, index_3cm, index_4cm, index_5cm]
 emg_test.plot_squat_comparison(files_exp, index_exp)
 
