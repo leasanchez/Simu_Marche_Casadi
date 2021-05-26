@@ -7,6 +7,8 @@ from ezc3d import c3d
 def get_exp_files(path):
     return os.listdir(path + '/Squats/')
 
+def find_initial_height(marker_position):
+    return int(np.mean(marker_position[:101]))
 
 class markers:
     def __init__(self, path):
