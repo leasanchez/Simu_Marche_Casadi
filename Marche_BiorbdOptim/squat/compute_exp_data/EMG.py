@@ -11,6 +11,11 @@ def get_mvc_files(path):
 def get_exp_files(path):
     return os.listdir(path + '/Squats/')
 
+def get_labels_muscles(c3d_path):
+    loaded_c3d = c3d(c3d_path)
+    a = loaded_c3d["parameters"]["ANALOG"]["LABELS"]["value"].index("Voltage.GM_r")
+    b = loaded_c3d["parameters"]["ANALOG"]["LABELS"]["value"].index("Voltage.LA_l")
+    return loaded_c3d["parameters"]["ANALOG"]["LABELS"]["value"][a:b+1]
 
 
 class emg:
@@ -18,16 +23,7 @@ class emg:
         self.path = path
         self.list_mvc_files = get_mvc_files(path)
         self.list_exp_files = get_exp_files(path)
-        self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.SOL_l', # gastrocnemiem medial
-                                       'Voltage.SOL_r', 'Voltage.GM_l', # soleaire
-                                       'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
-                                       'Voltage.TA_r', 'Voltage.TA_l', # tibial anterieur
-                                       'Voltage.VM_r', 'Voltage.VM_l', # vaste medial
-                                       'Voltage.RF_r', 'Voltage.RF_l', # rectus femoris
-                                       'Voltage.ST_r', 'Voltage.ST_l', # semi tendineux
-                                       'Voltage.MF_r', 'Voltage.MF_l', # moyen fessier
-                                       'Voltage.GF_r', 'Voltage.GF_l', # grand fessier
-                                       'Voltage.LA_r', 'Voltage.LA_l'] # long adducteur
+        self.label_muscles_analog = get_labels_muscles(path + '/MVC/' + self.list_mvc_files[0])
         self.label_muscles = ['Gastrocnemien medial',
                               'Soleaire',
                               'Long fibulaire',
