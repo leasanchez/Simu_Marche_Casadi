@@ -50,11 +50,11 @@ class markers:
             init_CENTER = find_initial_height(pelvis_center)
             events.append(indices)
 
-            plt.figure()
-            plt.plot(pelvis_center)
-            plt.plot([0, 1900], [init_CENTER - 5, init_CENTER - 5], 'k--')
-            for idx in indices:
-                plt.plot([idx, idx], [700, 1050], 'g--')
-            plt.show()
+            # plt.figure()
+            # plt.plot(pelvis_center)
+            # plt.plot([0, 1900], [init_CENTER - 5, init_CENTER - 5], 'k--')
+            # for idx in indices:
+            #     plt.plot([idx, idx], [700, 1050], 'g--')
+            # plt.show()
 
         return events
