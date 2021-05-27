@@ -4,6 +4,7 @@ import os
 from scipy import interpolate
 from ezc3d import c3d
 from pyomeca import Analogs
+from MARKERS import markers
 
 def get_mvc_files(path):
     return os.listdir(path+'/MVC/')
@@ -57,6 +58,7 @@ class emg:
         for file in self.list_exp_files:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
+        self.events = markers(path).get_events()
 
 
     def get_raw_emg(self, file_path):
