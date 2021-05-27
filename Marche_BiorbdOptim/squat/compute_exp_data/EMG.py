@@ -24,6 +24,35 @@ def find_muscle_mvc_value(emg, idx_muscle, freq):
         a = np.concatenate([a, e[idx_muscle].data])
     return np.mean(np.sort(a)[-int(freq):])
 
+def divide_squat_repetition(emg, index, freq):
+    emg_squat = []
+    for idx in range(int(len(index)/2)):
+        e = []
+        for m in range(len(emg)):
+            e.append(emg[m].data[int(index[2*idx]*freq/100): int(index[2*idx + 1]*freq/100)])
+        emg_squat.append(e)
+    return emg_squat
+
+def interpolate_squat_repetition(emg, index, freq):
+    emg_squat_interp = np.zeros((int(len(index)/2), len(emg), int(2*freq)))
+    emg_squat = divide_squat_repetition(emg, index, freq)
+    for (i, e) in enumerate(emg_squat):
+        x_start = np.arange(0, e[0].shape[0])
+        x_interp = np.linspace(0, x_start[-1], int(2*freq))
+        for m in range(len(emg)):
+            f = interpolate.interp1d(x_start, e[m])
+            emg_squat_interp[i, m, :] = f(x_interp)
+    return emg_squat_interp
+
+def compute_mean_squat_repetition(emg, index, freq):
+    emg_squat_interp = interpolate_squat_repetition(emg, index, freq)
+    mean_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
+    std_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
+    for m in range(len(emg)):
+        mean_emg[m, :] = np.mean(emg_squat_interp[:, m, :], axis=0)
+        std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
+    return mean_emg, std_emg
+
 class emg:
     def __init__(self, path):
         self.path = path
@@ -59,6 +88,9 @@ class emg:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
         self.events = markers(path).get_events()
+        self.mean, self.std =self.get_mean()
+        a=2
+
 
 
     def get_raw_emg(self, file_path):
@@ -77,7 +109,7 @@ class emg:
         return emg_process
 
     def get_normalized_emg(self, file_path):
-        emg = self.get_raw_emg(file_path)
+        emg = Analogs.from_c3d(file_path, usecols=self.label_muscles_analog)
         emg_norm = []
         for (i, e) in enumerate(emg):
             emg_norm.append(
@@ -95,14 +127,14 @@ class emg:
             mvc_value.append(find_muscle_mvc_value(self.emg_filtered, idx_muscle=i, freq=self.freq))
         return mvc_value
 
-    def compute_mean_emg_squat_repetition(self, file_path, index):
-        emg_squat_interp = self.interpolate_emg_squat_repetition(file_path, index)
-        mean_emg = np.zeros((self.nb_mus, 5000))
-        std_emg = np.zeros((self.nb_mus, 5000))
-        for m in range(self.nb_mus):
-            mean_emg[m, :] = np.mean(emg_squat_interp[:, m, :], axis=0)
-            std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
-        return mean_emg, std_emg
+    def get_mean(self):
+        mean = []
+        std = []
+        for i in range(len(self.emg_normalized_exp)):
+            A = compute_mean_squat_repetition(self.emg_normalized_exp[i], self.events[i], self.freq)
+            mean.append(A[0])
+            std.append(A[1])
+        return mean, std
 
     def plot_mvc_data(self, emg_data):
         fig, axes = plt.subplots(4, 5)
