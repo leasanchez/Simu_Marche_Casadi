@@ -17,6 +17,11 @@ def get_labels_muscles(c3d_path):
     b = loaded_c3d["parameters"]["ANALOG"]["LABELS"]["value"].index("Voltage.LA_l")
     return loaded_c3d["parameters"]["ANALOG"]["LABELS"]["value"][a:b+1]
 
+def find_muscle_mvc_value(emg, idx_muscle, freq):
+    a = []
+    for e in emg:
+        a = np.concatenate([a, e[idx_muscle].data])
+    return np.mean(np.sort(a)[-int(freq):])
 
 class emg:
     def __init__(self, path):
@@ -47,9 +52,7 @@ class emg:
             self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
             self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
 
-        self.mvc_value = []
-        for i in range(self.nb_mus):
-            self.mvc_value.append(self.get_mvc_value(idx_muscle=i))
+        self.mvc_value = self.get_mvc_value()
 
         for file in self.list_exp_files:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
@@ -84,32 +87,11 @@ class emg:
             )
         return emg_norm
 
-    def get_mvc_value(self, idx_muscle):
-        a = []
-        for emg in self.emg_filtered:
-            a = np.concatenate([a, emg[idx_muscle].data])
-        return np.mean(np.sort(a)[-int(self.freq):])
-
-    def divide_emg_squat_repetition(self, file_path, index):
-        file_idx = self.list_exp_files.index(file_path)
-        emg_squat = []
-        for idx in range(len(index)-1):
-            e = []
-            for m in range(self.nb_mus):
-                e.append(self.emg_normalized_exp[file_idx][m][index[idx]: index[idx+1]].data)
-            emg_squat.append(e)
-        return emg_squat
-
-    def interpolate_emg_squat_repetition(self, file_path, index):
-        emg_squat_interp = np.zeros((len(index)-1, self.nb_mus, 5000))
-        emg_squat = self.divide_emg_squat_repetition(file_path, index)
-        for (i, emg) in enumerate(emg_squat):
-            x_start = np.arange(0, emg[0].shape[0])
-            x_interp = np.linspace(0, x_start[-1], 5000)
-            for m in range(self.nb_mus):
-                f = interpolate.interp1d(x_start, emg[m])
-                emg_squat_interp[i, m, :] = f(x_interp)
-        return emg_squat_interp
+    def get_mvc_value(self):
+        mvc_value=[]
+        for i in range(self.nb_mus):
+            mvc_value.append(find_muscle_mvc_value(self.emg_filtered, idx_muscle=i, freq=self.freq))
+        return mvc_value
 
     def compute_mean_emg_squat_repetition(self, file_path, index):
         emg_squat_interp = self.interpolate_emg_squat_repetition(file_path, index)
