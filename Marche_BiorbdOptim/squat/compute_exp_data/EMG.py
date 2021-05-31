@@ -164,16 +164,29 @@ class emg:
             axes[i].set_ylim([0, 100])
         plt.legend(['right', 'left'])
 
-    def plot_squat_repetition(self, file_path, index):
-        emg_squat_interp = self.interpolate_emg_squat_repetition(file_path, index)
-        fig, axes = plt.subplots(4, 5)
-        axes = axes.flatten()
-        fig.suptitle(file_path)
-        for i in range(self.nb_mus):
-            axes[i].set_title(self.label_muscles_analog[i])
-            axes[i].plot(np.linspace(0, 100, 5000), emg_squat_interp[:, i, :].T)
-            axes[i].set_xlim([0, 100])
-            axes[i].set_ylim([0, 100])
+    def plot_squat_repetition(self, title=None):
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            emg_squat_interp = interpolate_squat_repetition(self.emg_normalized_exp[idx], self.events[idx], self.freq)
+            fig, axes = plt.subplots(4, 5)
+            axes = axes.flatten()
+            fig.suptitle(title)
+            for i in range(self.nb_mus):
+                axes[i].set_title(self.label_muscles_analog[i])
+                axes[i].plot(np.linspace(0, 100, emg_squat_interp.shape[2]), emg_squat_interp[:, i, :].T)
+                axes[i].set_xlim([0, 100])
+                axes[i].set_ylim([0, 100])
+        else:
+            for (t, title) in enumerate(self.list_exp_files):
+                emg_squat_interp = interpolate_squat_repetition(self.emg_normalized_exp[t], self.events[t], self.freq)
+                fig, axes = plt.subplots(4, 5)
+                axes = axes.flatten()
+                fig.suptitle(title)
+                for i in range(self.nb_mus):
+                    axes[i].set_title(self.label_muscles_analog[i])
+                    axes[i].plot(np.linspace(0, 100, emg_squat_interp.shape[2]), emg_squat_interp[:, i, :].T)
+                    axes[i].set_xlim([0, 100])
+                    axes[i].set_ylim([0, 100])
 
     def plot_squat_mean(self, title=None):
         if title is not None:
