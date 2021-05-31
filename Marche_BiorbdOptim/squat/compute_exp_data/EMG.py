@@ -98,9 +98,7 @@ class emg:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
         self.events = markers(path).get_events()
-        self.mean, self.std =self.get_mean()
-        a=2
-
+        self.mean, self.std = self.get_mean()
 
 
     def get_raw_emg(self, file_path):
@@ -177,21 +175,49 @@ class emg:
             axes[i].set_xlim([0, 100])
             axes[i].set_ylim([0, 100])
 
-    def plot_squat_mean(self, file_path, index):
-        mean, std = self.compute_mean_emg_squat_repetition(file_path, index)
-        fig, axes = plt.subplots(3, 3)
-        axes = axes.flatten()
-        fig.suptitle(file_path)
-        for i in range(int(self.nb_mus/2)):
-            axes[i].set_title(self.label_muscles[i])
-            axes[i].plot(np.linspace(0, 100, 5000), mean[2*i, :], 'r')
-            axes[i].plot(np.linspace(0, 100, 5000), mean[2*i + 1, :], 'b')
+    def plot_squat_mean(self, title=None):
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            abscisse = np.linspace(0, 100, self.mean[idx].shape[1])
+            fig, axes = plt.subplots(2, 5)
+            axes = axes.flatten()
+            fig.suptitle(title)
+            for i in range(int(self.nb_mus/2)):
+                axes[i].set_title(self.label_muscles[i])
+                axes[i].plot(abscisse, self.mean[idx][2*i, :], 'r')
+                axes[i].plot(abscisse, self.mean[idx][2*i + 1, :], 'b')
 
-            axes[i].fill_between(np.linspace(0, 100, 5000), mean[2*i, :] - std[2*i, :], mean[2 * i, :] + std[2 * i, :], color='r', alpha=0.2)
-            axes[i].fill_between(np.linspace(0, 100, 5000), mean[2*i + 1] - std[2*i + 1, :], mean[2 * i + 1] + std[2 * i + 1, :], color='b', alpha=0.2)
-            axes[i].set_xlim([0, 100])
-            axes[i].set_ylim([0, 100])
-        plt.legend(['right', 'left'])
+                axes[i].fill_between(abscisse,
+                                     self.mean[idx][2 * i, :] - self.std[idx][2 * i, :],
+                                     self.mean[idx][2 * i, :] + self.std[idx][2 * i, :], color='r', alpha=0.2)
+                axes[i].fill_between(abscisse,
+                                     self.mean[idx][2 * i + 1] - self.std[idx][2 * i + 1, :],
+                                     self.mean[idx][2 * i + 1] + self.std[idx][2 * i + 1, :], color='b', alpha=0.2)
+                axes[i].set_xlim([0, 100])
+                axes[i].set_ylim([0, 100])
+            plt.legend(['right', 'left'])
+        else:
+            abscisse = np.linspace(0, 100, self.mean[0].shape[1])
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(2, 5)
+                axes = axes.flatten()
+                fig.suptitle(title)
+                for i in range(int(self.nb_mus / 2)):
+                    axes[i].set_title(self.label_muscles[i])
+                    axes[i].plot(abscisse, self.mean[t][2 * i, :], 'r')
+                    axes[i].plot(abscisse, self.mean[t][2 * i + 1, :], 'b')
+
+                    axes[i].fill_between(abscisse,
+                                         self.mean[t][2 * i, :] - self.std[t][2 * i, :],
+                                         self.mean[t][2 * i, :] + self.std[t][2 * i, :], color='r', alpha=0.2)
+                    axes[i].fill_between(abscisse,
+                                         self.mean[t][2 * i + 1] - self.std[t][2 * i + 1, :],
+                                         self.mean[t][2 * i + 1] + self.std[t][2 * i + 1, :], color='b', alpha=0.2)
+                    axes[i].set_xlim([0, 100])
+                    axes[i].set_ylim([0, 100])
+                plt.legend(['right', 'left'])
+
+
 
     def plot_squat_comparison(self, file_path, index):
         mean = []
