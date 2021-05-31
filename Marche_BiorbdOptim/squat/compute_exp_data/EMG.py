@@ -57,10 +57,11 @@ class emg:
     def __init__(self, path):
         self.path = path
         self.list_mvc_files = get_mvc_files(path)
-        self.list_exp_files = get_exp_files(path)
+        # self.list_exp_files = get_exp_files(path)
+        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
         # self.label_muscles_analog = get_labels_muscles(path + '/MVC/' + self.list_mvc_files[0])
-        self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.SOL_l', # gastrocnemiem medial
-                                     'Voltage.SOL_r', 'Voltage.GM_l', # soleaire
+        self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.GM_l', # gastrocnemiem medial
+                                     'Voltage.SOL_r', 'Voltage.SOL_l', # soleaire
                                      'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
                                      'Voltage.TA_r', 'Voltage.TA_l', # tibial anterieur
                                      'Voltage.VM_r', 'Voltage.VM_l', # vaste medial
