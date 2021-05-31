@@ -100,6 +100,7 @@ class emg:
 
         self.events = markers(path).get_events()
         self.mean, self.std = self.get_mean()
+        self.RMSE = self.get_RMSE()
 
 
     def get_raw_emg(self, file_path):
@@ -144,6 +145,16 @@ class emg:
             mean.append(A[0])
             std.append(A[1])
         return mean, std
+
+    def get_RMSE(self):
+        RMSE = []
+        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        for m in self.mean:
+            rmse = np.zeros(self.nb_mus)
+            for i in range(self.nb_mus):
+             rmse[i] = np.sqrt(np.mean((m[i, :] - self.mean[idx_control][i, :])**2))
+            RMSE.append(rmse)
+        return RMSE
 
     def plot_mvc_data(self, emg_data):
         fig, axes = plt.subplots(4, 5)
