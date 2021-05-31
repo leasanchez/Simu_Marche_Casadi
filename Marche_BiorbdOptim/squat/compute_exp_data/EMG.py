@@ -101,6 +101,7 @@ class emg:
         self.events = markers(path).get_events()
         self.mean, self.std = self.get_mean()
         self.RMSE = self.get_RMSE()
+        self.DIFF = self.get_diff()
 
 
     def get_raw_emg(self, file_path):
@@ -155,6 +156,16 @@ class emg:
              rmse[i] = np.sqrt(np.mean((m[i, :] - self.mean[idx_control][i, :])**2))
             RMSE.append(rmse)
         return RMSE
+
+    def get_diff(self):
+        DIFF = []
+        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        for m in self.mean:
+            diff = np.zeros(self.nb_mus)
+            for i in range(self.nb_mus):
+             diff[i] = np.mean(m[i, :] - self.mean[idx_control][i, :])
+            DIFF.append(diff)
+        return DIFF
 
     def plot_mvc_data(self, emg_data):
         fig, axes = plt.subplots(4, 5)
@@ -244,16 +255,20 @@ class emg:
 
     def plot_squat_comparison(self):
         abscisse = np.linspace(0, 100, self.mean[0].shape[1])
+        color_plot = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
         fig, axes = plt.subplots(4, 5)
         axes = axes.flatten()
         fig.suptitle('comparison')
         for i in range(self.nb_mus):
             axes[i].set_title(self.label_muscles_analog[i])
-            for m in self.mean:
+            axes[i].text(80, 90, 'DIFF')
+            for (a, m) in enumerate(self.mean):
                 axes[i].plot(abscisse, m[i, :])
+                axes[i].text(80, 82-7*a, str(round(self.DIFF[a][i], 2)), color=color_plot[a])
             axes[i].set_xlim([0, 100])
             axes[i].set_ylim([0, 100])
-        axes[self.nb_mus-1].legend(self.list_exp_files)
+        # axes[self.nb_mus-1].legend(self.list_exp_files)
+        fig.legend(self.list_exp_files)
 
 
 
