@@ -230,25 +230,18 @@ class emg:
                     axes[i].set_ylim([0, 100])
                 plt.legend(['right', 'left'])
 
-
-
-    def plot_squat_comparison(self, file_path, index):
-        mean = []
-        for (i, file) in enumerate(file_path):
-            m, std = self.compute_mean_emg_squat_repetition(file, index[i])
-            mean.append(m)
+    def plot_squat_comparison(self):
+        abscisse = np.linspace(0, 100, self.mean[0].shape[1])
         fig, axes = plt.subplots(4, 5)
         axes = axes.flatten()
         fig.suptitle('comparison')
         for i in range(self.nb_mus):
             axes[i].set_title(self.label_muscles_analog[i])
-            axes[i].plot(np.linspace(0, 100, 5000), mean[0][i, :], color='#d62728', linestyle='-')
-            axes[i].plot(np.linspace(0, 100, 5000), mean[1][i, :], color='#ff7f0e', linestyle='--')
-            axes[i].plot(np.linspace(0, 100, 5000), mean[2][i, :], color='#2ca02c', linestyle='--')
-            axes[i].plot(np.linspace(0, 100, 5000), mean[3][i, :], color='#1f77b4', linestyle='--')
+            for m in self.mean:
+                axes[i].plot(abscisse, m[i, :])
             axes[i].set_xlim([0, 100])
             axes[i].set_ylim([0, 100])
-        axes[self.nb_mus-1].legend(file_path)
+        axes[self.nb_mus-1].legend(self.list_exp_files)
 
 
 
