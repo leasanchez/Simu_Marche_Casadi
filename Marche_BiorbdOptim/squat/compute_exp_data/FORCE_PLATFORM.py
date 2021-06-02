@@ -1,69 +1,107 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from scipy import interpolate
 from ezc3d import c3d
+from MARKERS import markers
+
+
+def get_cop(loaded_c3d):
+    """
+    get the trajectory of the center of pressure (cop)
+    from force platform
+    """
+    cop = []
+    platform = loaded_c3d["data"]["platform"]
+    for p in platform:
+        cop.append(p["center_of_pressure"] * 1e-3)
+    return cop
+
+
+def get_corners_position(loaded_c3d):
+    """
+    get platform corners position
+    """
+    corners = []
+    platform = loaded_c3d["data"]["platform"]
+    for p in platform:
+        corners.append(p["corners"] * 1e-3)
+    return corners
+
+
+def get_forces(loaded_c3d):
+    """
+    get the ground reaction forces
+    from force platform
+    """
+    force = []
+    platform = loaded_c3d["data"]["platform"]
+    for p in platform:
+        force.append(p["force"])
+    return force
+
+
+def get_moments(loaded_c3d):
+    """
+    get the ground reaction moments
+    from force platform
+    """
+    moment = []
+    platform = loaded_c3d["data"]["platform"]
+    for p in platform:
+        moment.append(p["moment"] * 1e-3)
+    return moment
+
+
+def get_moments_at_cop(loaded_c3d):
+    """
+    get the ground reaction moments at cop
+    from force platform
+    """
+    Tz = []
+    platform = loaded_c3d["data"]["platform"]
+    for p in platform:
+        Tz.append(p["Tz"] * 1e-3)
+    return Tz
+
+def load_c3d(c3d_path):
+    return c3d(c3d_path, extract_forceplat_data=True)
+
+def divide_squat_repetition(data, index):
+    squat = []
+    for idx in range(int(len(index)/2)):
+        squat.append(data[:, index[2*idx]: index[2*idx + 1]])
+    return squat
+
+def interpolate_squat_repetition(data, index):
+    squat = divide_squat_repetition(data, index)
+    squat_interp = np.zeros((int(len(index)/2), 3, 200))
+    for (i, s) in enumerate(squat):
+        x_start = np.arange(0, s[0].shape[0])
+        x_interp = np.linspace(0, x_start[-1], 200)
+        for m in range(3):
+            f = interpolate.interp1d(x_start, s[m, :])
+            emg_squat_interp[i, m, :] = f(x_interp)
+    return emg_squat_interp
+
+def compute_mean_squat_repetition(emg, index, freq):
+    emg_squat_interp = interpolate_squat_repetition(emg, index, freq)
+    mean_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
+    std_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
+    for m in range(len(emg)):
+        mean_emg[m, :] = np.mean(emg_squat_interp[:, m, :], axis=0)
+        std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
+    return mean_emg, std_emg
+
 
 class force_platform:
     def __init__(self, path):
         self.path = path
-
-    def get_cop(self, loaded_c3d):
-        """
-        get the trajectory of the center of pressure (cop)
-        from force platform
-        """
-        cop = []
-        platform = loaded_c3d["data"]["platform"]
-        for p in platform:
-            cop.append(p["center_of_pressure"] * 1e-3)
-        return cop
-
-    def get_corners_position(self, loaded_c3d):
-        """
-        get platform corners position
-        """
-        corners = []
-        platform = loaded_c3d["data"]["platform"]
-        for p in platform:
-            corners.append(p["corners"] * 1e-3)
-        return corners
-
-    def get_forces(self, loaded_c3d):
-        """
-        get the ground reaction forces
-        from force platform
-        """
-        force = []
-        platform = loaded_c3d["data"]["platform"]
-        for p in platform:
-            force.append(p["force"])
-        return force
-
-    def get_moments(self, loaded_c3d):
-        """
-        get the ground reaction moments
-        from force platform
-        """
-        moment = []
-        platform = loaded_c3d["data"]["platform"]
-        for p in platform:
-            moment.append(p["moment"] * 1e-3)
-        return moment
-
-    def get_moments_at_cop(self, loaded_c3d):
-        """
-        get the ground reaction moments at cop
-        from force platform
-        """
-        Tz = []
-        platform = loaded_c3d["data"]["platform"]
-        for p in platform:
-            Tz.append(p["Tz"] * 1e-3)
-        return Tz
-
-    def load_c3d(self, c3d_path):
-        return c3d(self.path + c3d_path, extract_forceplat_data=True)
+        self.events = markers(path).get_events()
+        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
+        self.loaded_c3d = []
+        for file in self.list_exp_files:
+            self.loaded_c3d.append(load_c3d(path + '/Squats/' + file))
+        force = get_forces(self.loaded_c3d[0])
 
     def interpolate_data(self, data, index):
         data_interp = []
