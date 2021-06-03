@@ -1,10 +1,10 @@
 import numpy as np
-from bioptim import ConstraintFcn, Node, PenaltyNodes
+from bioptim import ConstraintFcn, Node, PenaltyNode
 from casadi import vertcat, MX
 
 
 # --- force nul at last point ---
-def get_last_contact_force_null(pn: PenaltyNodes, idx_forces: np.ndarray) -> MX:
+def get_last_contact_force_null(pn: PenaltyNode, idx_forces: np.ndarray) -> MX:
     """
     Adds the constraint that the force at the specific contact point should be null
     at the last phase point.
@@ -23,7 +23,7 @@ def get_last_contact_force_null(pn: PenaltyNodes, idx_forces: np.ndarray) -> MX:
 
     """
 
-    force = pn.nlp.contact_forces_func(pn.x[-1], pn.u[-1], pn.p)
+    force = pn.nlp.contact_forces_func(pn.x, pn.u, pn.p)
     val = force[np.array(idx_forces)]
     return val
 
@@ -74,7 +74,7 @@ class constraint:
 
         constraints.add(  # forces heel at zeros at the end of the phase
             get_last_contact_force_null,
-            node=Node.ALL,
+            node=Node.PENULTIMATE,
             idx_forces=(0, 1),
             phase=p,
         )
@@ -107,7 +107,7 @@ class constraint:
         )
         constraints.add(
             get_last_contact_force_null,
-            node=Node.ALL,
+            node=Node.PENULTIMATE,
             idx_forces=range(6),
             phase=p,
         )
