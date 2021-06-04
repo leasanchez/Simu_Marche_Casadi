@@ -1,10 +1,11 @@
 import numpy as np
 import biorbd
-from bioptim import ObjectiveFcn, Node, PenaltyNodes
+from bioptim import ObjectiveFcn, Node, PenaltyNode
 from casadi import vertcat, MX
 
 
-def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
+
+def track_sum_contact_forces(pn: PenaltyNode, grf: np.ndarray) -> MX:
     """
     Adds the objective that the mismatch between the
     sum of the contact forces and the reference ground reaction forces should be minimized.
@@ -21,8 +22,6 @@ def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
     The cost that should be minimize in the MX format.
     """
 
-    ns = pn.nlp.ns  # number of shooting points for the phase
-    val = []  # init
     cn = []
     for c in pn.nlp.model.contactNames():
         cn.append(c.to_string()) # contact name for the model
@@ -44,33 +43,24 @@ def track_sum_contact_forces(pn: PenaltyNodes, grf: np.ndarray) -> MX:
         "Toe_r_Z",
     ]
 
-    for n in range(ns):
+    if pn.t == pn.nlp.ns:
+        val = None
+    else:
         # --- compute forces ---
-        force_sim = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)
+        force_sim = pn.nlp.contact_forces_func(pn.x, pn.u, pn.p)
         for f_name in labels_forces:
             forces[f_name] = 0.0
         for c in cn:
             forces[c] = force_sim[cn.index(c)]
 
         # --- tracking forces ---
-        val = vertcat(
-            val,
-            grf[0, pn.t[n]]
-            - (forces["Heel_r_X"] + forces["Meta_1_r_X"] + forces["Meta_5_r_X"] + forces["Toe_r_X"]),
-        )
-        val = vertcat(
-            val,
-            grf[1, pn.t[n]]
-            - (forces["Heel_r_Y"] + forces["Meta_1_r_Y"] + forces["Meta_5_r_Y"] + forces["Toe_r_Y"]),
-        )
-        val = vertcat(
-            val,
-            grf[2, pn.t[n]]
-            - (forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"] + forces["Toe_r_Z"]),
-        )
+        val = vertcat(grf[0, pn.t] - (forces["Heel_r_X"] + forces["Meta_1_r_X"] + forces["Meta_5_r_X"] + forces["Toe_r_X"]),
+                      grf[1, pn.t] - (forces["Heel_r_Y"] + forces["Meta_1_r_Y"] + forces["Meta_5_r_Y"] + forces["Toe_r_Y"]),
+                      grf[2, pn.t] - (forces["Heel_r_Z"] + forces["Meta_1_r_Z"] + forces["Meta_5_r_Z"] + forces["Toe_r_Z"]))
     return val
 
-def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
+
+def track_sum_contact_moments(pn: PenaltyNode, CoP: np.ndarray, M_ref: np.ndarray) -> MX:
     """
     Adds the objective that the mismatch between the
     sum of the contact moments and the reference ground reaction moments should be minimized.
@@ -91,13 +81,11 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
     """
 
     # --- aliases ---
-    ns = pn.nlp.ns  # number of shooting points for the phase
     nq = pn.nlp.shape["q"] # number of dof
     markers = biorbd.to_casadi_func("markers", pn.nlp.model.markers, pn.nlp.q)
     cn = []
-    for c in pn.nlp.model.contactNames() :
+    for c in pn.nlp.model.contactNames():
         cn.append(c.to_string())           # contact name for the model
-    val = []  # init
 
     # --- init forces ---
     forces = {}  # define dictionnary with all the contact point possible
@@ -116,42 +104,42 @@ def track_sum_contact_moments(pn: PenaltyNodes, CoP: np.ndarray, M_ref: np.ndarr
         "Toe_r_Z",
     ]
 
-    for n in range(ns):
+    if pn.t == pn.nlp.ns:
+        val = None
+    else:
         # --- compute contact point position ---
-        q = pn.x[n][:nq]
-        heel = markers(q)[:, 26] - CoP[:, pn.t[n]]
-        meta1 = markers(q)[:, 27] - CoP[:, pn.t[n]]
-        meta5 = markers(q)[:, 28] - CoP[:, pn.t[n]]
-        toe = markers(q)[:, 29] - CoP[:, pn.t[n]]
+        q = pn.x[:nq]
+        heel = markers(q)[:, 26] - CoP[:, pn.t]
+        meta1 = markers(q)[:, 27] - CoP[:, pn.t]
+        meta5 = markers(q)[:, 28] - CoP[:, pn.t]
+        toe = markers(q)[:, 29] - CoP[:, pn.t]
 
         # --- compute forces ---
-        force_sim = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)
+        force_sim = pn.nlp.contact_forces_func(pn.x, pn.u, pn.p)
         for f_name in labels_forces:
             forces[f_name] = 0.0
         for c in cn:
-            forces[c]=force_sim[cn.index(c)]
+            forces[c] = force_sim[cn.index(c)]
 
         # --- tracking moments ---
         Mx = (
-            heel[1] * forces["Heel_r_Z"]
-            + meta1[1] * forces["Meta_1_r_Z"]
-            + meta5[1] * forces["Meta_5_r_Z"]
-            + toe[1] * forces["Toe_r_Z"]
+                heel[1] * forces["Heel_r_Z"]
+                + meta1[1] * forces["Meta_1_r_Z"]
+                + meta5[1] * forces["Meta_5_r_Z"]
+                + toe[1] * forces["Toe_r_Z"]
         )
         My = (
-            -heel[0] * forces["Heel_r_Z"]
-            - meta1[0] * forces["Meta_1_r_Z"]
-            - meta5[0] * forces["Meta_5_r_Z"]
-            - toe[0] * forces["Toe_r_Z"]
+                -heel[0] * forces["Heel_r_Z"]
+                - meta1[0] * forces["Meta_1_r_Z"]
+                - meta5[0] * forces["Meta_5_r_Z"]
+                - toe[0] * forces["Toe_r_Z"]
         )
         Mz = (heel[0] * forces["Heel_r_Y"] - heel[1] * forces["Heel_r_X"]
               + meta1[0] * forces["Meta_1_r_Y"] - meta1[1] * forces["Meta_1_r_X"]
               + meta5[0] * forces["Meta_5_r_Y"] - meta5[1] * forces["Meta_5_r_X"]
               + toe[0] * forces["Toe_r_Y"] - toe[1] * forces["Toe_r_X"])
 
-        val = vertcat(val, M_ref[0, pn.t[n]] - Mx)
-        val = vertcat(val, M_ref[1, pn.t[n]] - My)
-        val = vertcat(val, M_ref[2, pn.t[n]] - Mz)
+        val = vertcat(M_ref[0, pn.t] - Mx, M_ref[1, pn.t] - My, M_ref[2, pn.t] - Mz)
     return val
 
 
@@ -196,7 +184,7 @@ class objective:
                                  CoP=cop_ref,
                                  M_ref=moment_ref,
                                  custom_type=ObjectiveFcn.Lagrange,
-                                 node=Node.ALL,
+                                 nodes=Node.ALL,
                                  weight=0.01,
                                  quadratic=True,
                                  phase=p)
@@ -212,20 +200,20 @@ class objective:
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
         objective.set_objective_function_forces(objective_functions, grf_ref, p)
-        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
+        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
     def set_objective_function_forefoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
         objective.set_objective_function_forces(objective_functions, grf_ref, p)
-        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
+        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
     def set_objective_function_toe(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
-        objective.set_objective_function_forces(objective_functions, grf_ref, p)
+        # objective.set_objective_function_forces(objective_functions, grf_ref, p)
 
     @staticmethod
     def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
