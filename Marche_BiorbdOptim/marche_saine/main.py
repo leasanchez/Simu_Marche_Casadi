@@ -87,13 +87,15 @@ gait_muscle_driven_markers_tracking = gait_muscle_driven(models=biorbd_model,
                                                         moments_ref=moments_ref,
                                                         cop_ref=cop_ref,
                                                         n_threads=8)
+
+# gait_muscle_driven_markers_tracking.ocp.print()
 tic = time()
 # --- Solve the program --- #
 sol = gait_muscle_driven_markers_tracking.solve()
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/Hip_muscle/OpenSim/'
+save_path = './RES/muscle_driven/no_last_contact_cstr/'
 save_results(gait_muscle_driven_markers_tracking.ocp, sol, save_path)
 
 # ocp_prev, sol = gait_muscle_driven_markers_tracking.ocp.load('./RES/muscle_driven/Hip_muscle/OpenSim/cycle.bo')
