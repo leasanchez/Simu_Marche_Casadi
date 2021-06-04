@@ -72,12 +72,12 @@ class constraint:
             phase=p,
         )
 
-        constraints.add(  # forces heel at zeros at the end of the phase
-            get_last_contact_force_null,
-            node=Node.PENULTIMATE,
-            idx_forces=(0, 1),
-            phase=p,
-        )
+        # constraints.add(  # forces heel at zeros at the end of the phase
+        #     get_last_contact_force_null,
+        #     node=Node.PENULTIMATE,
+        #     idx_forces=(0, 1),
+        #     phase=p,
+        # )
 
     @staticmethod
     def set_constraint_forefoot(constraints, p):
@@ -105,12 +105,12 @@ class constraint:
             static_friction_coefficient=0.2,
             phase=p,
         )
-        constraints.add(
-            get_last_contact_force_null,
-            node=Node.PENULTIMATE,
-            idx_forces=range(6),
-            phase=p,
-        )
+        # constraints.add(
+        #     get_last_contact_force_null,
+        #     node=Node.PENULTIMATE,
+        #     idx_forces=range(6),
+        #     phase=p,
+        # )
 
     @staticmethod
     def set_constraint_forefoot_four_phases(constraints, p):
