@@ -108,11 +108,10 @@ def track_sum_contact_moments(pn: PenaltyNode, CoP: np.ndarray, M_ref: np.ndarra
         val = None
     else:
         # --- compute contact point position ---
-        q = pn.x[:nq]
-        heel = markers(q)[:, 26] - CoP[:, pn.t]
-        meta1 = markers(q)[:, 27] - CoP[:, pn.t]
-        meta5 = markers(q)[:, 28] - CoP[:, pn.t]
-        toe = markers(q)[:, 29] - CoP[:, pn.t]
+        heel = markers(pn.x[:nq])[:, 26] - CoP[:, pn.t]
+        meta1 = markers(pn.x[:nq])[:, 27] - CoP[:, pn.t]
+        meta5 = markers(pn.x[:nq])[:, 28] - CoP[:, pn.t]
+        toe = markers(pn.x[:nq])[:, 29] - CoP[:, pn.t]
 
         # --- compute forces ---
         force_sim = pn.nlp.contact_forces_func(pn.x, pn.u, pn.p)
@@ -184,7 +183,7 @@ class objective:
                                  CoP=cop_ref,
                                  M_ref=moment_ref,
                                  custom_type=ObjectiveFcn.Lagrange,
-                                 nodes=Node.ALL,
+                                 node=Node.ALL,
                                  weight=0.01,
                                  quadratic=True,
                                  phase=p)
@@ -200,20 +199,20 @@ class objective:
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
         objective.set_objective_function_forces(objective_functions, grf_ref, p)
-        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
     def set_objective_function_forefoot(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
         objective.set_objective_function_forces(objective_functions, grf_ref, p)
-        # objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
+        objective.set_objective_function_moments(objective_functions, moment_ref, cop_ref, p)
 
     @staticmethod
     def set_objective_function_toe(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
         objective.set_objective_function_markers(objective_functions, markers_ref, p)
         objective.set_objective_function_muscle_controls(objective_functions, p)
-        # objective.set_objective_function_forces(objective_functions, grf_ref, p)
+        objective.set_objective_function_forces(objective_functions, grf_ref, p)
 
     @staticmethod
     def set_objective_function_swing(objective_functions, markers_ref, grf_ref, moment_ref, cop_ref, p):
