@@ -94,13 +94,14 @@ def compute_mean_squat_repetition(emg, index, freq):
 
 
 class force_platform:
-    def __init__(self, path):
-        self.path = path
-        self.events = markers(path).get_events()
+    def __init__(self, name):
+        self.name = name
+        self.path = '../Data_test/' + name
+        self.events = markers(self.path).get_events()
         self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
         self.loaded_c3d = []
         for file in self.list_exp_files:
-            self.loaded_c3d.append(load_c3d(path + '/Squats/' + file))
+            self.loaded_c3d.append(load_c3d(self.path + '/Squats/' + file))
         force = get_forces(self.loaded_c3d[0])
 
     def interpolate_data(self, data, index):

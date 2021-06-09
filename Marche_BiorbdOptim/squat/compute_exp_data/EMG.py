@@ -54,11 +54,12 @@ def compute_mean_squat_repetition(emg, index, freq):
     return mean_emg, std_emg
 
 class emg:
-    def __init__(self, path):
-        self.path = path
-        self.list_mvc_files = get_mvc_files(path)
+    def __init__(self, name):
+        self.name = name
+        self.path = '../Data_test/' + name
+        self.list_mvc_files = get_mvc_files(self.path)
         # self.list_exp_files = get_exp_files(path)
-        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
+        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d', 'squat_controle_post.c3d']
         # self.label_muscles_analog = get_labels_muscles(path + '/MVC/' + self.list_mvc_files[0])
         self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.GM_l', # gastrocnemiem medial
                                      'Voltage.SOL_r', 'Voltage.SOL_l', # soleaire
@@ -98,7 +99,7 @@ class emg:
         for file in self.list_exp_files:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
-        self.events = markers(path).get_events()
+        self.events = markers(self.path).get_events()
         self.mean, self.std = self.get_mean()
         self.RMSE = self.get_RMSE()
         self.DIFF = self.get_diff()
@@ -179,7 +180,7 @@ class emg:
     def plot_squat(self, emg_data, title):
         fig, axes = plt.subplots(2, 5)
         axes = axes.flatten()
-        fig.suptitle(title)
+        fig.suptitle(self.name + "   " + title)
         for i in range(int(self.nb_mus/2)):
             axes[i].set_title(self.label_muscles[i])
             axes[i].plot(emg_data[2*i].time.data, emg_data[2*i].data)
@@ -193,23 +194,36 @@ class emg:
             emg_squat_interp = interpolate_squat_repetition(self.emg_normalized_exp[idx], self.events[idx], self.freq)
             fig, axes = plt.subplots(4, 5)
             axes = axes.flatten()
-            fig.suptitle(title)
+            fig.suptitle(self.name + "\nrepetition " + title)
             for i in range(self.nb_mus):
                 axes[i].set_title(self.label_muscles_analog[i])
                 axes[i].plot(np.linspace(0, 100, emg_squat_interp.shape[2]), emg_squat_interp[:, i, :].T)
                 axes[i].set_xlim([0, 100])
                 axes[i].set_ylim([0, 100])
+                if i > 14:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('activation (%)')
+            axes[5].set_ylabel('activation (%)')
+            axes[10].set_ylabel('activation (%)')
+            axes[15].set_ylabel('activation (%)')
         else:
             for (t, title) in enumerate(self.list_exp_files):
                 emg_squat_interp = interpolate_squat_repetition(self.emg_normalized_exp[t], self.events[t], self.freq)
                 fig, axes = plt.subplots(4, 5)
                 axes = axes.flatten()
-                fig.suptitle(title)
+                fig.suptitle(self.name + "\nrepetition " + title)
                 for i in range(self.nb_mus):
                     axes[i].set_title(self.label_muscles_analog[i])
                     axes[i].plot(np.linspace(0, 100, emg_squat_interp.shape[2]), emg_squat_interp[:, i, :].T)
                     axes[i].set_xlim([0, 100])
                     axes[i].set_ylim([0, 100])
+                    if i > 14:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('activation (%)')
+                axes[5].set_ylabel('activation (%)')
+                axes[10].set_ylabel('activation (%)')
+                axes[15].set_ylabel('activation (%)')
+
 
     def plot_squat_mean(self, title=None):
         if title is not None:
@@ -217,7 +231,7 @@ class emg:
             abscisse = np.linspace(0, 100, self.mean[idx].shape[1])
             fig, axes = plt.subplots(2, 5)
             axes = axes.flatten()
-            fig.suptitle(title)
+            fig.suptitle(self.name + "\nmean " + title)
             for i in range(int(self.nb_mus/2)):
                 axes[i].set_title(self.label_muscles[i])
                 axes[i].plot(abscisse, self.mean[idx][2*i, :], 'r')
@@ -231,13 +245,17 @@ class emg:
                                      self.mean[idx][2 * i + 1] + self.std[idx][2 * i + 1, :], color='b', alpha=0.2)
                 axes[i].set_xlim([0, 100])
                 axes[i].set_ylim([0, 100])
+                if i > 4:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('activation (%)')
+            axes[5].set_ylabel('activation (%)')
             plt.legend(['right', 'left'])
         else:
             abscisse = np.linspace(0, 100, self.mean[0].shape[1])
             for (t, title) in enumerate(self.list_exp_files):
                 fig, axes = plt.subplots(2, 5)
                 axes = axes.flatten()
-                fig.suptitle(title)
+                fig.suptitle(self.name + "\nmean " + title)
                 for i in range(int(self.nb_mus / 2)):
                     axes[i].set_title(self.label_muscles[i])
                     axes[i].plot(abscisse, self.mean[t][2 * i, :], 'r')
@@ -251,14 +269,18 @@ class emg:
                                          self.mean[t][2 * i + 1] + self.std[t][2 * i + 1, :], color='b', alpha=0.2)
                     axes[i].set_xlim([0, 100])
                     axes[i].set_ylim([0, 100])
+                    if i > 4:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('activation (%)')
+                axes[5].set_ylabel('activation (%)')
                 plt.legend(['right', 'left'])
 
     def plot_squat_comparison(self):
         abscisse = np.linspace(0, 100, self.mean[0].shape[1])
-        color_plot = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+        color_plot = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:brown']
         fig, axes = plt.subplots(4, 5)
         axes = axes.flatten()
-        fig.suptitle('comparison')
+        fig.suptitle(self.name + "\n comparison")
         for i in range(self.nb_mus):
             axes[i].set_title(self.label_muscles_analog[i])
             axes[i].text(80, 90, 'DIFF')
@@ -267,7 +289,12 @@ class emg:
                 axes[i].text(80, 82-7*a, str(round(self.DIFF[a][i], 2)), color=color_plot[a])
             axes[i].set_xlim([0, 100])
             axes[i].set_ylim([0, 100])
-        # axes[self.nb_mus-1].legend(self.list_exp_files)
+            if i > 14:
+                axes[i].set_xlabel('normalized time (%)')
+        axes[0].set_ylabel('activation (%)')
+        axes[5].set_ylabel('activation (%)')
+        axes[10].set_ylabel('activation (%)')
+        axes[15].set_ylabel('activation (%)')
         fig.legend(self.list_exp_files)
 
 

@@ -20,7 +20,7 @@ class markers:
     def __init__(self, path):
         self.path = path
         # self.list_exp_files = get_exp_files(path)
-        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
+        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d', 'squat_controle_post.c3d']
         self.loaded_c3d = self.load_c3d()
         self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:52]
         self.markers_position = self.get_markers_position()
