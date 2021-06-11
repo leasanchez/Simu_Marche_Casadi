@@ -54,8 +54,9 @@ def compute_mean_squat_repetition(emg, index, freq):
     return mean_emg, std_emg
 
 class emg:
-    def __init__(self, name):
+    def __init__(self, name, higher_foot='R'):
         self.name = name
+        self.higher_foot = higher_foot
         self.path = '../Data_test/' + name
         self.list_mvc_files = get_mvc_files(self.path)
         # self.list_exp_files = get_exp_files(path)
@@ -296,6 +297,27 @@ class emg:
         axes[10].set_ylabel('activation (%)')
         axes[15].set_ylabel('activation (%)')
         fig.legend(self.list_exp_files)
+
+    def plot_squat_comparison_5cm(self):
+        abscisse = np.linspace(0, 100, self.mean[0].shape[1])
+        fig, axes = plt.subplots(4, 5)
+        axes = axes.flatten()
+        fig.suptitle(self.name + "\n comparison")
+        for i in range(self.nb_mus):
+            axes[i].set_title(self.label_muscles_analog[i])
+            axes[i].text(80, 90, 'RMSE')
+            axes[i].plot(abscisse, self.mean[0][i, :], color='tab:blue')
+            axes[i].plot(abscisse, self.mean[1][i, :], color='tab:red')
+            axes[i].text(80, 82, str(round(self.RMSE[1][i], 2)), color='tab:red')
+            axes[i].set_xlim([0, 100])
+            axes[i].set_ylim([0, 100])
+            if i > 14:
+                axes[i].set_xlabel('normalized time (%)')
+        axes[0].set_ylabel('activation (%)')
+        axes[5].set_ylabel('activation (%)')
+        axes[10].set_ylabel('activation (%)')
+        axes[15].set_ylabel('activation (%)')
+        fig.legend(['controle', '5cm'])
 
 
 

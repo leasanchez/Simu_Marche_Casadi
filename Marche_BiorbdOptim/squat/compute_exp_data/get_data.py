@@ -9,11 +9,12 @@ name = 'AmeCeg'
 # emg
 emg_test = emg(name)
 
-emg_test.plot_squat_repetition() #title='squat_controle.c3d'
-emg_test.plot_squat_mean() #title='squat_controle.c3d'
+emg_test.plot_squat_repetition()
+emg_test.plot_squat_mean()
 emg_test.plot_squat_comparison()
+emg_test.plot_squat_comparison_5cm()
 plt.show()
 
 
 # contact
-force_platform_test = force_platform(name)
+# force_platform_test = force_platform(name)
