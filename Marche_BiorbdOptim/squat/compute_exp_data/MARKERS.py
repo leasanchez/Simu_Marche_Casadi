@@ -11,9 +11,15 @@ def find_initial_height(marker_anato):
     return round(np.mean(marker_anato))
 
 def find_indices(markers_position, marker_anato):
-    index_anato = np.where(markers_position[2, 0, :] > (find_initial_height(marker_anato) - 5))[0]
+    indices = []
+    index_anato = np.where(markers_position > (find_initial_height(marker_anato)))[0]
     discontinuities_idx = np.where(np.gradient(index_anato) > 1)[0]
-    return index_anato[discontinuities_idx]
+    for idx in index_anato[discontinuities_idx]:
+        a = np.where((markers_position[idx:idx + 51] - markers_position[idx]) < 0)[0]
+        b = np.where((markers_position[idx - 50:idx + 1] - markers_position[idx]) < 0)[0]
+        if (a.size > 45) or (b.size > 45):
+            indices.append(idx)
+    return indices
 
 class markers:
     def __init__(self, path):
@@ -45,15 +51,16 @@ class markers:
         marker_anato = position_anato["data"]["points"]
 
         for mark in markers_position:
-            indices = find_indices(mark, marker_anato[2, 0, :])
+            indices = find_indices(mark[2, 0, :], marker_anato[2, 0, :])
 
-            init_anato = find_initial_height(marker_anato[2, 0, :]) - 5
+            init_anato = find_initial_height(marker_anato[2, 0, :])
             events.append(indices)
 
             plt.figure()
             plt.plot(mark[2, 0, :])
             plt.plot(marker_anato[2, 0, :], 'r')
             plt.plot([0, 1900], [init_anato, init_anato], 'k--')
+            # plt.plot([0, 1900], [init_anato - 5, init_anato - 5], 'g--')
             for idx in indices:
                 plt.plot([idx, idx], [700, 1050], 'g--')
             plt.show()
