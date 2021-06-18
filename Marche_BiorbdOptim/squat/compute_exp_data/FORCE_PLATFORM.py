@@ -67,30 +67,41 @@ def load_c3d(c3d_path):
     return c3d(c3d_path, extract_forceplat_data=True)
 
 def divide_squat_repetition(data, index):
-    squat = []
-    for idx in range(int(len(index)/2)):
-        squat.append(data[:, index[2*idx]: index[2*idx + 1]])
-    return squat
+    data_divide = []
+    for d in data:
+        squat = []
+        for idx in range(int(len(index)/2)):
+            squat.append(d[:, index[2*idx]*10: index[2*idx + 1]*10])
+        data_divide.append(squat)
+    return data_divide
 
 def interpolate_squat_repetition(data, index):
-    squat = divide_squat_repetition(data, index)
-    squat_interp = np.zeros((int(len(index)/2), 3, 200))
-    for (i, s) in enumerate(squat):
-        x_start = np.arange(0, s[0].shape[0])
-        x_interp = np.linspace(0, x_start[-1], 200)
-        for m in range(3):
-            f = interpolate.interp1d(x_start, s[m, :])
-            emg_squat_interp[i, m, :] = f(x_interp)
-    return emg_squat_interp
+    data_divide = divide_squat_repetition(data, index)
+    data_interp = []
+    for d in data_divide:
+        squat_interp = np.zeros((int(len(index) / 2), 3, 2000))
+        for (i, s) in enumerate(d):
+            x_start = np.arange(0, s[0].shape[0])
+            x_interp = np.linspace(0, x_start[-1], 2000)
+            for m in range(3):
+                f = interpolate.interp1d(x_start, s[m, :])
+                squat_interp[i, m, :] = f(x_interp)
+        data_interp.append(squat_interp)
+    return data_interp
 
-def compute_mean_squat_repetition(emg, index, freq):
-    emg_squat_interp = interpolate_squat_repetition(emg, index, freq)
-    mean_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
-    std_emg = np.zeros((len(emg), emg_squat_interp.shape[2]))
-    for m in range(len(emg)):
-        mean_emg[m, :] = np.mean(emg_squat_interp[:, m, :], axis=0)
-        std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
-    return mean_emg, std_emg
+def compute_mean_squat_repetition(data, index):
+    data_interp = interpolate_squat_repetition(data, index)
+    M = []
+    SD = []
+    for d in data_interp:
+        mean = np.zeros((3, 2000))
+        std = np.zeros((3, 2000))
+        for i in range(3):
+            mean[i, :] = np.mean(d[:, i, :], axis=0)
+            std[i, :] = np.std(d[:, i, :], axis=0)
+        M.append(mean)
+        SD.append(std)
+    return M, SD
 
 
 class force_platform:
@@ -100,9 +111,18 @@ class force_platform:
         self.events = markers(self.path).get_events()
         self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
         self.loaded_c3d = []
-        for file in self.list_exp_files:
+        self.force = []
+        self.moments = []
+        self.cop = []
+        for (i, file) in enumerate(self.list_exp_files):
             self.loaded_c3d.append(load_c3d(self.path + '/Squats/' + file))
-        force = get_forces(self.loaded_c3d[0])
+            self.force.append(get_forces(self.loaded_c3d[i]))
+            self.moments.append(get_moments_at_cop(self.loaded_c3d[i]))
+            self.cop.append(get_cop(self.loaded_c3d[i]))
+        self.mean_force, self.std_force = self.get_mean(self.force)
+        self.mean_moment, self.std_moment = self.get_mean(self.moments)
+        self.mean_cop, self.mean_cop = self.get_mean(self.cop)
+
 
     def interpolate_data(self, data, index):
         data_interp = []
@@ -117,17 +137,13 @@ class force_platform:
             data_interp.append(interp)
         return data_interp
 
-    def mean_data(self, data):
+    def get_mean(self, data):
         mean = []
         std = []
-        for d in data:
-            mean_d = np.zeros((3, 5000))
-            std_d = np.zeros((3, 5000))
-            for m in range(3):
-                mean_d[m, :] = np.mean(d[:, m, :], axis=0)
-                std_d[m, :] = np.std(d[:, m, :], axis=0)
-            mean.append(mean_d)
-            std.append(std_d)
+        for i in range(len(data)):
+            A = compute_mean_squat_repetition(data[i], self.events[i])
+            mean.append(A[0])
+            std.append(A[1])
         return mean, std
 
     def plot_cop(self, file_path, index):
@@ -150,65 +166,110 @@ class force_platform:
         plt.ylabel('x (m)')
         plt.legend()
 
-    def plot_force_repetition(self, c3d_path, index):
-        force = self.interpolate_data(data=self.get_forces(self.load_c3d(c3d_path)), index=index)
+    def plot_force_repetition(self, title=None):
         label = ['x', 'y', 'z']
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            data_interp = interpolate_squat_repetition(self.force[idx], self.events[idx])
+            fig, axes = plt.subplots(len(data_interp), 3)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\n ground reaction forces repetition " + title)
+            for i in range(3):
+                axes[i].set_title(f"platform 1 : {label[i]}")
+                axes[i].plot(np.linspace(0, 100, 2000), data_interp[0][:, i, :].T)
+                axes[i].plot([0, 100], [0, 0], 'k--')
+                axes[i].set_xlim([0, 100])
+            if len(data_interp) > 1:
+                for i in range(3):
+                    axes[i + 3].set_title(f"platform 2 : {label[i]}")
+                    axes[i + 3].plot(np.linspace(0, 100, 2000), data_interp[1][:, i, :].T)
+                    axes[i + 3].plot([0, 100], [0, 0], 'k--')
+                    axes[i + 3].set_xlim([0, 100])
+        else:
+            for (t, title) in enumerate(self.list_exp_files):
+                data_interp = interpolate_squat_repetition(self.force[t], self.events[t])
+                fig, axes = plt.subplots(len(data_interp), 3)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\n ground reaction forces repetition " + title)
+                for i in range(3):
+                    axes[i].set_title(f"platform 1 : {label[i]}")
+                    axes[i].plot(np.linspace(0, 100, 2000), data_interp[0][:, i, :].T)
+                    axes[i].plot([0, 100], [0, 0], 'k--')
+                    axes[i].set_xlim([0, 100])
+                if len(data_interp) > 1:
+                    for i in range(3):
+                        axes[i + 3].set_title(f"platform 2 : {label[i]}")
+                        axes[i + 3].plot(np.linspace(0, 100, 2000), data_interp[1][:, i, :].T)
+                        axes[i + 3].plot([0, 100], [0, 0], 'k--')
+                        axes[i + 3].set_xlim([0, 100])
 
+    def plot_force_mean(self, title=None):
+        label = ['x', 'y', 'z']
+        abscisse = np.linspace(0, 100, 2000)
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            fig, axes = plt.subplots(1, 3)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nground reaction forces mean " + title)
+            for i in range(3):
+                axes[i].set_title(label[i])
+                axes[i].plot(abscisse, self.mean_force[idx][0][i, :], 'r')
+                axes[i].plot(abscisse, self.mean_force[idx][1][i, :], 'b')
+                axes[i].fill_between(abscisse,
+                                     self.mean_force[idx][0][i, :] - self.std_force[idx][0][i, :],
+                                     self.mean_force[idx][0][i, :] + self.std_force[idx][0][i, :], color='r', alpha=0.2)
+                axes[i].fill_between(abscisse,
+                                     self.mean_force[idx][1][i, :] - self.std_force[idx][1][i, :],
+                                     self.mean_force[idx][1][i, :] + self.std_force[idx][1][i, :], color='b', alpha=0.2)
+                axes[i].set_xlim([0, 100])
+                axes[i].set_xlabel('temps')
+            axes[0].set_ylabel('forces')
+            plt.legend(['right', 'left'])
+        else:
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(1, 3)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nground reaction forces mean " + title)
+                for i in range(3):
+                    axes[i].set_title(label[i])
+                    axes[i].plot(abscisse, self.mean_force[t][0][i, :], 'r')
+                    if (i < 2):
+                        axes[i].plot(abscisse, -self.mean_force[t][1][i, :], 'b')
+                        axes[i].fill_between(abscisse,
+                                             -(self.mean_force[t][1][i, :] - self.std_force[t][1][i, :]),
+                                             -(self.mean_force[t][1][i, :] + self.std_force[t][1][i, :]), color='b',
+                                             alpha=0.2)
+                    else:
+                        axes[i].plot(abscisse, self.mean_force[t][1][i, :], 'b')
+                        axes[i].fill_between(abscisse,
+                                             (self.mean_force[t][1][i, :] - self.std_force[t][1][i, :]),
+                                             (self.mean_force[t][1][i, :] + self.std_force[t][1][i, :]), color='b',
+                                             alpha=0.2)
+                    axes[i].fill_between(abscisse,
+                                         self.mean_force[t][0][i, :] - self.std_force[t][0][i, :],
+                                         self.mean_force[t][0][i, :] + self.std_force[t][0][i, :], color='r',
+                                         alpha=0.2)
+
+                    axes[i].set_xlim([0, 100])
+                    axes[i].set_xlabel('temps')
+                axes[0].set_ylabel('forces')
+                plt.legend(['right', 'left'])
+
+    def plot_force_comparison(self):
+        label = ['x', 'y', 'z']
         fig, axes = plt.subplots(2, 3)
         axes = axes.flatten()
-        fig.suptitle(f"ground reaction forces : {c3d_path}")
+        fig.suptitle(self.name + "\nground reaction forces comparison controle vs 5cm")
         for i in range(3):
             axes[i].set_title(f"platform 1 : {label[i]}")
-            axes[i].plot(np.linspace(0, 100, 5000), force[0][:, i, :].T)
+            axes[i].plot(np.linspace(0, 100, 2000), self.mean_force[0][0][i, :], 'b')
+            axes[i].plot(np.linspace(0, 100, 2000), self.mean_force[3][0][i, :], 'r')
+            axes[i].plot([0, 100], [0, 0], 'k--')
             axes[i].set_xlim([0, 100])
         for i in range(3):
             axes[i + 3].set_title(f"platform 2 : {label[i]}")
-            axes[i + 3].plot(np.linspace(0, 100, 5000), force[1][:, i, :].T)
+            axes[i + 3].plot(np.linspace(0, 100, 2000), self.mean_force[0][1][i, :], 'b')
+            axes[i + 3].plot(np.linspace(0, 100, 2000), self.mean_force[3][1][i, :], 'r')
+            axes[i + 3].plot([0, 100], [0, 0], 'k--')
             axes[i + 3].set_xlim([0, 100])
-
-    def plot_force_mean(self, c3d_path, index):
-        force = self.interpolate_data(data=self.get_forces(self.load_c3d(c3d_path)), index=index)
-        mean_force, std_force = self.mean_data(force)
-        label = ['x', 'y', 'z']
-
-        fig, axes = plt.subplots(1, 3)
-        axes = axes.flatten()
-        fig.suptitle(f"ground reaction forces : {c3d_path}")
-        for i in range(3):
-            axes[i].set_title(f"{label[i]}")
-            axes[i].plot(np.linspace(0, 100, 5000), mean_force[0][i, :], 'b') # left
-            axes[i].plot(np.linspace(0, 100, 5000), mean_force[1][i, :], 'r') # right
-
-            axes[i].fill_between(np.linspace(0, 100, 5000),
-                                 mean_force[0][i, :] - std_force[0][i, :],
-                                 mean_force[0][i, :] + std_force[0][i, :],
-                                 color='b', alpha=0.2)
-            axes[i].fill_between(np.linspace(0, 100, 5000),
-                                 mean_force[1][i, :] - std_force[1][i, :],
-                                 mean_force[1][i, :] + std_force[1][i, :],
-                                 color='r', alpha=0.2)
-            axes[i].set_xlim([0, 100])
-        plt.legend(['left', 'right'])
-
-    def plot_force_comparison(self, file_path, index):
-        mean = []
-        label = ['x', 'y', 'z']
-        for (i, file) in enumerate(file_path):
-            force = self.interpolate_data(data=self.get_forces(self.load_c3d(file)), index=index[i])
-            m, std = self.mean_data(force)
-            mean.append(m)
-
-        fig, axes = plt.subplots(2, 3)
-        axes = axes.flatten()
-        fig.suptitle(f"comparison ground reaction forces")
-        for i in range(3):
-            axes[i].set_title(f"platform 1 : {label[i]} (L)")
-            for m in mean:
-                axes[i].plot(np.linspace(0, 100, 5000), m[0][i, :])
-            axes[i].set_xlim([0, 100])
-        for i in range(3):
-            axes[i + 3].set_title(f"platform 2 : {label[i]} (R)")
-            for m in mean:
-                axes[i + 3].plot(np.linspace(0, 100, 5000), m[1][i, :])
-            axes[i + 3].set_xlim([0, 100])
-        plt.legend(file_path)
+        plt.legend(['controle', '5cm'])
