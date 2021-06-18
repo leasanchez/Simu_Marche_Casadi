@@ -104,6 +104,7 @@ class emg:
         self.mean, self.std = self.get_mean()
         self.RMSE = self.get_RMSE()
         self.DIFF = self.get_diff()
+        self.R2 = self.get_R2()
 
 
     def get_raw_emg(self, file_path):
@@ -158,6 +159,16 @@ class emg:
              rmse[i] = np.sqrt(np.mean((m[i, :] - self.mean[idx_control][i, :])**2))
             RMSE.append(rmse)
         return RMSE
+
+    def get_R2(self):
+        R2 = []
+        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        for m in self.mean:
+            r2 = np.zeros(self.nb_mus)
+            for i in range(self.nb_mus):
+                r2[i] = 1 - (np.sum((m[i, :] - self.mean[idx_control][i, :])**2) / np.sum((self.mean[idx_control][i, :] - np.mean(self.mean[idx_control][i, :]))**2))
+            R2.append(r2)
+        return R2
 
     def get_diff(self):
         DIFF = []
@@ -306,9 +317,11 @@ class emg:
         for i in range(self.nb_mus):
             axes[i].set_title(self.label_muscles_analog[i])
             axes[i].text(80, 90, 'RMSE')
+            # axes[i].text(80, 70, 'R2')
             axes[i].plot(abscisse, self.mean[0][i, :], color='tab:blue')
-            axes[i].plot(abscisse, self.mean[1][i, :], color='tab:red')
-            axes[i].text(80, 82, str(round(self.RMSE[1][i], 2)), color='tab:red')
+            axes[i].plot(abscisse, self.mean[3][i, :], color='tab:red')
+            axes[i].text(80, 82, str(round(self.RMSE[3][i], 2)), color='tab:red')
+            # axes[i].text(80, 62, str(round(self.R2[3][i], 2)), color='tab:red')
             axes[i].set_xlim([0, 100])
             axes[i].set_ylim([0, 100])
             if i > 14:
