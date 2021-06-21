@@ -18,6 +18,7 @@ from bioptim import (
     PhaseTransitionFcn,
     Solver,
     ParameterList,
+    ControlType,
 )
 
 
@@ -104,7 +105,7 @@ class gait_muscle_driven:
             constraints=self.constraints,
             phase_transitions=self.phase_transition,
             n_threads=self.n_threads,
-            # parameters=self.parameters,
+            control_type=ControlType.LINEAR_CONTINUOUS,
         )
 
 
