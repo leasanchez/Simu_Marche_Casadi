@@ -12,7 +12,7 @@ def find_initial_height(marker_anato):
 
 def find_indices(markers_position, marker_anato):
     indices = []
-    index_anato = np.where(markers_position > (find_initial_height(marker_anato)))[0]
+    index_anato = np.where(markers_position > (find_initial_height(marker_anato) - 5))[0]
     discontinuities_idx = np.where(np.gradient(index_anato) > 1)[0]
     for idx in index_anato[discontinuities_idx]:
         a = np.where((markers_position[idx:idx + 51] - markers_position[idx]) < 0)[0]
@@ -29,6 +29,7 @@ class markers:
         self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:52]
         self.markers_position = self.get_markers_position()
         self.events = self.get_events()
+        self.mid_events = self.get_mid_events()
 
 
     def load_c3d(self):
@@ -56,13 +57,40 @@ class markers:
             init_anato = find_initial_height(marker_anato[2, 0, :])
             events.append(indices)
 
-            plt.figure()
-            plt.plot(mark[2, 0, :])
-            plt.plot(marker_anato[2, 0, :], 'r')
-            plt.plot([0, 1900], [init_anato, init_anato], 'k--')
-            # plt.plot([0, 1900], [init_anato - 5, init_anato - 5], 'g--')
-            for idx in indices:
-                plt.plot([idx, idx], [700, 1050], 'g--')
-            plt.show()
-
+            # plt.figure()
+            # plt.plot(mark[2, 0, :])
+            # plt.plot(marker_anato[2, 0, :], 'r')
+            # plt.plot([0, 1900], [init_anato, init_anato], 'k--')
+            # # plt.plot([0, 1900], [init_anato - 5, init_anato - 5], 'g--')
+            # for idx in indices:
+            #     plt.plot([idx, idx], [700, 1050], 'g--')
+            # plt.show()
         return events
+
+    def get_mid_events(self):
+        mid_events=[]
+        for event in self.events:
+            md = []
+            for i in range(int(len(event)/2)):
+                md.append(int(np.mean([event[2*i], event[2*i + 1]])))
+            mid_events.append(np.array(md))
+
+        markers_position = self.get_markers_position()
+        position_anato = c3d(self.path + '/SCoRE/anato.c3d')
+        marker_anato = position_anato["data"]["points"]
+
+        for (i, mark) in enumerate(markers_position):
+            indices = find_indices(mark[2, 0, :], marker_anato[2, 0, :])
+
+            init_anato = find_initial_height(marker_anato[2, 0, :])
+
+            # plt.figure()
+            # plt.plot(mark[2, 0, :])
+            # plt.plot(marker_anato[2, 0, :], 'r')
+            # plt.plot([0, 1900], [init_anato, init_anato], 'k--')
+            # for idx in indices:
+            #     plt.plot([idx, idx], [700, 1050], 'g--')
+            # for m in range(mid_events[i].shape[0]):
+            #     plt.plot([mid_events[i][m], mid_events[i][m]], [612, 1050], 'm--')
+            # plt.show()
+        return mid_events
