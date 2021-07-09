@@ -53,6 +53,13 @@ def compute_mean_squat_repetition(emg, index, freq):
         std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
     return mean_emg, std_emg
 
+def compute_symetry_ratio(emg):
+    emg_sym = []
+    for i in range(int(len(emg)/2)):
+        emg_sym.append((emg[2*i] + 100)/(emg[2*i + 1] + 100))
+    return emg_sym
+
+
 class emg:
     def __init__(self, name, higher_foot='R'):
         self.name = name
@@ -96,15 +103,20 @@ class emg:
             self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
 
         self.mvc_value = self.get_mvc_value()
+        self.mvc_value[2] = self.mvc_value[3]
+        self.mvc_value[12] = self.mvc_value[13]
 
         for file in self.list_exp_files:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
 
         self.events = markers(self.path).get_events()
+        self.mid_events = markers(self.path).get_mid_events()
         self.mean, self.std = self.get_mean()
+        self.mean_sym, self.std_sym = self.get_mean(symetry=True)
         self.RMSE = self.get_RMSE()
         self.DIFF = self.get_diff()
         self.R2 = self.get_R2()
+        self.sym_phases = self.get_value_sym_per_phase()
 
 
     def get_raw_emg(self, file_path):
@@ -132,6 +144,7 @@ class emg:
                  .meca.abs()
                  .meca.low_pass(order=4, cutoff=6, freq=emg.rate)
                  .meca.normalize(self.mvc_value[i])
+                 .meca.abs()
             )
         return emg_norm
 
@@ -141,13 +154,19 @@ class emg:
             mvc_value.append(find_muscle_mvc_value(self.emg_filtered, idx_muscle=i, freq=self.freq))
         return mvc_value
 
-    def get_mean(self):
+    def get_mean(self, symetry=False):
         mean = []
         std = []
         for i in range(len(self.emg_normalized_exp)):
-            A = compute_mean_squat_repetition(self.emg_normalized_exp[i], self.events[i], self.freq)
-            mean.append(A[0])
-            std.append(A[1])
+            if symetry:
+                emg_sym = compute_symetry_ratio(self.emg_normalized_exp[i])
+                A = compute_mean_squat_repetition(emg_sym, self.events[i], self.freq)
+                mean.append(A[0])
+                std.append(A[1])
+            else:
+                A = compute_mean_squat_repetition(self.emg_normalized_exp[i], self.events[i], self.freq)
+                mean.append(A[0])
+                std.append(A[1])
         return mean, std
 
     def get_RMSE(self):
@@ -178,7 +197,13 @@ class emg:
             for i in range(self.nb_mus):
              diff[i] = np.mean(m[i, :] - self.mean[idx_control][i, :])
             DIFF.append(diff)
-        return DIFF
+        return
+
+    def get_value_sym_per_phase(self):
+        sym_phases = []
+        for (i, msym) in enumerate(self.mean_sym):
+            sym_phases.append([np.mean(msym[:, :int(self.freq)], axis=1), np.mean(msym[:, int(1000):], axis=1)])
+        return sym_phases
 
     def plot_mvc_data(self, emg_data):
         fig, axes = plt.subplots(4, 5)
@@ -255,6 +280,7 @@ class emg:
                 axes[i].fill_between(abscisse,
                                      self.mean[idx][2 * i + 1] - self.std[idx][2 * i + 1, :],
                                      self.mean[idx][2 * i + 1] + self.std[idx][2 * i + 1, :], color='b', alpha=0.2)
+                axes[i].plot([50, 50], [0, 100], 'k--')
                 axes[i].set_xlim([0, 100])
                 axes[i].set_ylim([0, 100])
                 if i > 4:
@@ -279,6 +305,7 @@ class emg:
                     axes[i].fill_between(abscisse,
                                          self.mean[t][2 * i + 1] - self.std[t][2 * i + 1, :],
                                          self.mean[t][2 * i + 1] + self.std[t][2 * i + 1, :], color='b', alpha=0.2)
+                    axes[i].plot([50, 50], [0, 100],'k--')
                     axes[i].set_xlim([0, 100])
                     axes[i].set_ylim([0, 100])
                     if i > 4:
@@ -332,5 +359,71 @@ class emg:
         axes[15].set_ylabel('activation (%)')
         fig.legend(['controle', '5cm'])
 
+    def plot_squat_mean_symetry(self, title=None):
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            abscisse = np.linspace(0, 100, self.mean_sym[idx].shape[1])
+            fig, axes = plt.subplots(2, 5)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nmean ratio R/L " + title)
+            for i in range(int(self.nb_mus/2)):
+                axes[i].set_title(self.label_muscles[i])
+                axes[i].plot(abscisse, self.mean_sym[idx][i, :], 'r')
+                axes[i].fill_between(abscisse,
+                                     self.mean_sym[idx][i, :] - self.std_sym[idx][i, :],
+                                     self.mean_sym[idx][i, :] + self.std_sym[idx][i, :], color='r', alpha=0.2)
+                axes[i].plot([50, 50], [0, 10], 'k--')
+                axes[i].set_xlim([0, 100])
+                axes[i].set_ylim([0, 10])
+                axes[i].text(20, 5, str(round(self.sym_phases[idx][0][i], 2)))
+                axes[i].text(60, 5, str(round(self.sym_phases[idx][1][i], 2)))
+                if i > 4:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('activation (%)')
+            axes[5].set_ylabel('activation (%)')
+        else:
+            abscisse = np.linspace(0, 100, self.mean[0].shape[1])
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(2, 5)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nmean ratio R/L " + title)
+                for i in range(int(self.nb_mus / 2)):
+                    axes[i].set_title(self.label_muscles[i])
+                    axes[i].plot(abscisse, self.mean_sym[t][i, :], 'r')
+                    axes[i].fill_between(abscisse,
+                                         self.mean_sym[t][i, :] - self.std_sym[t][i, :],
+                                         self.mean_sym[t][i, :] + self.std_sym[t][i, :], color='r', alpha=0.2)
+                    axes[i].plot([50, 50], [0, 10], 'k--')
+                    axes[i].text(20, 5, str(round(self.sym_phases[t][0][i], 2)))
+                    axes[i].text(60, 5, str(round(self.sym_phases[t][1][i], 2)))
+                    axes[i].set_xlim([0, 100])
+                    axes[i].set_ylim([0, 10])
+                    if i > 4:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('activation (%)')
+                axes[5].set_ylabel('activation (%)')
 
-
+    def plot_assymetry_comparison_5cm(self):
+        abscisse = np.linspace(0, 100, self.mean[0].shape[1])
+        fig, axes = plt.subplots(2, 5)
+        axes = axes.flatten()
+        fig.suptitle(self.name + "\n comparison symetry 5 cm")
+        for i in range(int(self.nb_mus / 2)):
+            axes[i].set_title(self.label_muscles[i])
+            axes[i].plot(abscisse, self.mean_sym[0][i, :], 'b')
+            axes[i].plot(abscisse, self.mean_sym[3][i, :], 'r')
+            axes[i].plot(abscisse, self.mean_sym[3][i, :] - self.mean_sym[0][i, :], 'g')
+            axes[i].plot([50, 50], [0, 3], 'k--')
+            axes[i].text(20, 2, str(round(self.sym_phases[0][0][i], 2)), color='b')
+            axes[i].text(60, 2, str(round(self.sym_phases[0][1][i], 2)), color='b')
+            axes[i].text(20, 1.5, str(round(self.sym_phases[3][0][i], 2)), color='r')
+            axes[i].text(60, 1.5, str(round(self.sym_phases[3][1][i], 2)), color='r')
+            axes[i].text(20, 0.5, str(round(self.sym_phases[3][0][i] - self.sym_phases[0][0][i], 2)), color='g')
+            axes[i].text(60, 0.5, str(round(self.sym_phases[3][1][i] - self.sym_phases[0][0][i], 2)), color='g')
+            axes[i].set_xlim([0, 100])
+            axes[i].set_ylim([0, 3])
+            if i > 4:
+                axes[i].set_xlabel('normalized time (%)')
+        axes[0].set_ylabel('activation (%)')
+        axes[5].set_ylabel('activation (%)')
+        plt.legend(['controle', '5cm', 'difference'])
