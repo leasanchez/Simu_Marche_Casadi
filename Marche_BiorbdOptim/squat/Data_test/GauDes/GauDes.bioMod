@@ -1,0 +1,434 @@
+version	1
+gravity 0 0 -9.81
+
+// General informations
+root_actuated 0
+external_forces 0
+
+// Informations about pelvis segment
+	// Segment
+	segment	pelvis
+		RT
+			1.0000000000	0.0000000000	 0.0000000000	0.0000000000
+			0.0000000000	0.0000000000	-1.0000000000	0.0000000000
+			0.0000000000	1.0000000000	 0.0000000000	0.0000000000
+			0.0000000000	0.0000000000	 0.0000000000	1.0000000000
+		translations	xyz
+		rotations	xyz
+		mass	7.96000
+		inertia
+			 1.0000000000	0.0000000000	 0.0000000000
+			 0.0000000000	1.0000000000	 0.0000000000
+			 0.0000000000	0.0000000000	 1.0000000000
+		com	-0.0002390000	0.0136470000	-0.0009460000
+	endsegment
+
+	// Markers
+	marker	L_ASIS
+		parent	pelvis
+		position	0.0847535251	-0.0000000000	-0.1273653651
+		technical 1
+	endmarker
+	marker	L_CI
+		parent	pelvis
+		position	-0.0097192331	0.0404132621	-0.1550341545
+		technical 1
+	endmarker
+	marker	L_PSIS
+		parent	pelvis
+		position	-0.0889553289	-0.0020589345	-0.0549952341
+		technical 1
+	endmarker
+	marker	R_PSIS
+		parent	pelvis
+		position	-0.0840272824	0.0020589345	0.0549952341
+		technical 1
+	endmarker
+	marker	R_CI
+		parent	pelvis
+		position	0.0082839565	0.0414718554	0.1493553988
+		technical 1
+	endmarker
+	marker	R_ASIS
+		parent	pelvis
+		position	0.0882290862	-0.0000000000	0.1273653651
+		technical 1
+	endmarker
+
+
+// Informations about torso segment
+	// Segment
+	segment	torso
+		parent	pelvis
+		RT
+			1.0000000000	0.0000000000	0.0000000000	-0.0286220129
+			0.0000000000	1.0000000000	0.0000000000	 0.0973581064
+			0.0000000000	0.0000000000	1.0000000000	-0.0020934550
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xyz
+		mass	35.02000
+		inertia
+			1.1565650000	0.0000000000	 0.0000000000
+			0.0000000000	1.3292210000	 0.0000000000
+			0.0000000000	0.0000000000	 0.3504110000
+		com	0.0222471000    0.2985050000	-0.0176339000
+	endsegment
+
+	// Markers
+	marker	CLAV
+		parent	torso
+		position	0.0237826413	0.3021879414	0.0003475854
+		technical 1
+	endmarker
+	marker	AV
+		parent	torso
+		position	0.0841612441	0.2171075522	-0.0034020124
+		technical 1
+	endmarker
+	marker	STRN
+		parent	torso
+		position	0.1208813584	0.1435279720	-0.0083129764
+		technical 1
+	endmarker
+	marker	T10
+		parent	torso
+		position	-0.1556848222	0.1435279720	-0.0083129764
+		technical 1
+	endmarker
+	marker	T2
+		parent	torso
+		position	-0.1590483534	0.2568314069	-0.0000606100
+		technical 1
+	endmarker
+	marker	C7
+		parent	torso
+		position	-0.1105972103	0.3600715652	-0.0003475854
+		technical 1
+	endmarker
+
+
+// Informations about femur_r segment
+	// Segment
+	segment	femur_r
+		parent	pelvis
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0379702650
+			0.0000000000	1.0000000000	0.0000000000	-0.0953149760
+			0.0000000000	0.0000000000	1.0000000000	 0.0964390271
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xyz
+		mass	10.10000
+		inertia
+			0.2319120000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.2319120000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.0475670000
+		com	0.0026180000	-0.1886250000	-0.0000840000
+	endsegment
+
+	// Markers
+	marker	R_FUP
+		parent	femur_r
+		position	0.0206712302	-0.1747135552	0.0819939398
+		technical 1
+	endmarker
+	marker	R_FANT
+		parent	femur_r
+		position	0.0489578563	-0.2018700735	0.0697106504
+		technical 1
+	endmarker
+	marker	R_FPOST
+		parent	femur_r
+		position	-0.0112085616	-0.1991801374	0.0858700671
+		technical 1
+	endmarker
+	marker	R_FDOWN
+		parent	femur_r
+		position	0.0199392695	-0.2243074397	0.0814940758
+		technical 1
+	endmarker
+	marker	R_TC
+		parent	femur_r
+		position	-0.0037310022	-0.0303192822	0.0778588052
+		technical 1
+	endmarker
+	marker	R_KNEEL
+		parent	femur_r
+		position	0.0000000000	-0.4443346429	0.0556268108
+		technical 1
+	endmarker
+	marker	R_KNEEM
+		parent	femur_r
+		position	0.0000000000	-0.4577270047	-0.0556268108
+		technical 1
+	endmarker
+
+
+// Informations about tibia_r segment
+	// Segment
+	segment	tibia_r
+		parent	femur_r
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0063935127
+			0.0000000000	1.0000000000	0.0000000000	-0.4606221659
+			0.0000000000	0.0000000000	1.0000000000	-0.0002039089
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	z
+		mass	3.09000
+		inertia
+			 0.0326710000	 0.0000000000	0.0000000000
+			 0.0000000000	 0.0342650000	0.0000000000
+			 0.0000000000	 0.0000000000	0.0055900000
+		com	-0.0057090000	-0.1785190000	0.0451040000
+	endsegment
+
+	// Markers
+	marker	R_TUP
+		parent	tibia_r
+		position	0.0193831002	-0.1480220385	0.0058653953
+		technical 1
+	endmarker
+	marker	R_TLAT
+		parent	tibia_r
+		position	0.0206355894	-0.2123973829	0.0183898472
+		technical 1
+	endmarker
+	marker	R_TCENTER
+		parent	tibia_r
+		position	0.0036465066	-0.1897737404	0.0013535098
+		technical 1
+	endmarker
+	marker	R_TMED
+		parent	tibia_r
+		position	-0.0110188880	-0.1554956001	-0.0184776705
+		technical 1
+	endmarker
+	marker	R_TDOWN
+		parent	tibia_r
+		position	-0.0112224698	-0.2283578548	-0.0051242765
+		technical 1
+	endmarker
+	marker	R_TANKL
+		parent	tibia_r
+		position	-0.0128022434	-0.4003574422	0.1011526800
+		technical 1
+	endmarker
+	marker	R_ANKM
+		parent	tibia_r
+		position	-0.0001437802	-0.4001020897	0.0164860744
+		technical 1
+	endmarker
+
+
+// Informations about foot_r segment
+	// Segment
+	segment	foot_r
+		parent	tibia_r
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0047096037
+			0.0000000000	1.0000000000	0.0000000000	-0.4076387719
+			0.0000000000	0.0000000000	1.0000000000	 0.0520368498
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	yz
+		mass	0.98000
+		inertia
+			0.0037820000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.0041620000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.0009690000
+		com	0.0386510000	-0.0460300000	-0.0046310000
+	endsegment
+
+	// Markers
+	marker	R_HEE
+		parent	foot_r
+		position	-0.0725486816	-0.0478343898	0.0096815522
+		technical 1
+	endmarker
+	marker	R_FOOT
+		parent	foot_r
+		position	0.0619143460	0.0111609897	0.0032522706
+		technical 1
+	endmarker
+	marker	R_FMP5
+		parent	foot_r
+		position	0.1111309311	-0.0478343898	0.0693645998
+		technical 1
+	endmarker
+	marker	R_FMP2
+		parent	foot_r
+		position	0.1434200289	-0.0375133235	0.0017140359
+		technical 1
+	endmarker
+	marker	R_FMP1
+		parent	foot_r
+		position	0.1233583518	-0.0478343898	-0.0500014954
+		technical 1
+	endmarker
+	marker	R_HAL
+		parent	foot_r
+		position	0.1793183385	-0.0437472629	-0.0227362323
+		technical 1
+	endmarker
+
+
+// Informations about femur_l segment
+	// Segment
+	segment	femur_l
+		parent	pelvis
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0310372205
+			0.0000000000	1.0000000000	0.0000000000	-0.1050901735
+			0.0000000000	0.0000000000	1.0000000000	-0.0938800231
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xyz
+		mass	10.10000
+		inertia
+			0.2096880000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.2096880000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.0430090000
+		com	0.0031960000	-0.1793450000	-0.0000250000
+	endsegment
+
+	// Markers
+	marker	L_FUP
+		parent	femur_l
+		position	0.0307947863	-0.1436716516	-0.0870736045
+		technical 1
+	endmarker
+	marker	L_FANT
+		parent	femur_l
+		position	0.0588097949	-0.1782290441	-0.0740283239
+		technical 1
+	endmarker
+	marker	L_FPOST
+		parent	femur_l
+		position	0.0038844238	-0.1831987222	-0.0917945348
+		technical 1
+	endmarker
+	marker	L_FDOWN
+		parent	femur_l
+		position	0.0314844444	-0.2114851989	-0.0855351036
+		technical 1
+	endmarker
+	marker	L_TC
+		parent	femur_l
+		position	-0.0037310022	-0.0303192822	-0.0778588052
+		technical 1
+	endmarker
+	marker	L_KNEEL
+		parent	femur_l
+		position	-0.0000000000	-0.4410510988	-0.0565982841
+		technical 1
+	endmarker
+	marker	L_KNEEM
+		parent	femur_l
+		position	-0.0000000000	-0.4499915422	0.0565982841
+		technical 1
+	endmarker
+
+
+// Informations about tibia_l segment
+	// Segment
+	segment	tibia_l
+		parent	femur_l
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0078052169
+			0.0000000000	1.0000000000	0.0000000000	-0.4379612159
+			0.0000000000	0.0000000000	1.0000000000	-0.0000604708
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	z
+		mass	3.09000
+		inertia
+			 0.0905860000	 0.0000000000	 0.0000000000
+			 0.0000000000	 0.0950040000	 0.0000000000
+			 0.0000000000	 0.0000000000	 0.0155000000
+		com	-0.0057090000	-0.1785190000	-0.0451040000
+	endsegment
+
+	// Markers
+	marker	L_TUP
+		parent	tibia_l
+		position	0.0193831002	-0.1480220385	-0.0058653953
+		technical 1
+	endmarker
+	marker	L_TLAT
+		parent	tibia_l
+		position	0.0206355894	-0.2123973829	-0.0183898472
+		technical 1
+	endmarker
+	marker	L_TCENTER
+		parent	tibia_l
+		position	0.0036465066	-0.1897737404	-0.0013535098
+		technical 1
+	endmarker
+	marker	L_TMED
+		parent	tibia_l
+		position	-0.0110188880	-0.1554956001	 0.0184776705
+		technical 1
+	endmarker
+	marker	L_TDOWN
+		parent	tibia_l
+		position	-0.0112224698	-0.2283578548	0.0051242765
+		technical 1
+	endmarker
+	marker	L_ANKL
+		parent	tibia_l
+		position	-0.0128022434	-0.4003574422	-0.1011526800
+		technical 1
+	endmarker
+	marker	L_ANKM
+		parent	tibia_l
+		position	-0.0001437802	-0.4001020897	-0.0164860744
+		technical 1
+	endmarker
+
+// Informations about foot_l segment
+	// Segment
+	segment	foot_l
+		parent	tibia_l
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0047096037
+			0.0000000000	1.0000000000	0.0000000000	-0.4076387719
+			0.0000000000	0.0000000000	1.0000000000	-0.0520368498
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		mass	0.98000
+		rotations   yz
+		inertia
+			0.0038360000	 0.0000000000	0.0000000000
+			0.0000000000	 0.0042210000	0.0000000000
+			0.0000000000	 0.0000000000	0.0009830000
+		com	0.0440750000	-0.0449320000	0.0110540000
+	endsegment
+
+	// Markers
+	marker	L_HEE
+		parent	foot_l
+		position	-0.0674649988	-0.0495369636	-0.0060178532
+		technical 1
+	endmarker
+	marker	L_FOOT
+		parent	foot_l
+		position	0.0681626335	0.0120265915	0.0009384581
+		technical 1
+	endmarker
+	marker	L_FMP5
+		parent	foot_l
+		position	0.1236587808	-0.0495369636	-0.0655739223
+		technical 1
+	endmarker
+	marker	L_FMP2
+		parent	foot_l
+		position	0.1477220169	-0.0343606933	0.0034366751
+		technical 1
+	endmarker
+	marker	L_FMP1
+		parent	foot_l
+		position	0.1265652527	-0.0495369636	0.0535382158
+		technical 1
+	endmarker
+	marker	L_HAL
+		parent	foot_l
+		position	0.1851731722	-0.0391069940	0.0326499950
+		technical 1
+	endmarker
+
+
