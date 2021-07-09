@@ -56,6 +56,11 @@ class kinematic:
         self.model = biorbd.Model(self.path + "/" + name + ".bioMod")
         self.list_exp_files = ['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm', 'squat_controle_post']
         self.q_name = get_q_name(self.model)
+        self.label_q = ["pelvis Tx", "pelvis Ty", "pelvis Tz", "pelvis Rx", "pelvis Ry", "pelvis Rz",
+                        "tronc Rx", "tronc Ry", "tronc Rz",
+                        "hanche Rx", "hanche Ry", "hanche Rz",
+                        "genou Rz",
+                        "cheville Ry", "cheville Rz"]
         self.events = markers(self.path).get_events()
         self.q = self.get_q()
         self.q_mean, self.q_std = self.get_mean(self.q)
@@ -121,3 +126,81 @@ class kinematic:
                 axes[0].set_ylabel('q (m/degré)')
                 axes[7].set_ylabel('q (m/degré)')
                 axes[14].set_ylabel('q (m/degré)')
+
+    def plot_squat_mean(self, title=None):
+        if title is not None:
+            t = self.list_exp_files.index(title)
+            abscisse = np.linspace(0, 100, self.q_mean[t].shape[1])
+            fig, axes = plt.subplots(3, 5)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nmean " + title)
+            for i in range(len(self.label_q)):
+                axes[i].set_title(self.label_q[i])
+                if (i > 8):
+                    axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
+                    axes[i].plot(abscisse, self.q_mean[t][i + 6, :] * 180 / np.pi, 'b')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
+                                         self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
+                                         color='r', alpha=0.2)
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i + 6, :] * 180 / np.pi - self.q_std[t][i + 6, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 6, :] * 180 / np.pi + self.q_std[t][i + 6, :] * 180 / np.pi,
+                                         color='b', alpha=0.2)
+                elif (i > 3):
+                    axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
+                                         self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
+                                         color='r', alpha=0.2)
+                else:
+                    axes[i].plot(abscisse, self.q_mean[t][i, :], 'r')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i, :] - self.q_std[t][i, :],
+                                         self.q_mean[t][i, :] + self.q_std[t][i, :],
+                                         color='r', alpha=0.2)
+                axes[i].set_xlim([0, 100])
+                if i > 9:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('q (m/deg)')
+            axes[5].set_ylabel('q (m/deg)')
+            axes[10].set_ylabel('q (m/deg)')
+            plt.legend(['right', 'left'])
+        else:
+            abscisse = np.linspace(0, 100, self.q_mean[0].shape[1])
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(3, 5)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nmean " + title)
+                for i in range(len(self.label_q)):
+                    axes[i].set_title(self.label_q[i])
+                    if (i > 8):
+                        axes[i].plot(abscisse, self.q_mean[t][i, :] * 180/np.pi, 'r')
+                        axes[i].plot(abscisse, self.q_mean[t][i + 6, :] * 180 / np.pi, 'b')
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i, :] * 180/np.pi - self.q_std[t][i, :] * 180/np.pi,
+                                             self.q_mean[t][i, :] * 180/np.pi + self.q_std[t][i, :] * 180/np.pi,
+                                             color='r', alpha=0.2)
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i + 6, :] * 180/np.pi - self.q_std[t][i + 6, :] * 180/np.pi,
+                                             self.q_mean[t][i + 6, :] * 180/np.pi + self.q_std[t][i + 6, :] * 180/np.pi,
+                                             color='b', alpha=0.2)
+                    elif (i > 3):
+                        axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
+                                             self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
+                                             color='r', alpha=0.2)
+                    else:
+                        axes[i].plot(abscisse, self.q_mean[t][i, :], 'r')
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i, :] - self.q_std[t][i, :],
+                                             self.q_mean[t][i, :] + self.q_std[t][i, :],
+                                             color='r', alpha=0.2)
+                    axes[i].set_xlim([0, 100])
+                    if i > 9:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('q (m/deg)')
+                axes[5].set_ylabel('q (m/deg)')
+                axes[10].set_ylabel('q (m/deg)')
+                plt.legend(['right', 'left'])
