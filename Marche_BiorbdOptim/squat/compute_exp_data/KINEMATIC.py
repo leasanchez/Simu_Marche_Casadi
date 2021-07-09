@@ -84,4 +84,40 @@ class kinematic:
             std.append(a[1])
         return mean, std
 
-    
+    def plot_squat_repetition(self, title=None):
+        if title is not None:
+            idx = self.list_exp_files.index(title)
+            squat_interp = interpolate_repetition(self.q[idx])
+            fig, axes = plt.subplots(3, 7)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nrepetition " + title)
+            for i in range(self.model.nbQ()):
+                axes[i].set_title(self.q_name[i])
+                if (i > 3):
+                    axes[i].plot(np.linspace(0, 100, squat_interp.shape[2]), (squat_interp[:, i, :]*180/np.pi).T)
+                else:
+                    axes[i].plot(np.linspace(0, 100, squat_interp.shape[2]), squat_interp[:, i, :].T)
+                axes[i].set_xlim([0, 100])
+                if i > 13:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('q (m/degré)')
+            axes[7].set_ylabel('q (m/degré)')
+            axes[14].set_ylabel('q (m/degré)')
+        else:
+            for (t, title) in enumerate(self.list_exp_files):
+                squat_interp = interpolate_repetition(self.q[t])
+                fig, axes = plt.subplots(3, 7)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nrepetition " + title)
+                for i in range(self.model.nbQ()):
+                    axes[i].set_title(self.q_name[i])
+                    if (i > 3):
+                        axes[i].plot(np.linspace(0, 100, squat_interp.shape[2]),(squat_interp[:, i, :] * 180 / np.pi).T)
+                    else:
+                        axes[i].plot(np.linspace(0, 100, squat_interp.shape[2]), squat_interp[:, i, :].T)
+                    axes[i].set_xlim([0, 100])
+                    if i > 13:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('q (m/degré)')
+                axes[7].set_ylabel('q (m/degré)')
+                axes[14].set_ylabel('q (m/degré)')
