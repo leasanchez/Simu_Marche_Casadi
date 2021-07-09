@@ -29,3 +29,7 @@ Marche_BiorbdOptim/contact/test_3contacts.py
 *.c3d
 
 Marche_BiorbdOptim/squat/graph
+
+Marche_BiorbdOptim/BIOPTIM_contact_muscle/Five_Link_Biped_Stance_pelvis.bioMod
+
+Marche_BiorbdOptim/BIOPTIM_contact_muscle/test_bioptim.py
