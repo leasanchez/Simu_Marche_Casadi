@@ -127,80 +127,168 @@ class kinematic:
                 axes[7].set_ylabel('q (m/degré)')
                 axes[14].set_ylabel('q (m/degré)')
 
-    def plot_squat_mean(self, title=None):
+    def plot_squat_mean_leg(self, title=None):
         if title is not None:
             t = self.list_exp_files.index(title)
             abscisse = np.linspace(0, 100, self.q_mean[t].shape[1])
-            fig, axes = plt.subplots(3, 5)
+            fig, axes = plt.subplots(2, 3)
             axes = axes.flatten()
             fig.suptitle(self.name + "\nmean " + title)
-            for i in range(len(self.label_q)):
-                axes[i].set_title(self.label_q[i])
-                if (i > 8):
-                    axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
-                    axes[i].plot(abscisse, self.q_mean[t][i + 6, :] * 180 / np.pi, 'b')
+            for i in range(len(axes)):
+                axes[i].set_title(self.label_q[i + 9])
+                axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
+                axes[i].fill_between(abscisse,
+                                     self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
+                                     self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
+                                     color='r', alpha=0.2)
+                axes[i].fill_between(abscisse,
+                                     self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
+                                     self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
+                                     color='b', alpha=0.2)
+                axes[i].plot([50, 50],
+                             [min(self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi),
+                              max(self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi)],
+                             'k--')
+                axes[i].set_xlim([0, 100])
+                if i > 2:
+                    axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('q (m/deg)')
+            axes[3].set_ylabel('q (m/deg)')
+            plt.legend(['right', 'left'])
+        else:
+            abscisse = np.linspace(0, 100, self.q_mean[0].shape[1])
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(2, 3)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nmean " + title)
+                for i in range(len(axes)):
+                    axes[i].set_title(self.label_q[i + 9])
+                    axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                    axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
                     axes[i].fill_between(abscisse,
-                                         self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
-                                         self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
                                          color='r', alpha=0.2)
                     axes[i].fill_between(abscisse,
-                                         self.q_mean[t][i + 6, :] * 180 / np.pi - self.q_std[t][i + 6, :] * 180 / np.pi,
-                                         self.q_mean[t][i + 6, :] * 180 / np.pi + self.q_std[t][i + 6, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
                                          color='b', alpha=0.2)
-                elif (i > 3):
+                    axes[i].plot([50, 50],
+                                 [min(self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi),
+                                  max(self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi)],
+                                 'k--')
+                    axes[i].set_xlim([0, 100])
+                    if i > 2:
+                        axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('q (m/deg)')
+                axes[3].set_ylabel('q (m/deg)')
+                plt.legend(['right', 'left'])
+
+    def plot_squat_mean_pelvis(self, title=None):
+        if title is not None:
+            t = self.list_exp_files.index(title)
+            abscisse = np.linspace(0, 100, self.q_mean[t].shape[1])
+            fig, axes = plt.subplots(2, 3)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nmean " + title)
+            for i in range(len(axes)):
+                axes[i].set_title(self.label_q[i])
+                if (i > 2):
                     axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
                     axes[i].fill_between(abscisse,
                                          self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
                                          self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
                                          color='r', alpha=0.2)
+                    axes[i].plot([50, 50],
+                                 [min(self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi), max(self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi)],
+                                 'k--')
                 else:
                     axes[i].plot(abscisse, self.q_mean[t][i, :], 'r')
                     axes[i].fill_between(abscisse,
                                          self.q_mean[t][i, :] - self.q_std[t][i, :],
                                          self.q_mean[t][i, :] + self.q_std[t][i, :],
                                          color='r', alpha=0.2)
+                    axes[i].plot([50, 50],
+                                 [min(self.q_mean[t][i, :] - self.q_std[t][i, :]), max(self.q_mean[t][i, :] + self.q_std[t][i, :])],
+                                 'k--')
                 axes[i].set_xlim([0, 100])
-                if i > 9:
+                if i > 2:
                     axes[i].set_xlabel('normalized time (%)')
             axes[0].set_ylabel('q (m/deg)')
-            axes[5].set_ylabel('q (m/deg)')
-            axes[10].set_ylabel('q (m/deg)')
-            plt.legend(['right', 'left'])
+            axes[3].set_ylabel('q (m/deg)')
         else:
             abscisse = np.linspace(0, 100, self.q_mean[0].shape[1])
             for (t, title) in enumerate(self.list_exp_files):
-                fig, axes = plt.subplots(3, 5)
+                fig, axes = plt.subplots(2, 3)
                 axes = axes.flatten()
                 fig.suptitle(self.name + "\nmean " + title)
-                for i in range(len(self.label_q)):
+                for i in range(len(axes)):
                     axes[i].set_title(self.label_q[i])
-                    if (i > 8):
-                        axes[i].plot(abscisse, self.q_mean[t][i, :] * 180/np.pi, 'r')
-                        axes[i].plot(abscisse, self.q_mean[t][i + 6, :] * 180 / np.pi, 'b')
-                        axes[i].fill_between(abscisse,
-                                             self.q_mean[t][i, :] * 180/np.pi - self.q_std[t][i, :] * 180/np.pi,
-                                             self.q_mean[t][i, :] * 180/np.pi + self.q_std[t][i, :] * 180/np.pi,
-                                             color='r', alpha=0.2)
-                        axes[i].fill_between(abscisse,
-                                             self.q_mean[t][i + 6, :] * 180/np.pi - self.q_std[t][i + 6, :] * 180/np.pi,
-                                             self.q_mean[t][i + 6, :] * 180/np.pi + self.q_std[t][i + 6, :] * 180/np.pi,
-                                             color='b', alpha=0.2)
-                    elif (i > 3):
+                    if (i > 2):
                         axes[i].plot(abscisse, self.q_mean[t][i, :] * 180 / np.pi, 'r')
                         axes[i].fill_between(abscisse,
                                              self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi,
                                              self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi,
                                              color='r', alpha=0.2)
+                        axes[i].plot([50, 50],
+                                     [min(self.q_mean[t][i, :] * 180 / np.pi - self.q_std[t][i, :] * 180 / np.pi),
+                                      max(self.q_mean[t][i, :] * 180 / np.pi + self.q_std[t][i, :] * 180 / np.pi)],
+                                     'k--')
                     else:
                         axes[i].plot(abscisse, self.q_mean[t][i, :], 'r')
                         axes[i].fill_between(abscisse,
                                              self.q_mean[t][i, :] - self.q_std[t][i, :],
                                              self.q_mean[t][i, :] + self.q_std[t][i, :],
                                              color='r', alpha=0.2)
+                        axes[i].plot([50, 50],
+                                     [min(self.q_mean[t][i, :] - self.q_std[t][i, :]),
+                                      max(self.q_mean[t][i, :] + self.q_std[t][i, :])],
+                                     'k--')
                     axes[i].set_xlim([0, 100])
-                    if i > 9:
+                    if i > 2:
                         axes[i].set_xlabel('normalized time (%)')
                 axes[0].set_ylabel('q (m/deg)')
-                axes[5].set_ylabel('q (m/deg)')
-                axes[10].set_ylabel('q (m/deg)')
-                plt.legend(['right', 'left'])
+                axes[3].set_ylabel('q (m/deg)')
+
+    def plot_squat_mean_torso(self, title=None):
+        if title is not None:
+            t = self.list_exp_files.index(title)
+            abscisse = np.linspace(0, 100, self.q_mean[t].shape[1])
+            fig, axes = plt.subplots(1, 3)
+            axes = axes.flatten()
+            fig.suptitle(self.name + "\nmean " + title)
+            for i in range(len(axes)):
+                axes[i].set_title(self.label_q[i + 5])
+                axes[i].plot(abscisse, self.q_mean[t][i + 5, :] * 180 / np.pi, 'r')
+                axes[i].fill_between(abscisse,
+                                     self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi,
+                                     self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi,
+                                     color='r', alpha=0.2)
+                axes[i].plot([50, 50],
+                             [min(self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi),
+                              max(self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi)],
+                             'k--')
+                axes[i].set_xlim([0, 100])
+                axes[i].set_xlabel('normalized time (%)')
+            axes[0].set_ylabel('q (m/deg)')
+        else:
+            abscisse = np.linspace(0, 100, self.q_mean[0].shape[1])
+            for (t, title) in enumerate(self.list_exp_files):
+                fig, axes = plt.subplots(1, 3)
+                axes = axes.flatten()
+                fig.suptitle(self.name + "\nmean " + title)
+                for i in range(len(axes)):
+                    axes[i].set_title(self.label_q[i + 5])
+                    axes[i].plot(abscisse, self.q_mean[t][i + 5, :] * 180 / np.pi, 'r')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi,
+                                         color='r', alpha=0.2)
+                    axes[i].plot([50, 50],
+                                 [min(self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi),
+                                  max(self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi)],
+                                 'k--')
+                    axes[i].set_xlim([0, 100])
+                    axes[i].set_xlabel('normalized time (%)')
+                axes[0].set_ylabel('q (m/deg)')
