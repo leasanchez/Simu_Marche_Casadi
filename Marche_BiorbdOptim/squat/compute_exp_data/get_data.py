@@ -14,7 +14,7 @@ model = biorbd.Model(model_path)
 
 # kinematic
 kin_test = kinematic(name)
-kin_test.plot_squat_mean()
+kin_test.plot_squat_mean_leg()
 kin_test.plot_squat_repetition()
 
 # emg
