@@ -30,6 +30,7 @@ class markers:
         self.markers_position = self.get_markers_position()
         self.events = self.get_events()
         self.mid_events = self.get_mid_events()
+        self.time = self.get_time()
 
 
     def load_c3d(self):
@@ -66,6 +67,19 @@ class markers:
             #     plt.plot([idx, idx], [700, 1050], 'g--')
             # plt.show()
         return events
+
+    def get_time(self):
+        time = []
+        for (n,e) in enumerate(self.events):
+            t = 0
+            t_fall = 0
+            t_climb = 0
+            for i in range(int(len(e)/2)):
+                t += (e[2*i + 1] - e[2*i])/100
+                t_fall += (self.mid_events[n][i] - e[2*i])/100
+                t_climb += (e[2 * i + 1] - self.mid_events[n][i]) / 100
+            time.append([t_fall/6, t_climb/6, t/6])
+        return time
 
     def get_mid_events(self):
         mid_events=[]
