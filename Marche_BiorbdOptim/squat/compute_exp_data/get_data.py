@@ -14,6 +14,8 @@ model = biorbd.Model(model_path)
 
 # kinematic
 kin_test = kinematic(name)
+for (i, q) in enumerate(kin_test.q_mean):
+    np.save("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/kalman/" + kin_test.list_exp_files[i] + "_mean.npy", q)
 kin_test.plot_squat_mean_leg()
 kin_test.plot_squat_repetition()
 
