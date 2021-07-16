@@ -1,5 +1,5 @@
 import numpy as np
-from bioptim import InterpolationType
+from bioptim import InterpolationType, InitialGuessList
 
 class initial_guess:
     @staticmethod
@@ -119,4 +119,20 @@ class initial_guess:
 
         init_u = np.load(save_path + "tau.npy")[:, :-1]
         u_init.add(init_u, interpolation=InterpolationType.EACH_FRAME)
+        return x_init, u_init
+
+    @staticmethod
+    def set_initial_guess_from_kalman_torque_driven(model, q_ref, nb_shooting):
+        qdot_ref = np.gradient(q_ref)[0]
+        x_init = InitialGuessList()
+        u_init = InitialGuessList()
+
+        x_init.add(np.vstack([q_ref[:, :nb_shooting[0]], qdot_ref[:, :nb_shooting[0]]]),
+                   interpolation=InterpolationType.EACH_FRAME)
+        x_init.add(np.vstack([q_ref[:, nb_shooting[0]:], qdot_ref[:, nb_shooting[0]:]]),
+                   interpolation=InterpolationType.EACH_FRAME)
+
+        init_u = [0] * model.nbQ()
+        u_init.add(init_u)
+        u_init.add(init_u)
         return x_init, u_init
