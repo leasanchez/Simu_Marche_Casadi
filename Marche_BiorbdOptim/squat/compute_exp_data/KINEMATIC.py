@@ -136,20 +136,32 @@ class kinematic:
             fig.suptitle(self.name + "\nmean " + title)
             for i in range(len(axes)):
                 axes[i].set_title(self.label_q[i + 9])
-                axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
-                axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
-                axes[i].fill_between(abscisse,
-                                     self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
-                                     self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
-                                     color='r', alpha=0.2)
-                axes[i].fill_between(abscisse,
-                                     self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
-                                     self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
-                                     color='b', alpha=0.2)
+                if (i==0 or i==1 or i==4):
+                    axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                    axes[i].plot(abscisse, -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
+                                         color='r', alpha=0.2)
+                    axes[i].fill_between(abscisse,
+                                         -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6,:] * 180 / np.pi,
+                                         -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6,:] * 180 / np.pi,
+                                         color='b', alpha=0.2)
+                else:
+                    axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                    axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
+                                         color='r', alpha=0.2)
+                    axes[i].fill_between(abscisse,
+                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
+                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
+                                         color='b', alpha=0.2)
                 axes[i].plot([50, 50],
-                             [min(self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi),
-                              max(self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi)],
-                             'k--')
+                                 [min(self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi),
+                                  max(self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi)],
+                                 'k--')
                 axes[i].set_xlim([0, 100])
                 if i > 2:
                     axes[i].set_xlabel('normalized time (%)')
@@ -164,16 +176,36 @@ class kinematic:
                 fig.suptitle(self.name + "\nmean " + title)
                 for i in range(len(axes)):
                     axes[i].set_title(self.label_q[i + 9])
-                    axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
-                    axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
-                    axes[i].fill_between(abscisse,
-                                         self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi,
-                                         self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi,
-                                         color='r', alpha=0.2)
-                    axes[i].fill_between(abscisse,
-                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
-                                         self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6, :] * 180 / np.pi,
-                                         color='b', alpha=0.2)
+                    if (i==0 or i==1 or i==4):
+                        axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                        axes[i].plot(abscisse, -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9,
+                                                                                      :] * 180 / np.pi,
+                                             self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9,
+                                                                                      :] * 180 / np.pi,
+                                             color='r', alpha=0.2)
+                        axes[i].fill_between(abscisse,
+                                             -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6,
+                                                                                           :] * 180 / np.pi,
+                                             -self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6,
+                                                                                           :] * 180 / np.pi,
+                                             color='b', alpha=0.2)
+                    else:
+                        axes[i].plot(abscisse, self.q_mean[t][i + 9, :] * 180 / np.pi, 'r')
+                        axes[i].plot(abscisse, self.q_mean[t][i + 9 + 6, :] * 180 / np.pi, 'b')
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9,
+                                                                                      :] * 180 / np.pi,
+                                             self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9,
+                                                                                      :] * 180 / np.pi,
+                                             color='r', alpha=0.2)
+                        axes[i].fill_between(abscisse,
+                                             self.q_mean[t][i + 9 + 6, :] * 180 / np.pi - self.q_std[t][i + 9 + 6,
+                                                                                          :] * 180 / np.pi,
+                                             self.q_mean[t][i + 9 + 6, :] * 180 / np.pi + self.q_std[t][i + 9 + 6,
+                                                                                          :] * 180 / np.pi,
+                                             color='b', alpha=0.2)
                     axes[i].plot([50, 50],
                                  [min(self.q_mean[t][i + 9, :] * 180 / np.pi - self.q_std[t][i + 9, :] * 180 / np.pi),
                                   max(self.q_mean[t][i + 9, :] * 180 / np.pi + self.q_std[t][i + 9, :] * 180 / np.pi)],
