@@ -330,7 +330,24 @@ endvariables
 		position	0.2057491047	-0.0248162436	-0.0294629199
 		technical 1
 	endmarker
-
+// --------------------------------------------------------------------------------------------------------
+// Informations about contact point 
+// --------------------------------------------------------------------------------------------------------
+//	contact    Heel_r   //FCC decale
+//		parent      foot_r
+//		position    -0.0323538639   -0.05   0.0070699852
+//		axis    xyz
+//	endcontact
+//	contact    Meta_1_r //FM1
+//		parent      foot_r
+//		position    0.1476490244   -0.05    -0.0408691478
+//		axis    xz
+//	endcontact
+//	contact    Meta_5_r //FM5
+//		parent     foot_r
+//		position   0.1364508051	   -0.05   0.0550091182
+//		axis    z
+//	endcontact
 
 // Informations about femur_l segment
 	// Segment
@@ -494,4 +511,22 @@ endvariables
 		technical 1
 	endmarker
 
+// --------------------------------------------------------------------------------------------------------
+// Informations about contact point 
+// --------------------------------------------------------------------------------------------------------
+//	contact    Heel_l   //FCC decale
+//		parent      foot_l
+//		position    -0.0364495994   -0.05   -0.0093687983
+//		axis    xyz
+//	endcontact
+//	contact    Meta_1_l //FM1
+//		parent      foot_l
+//		position    0.1448329856   -0.05    0.0392491781
+//		axis    xz
+//	endcontact
+//	contact    Meta_5_l //FM5
+//		parent     foot_l
+//		position   0.1282455628	   -0.05   -0.0579867747
+//		axis    z
+//	endcontact
 
