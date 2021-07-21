@@ -1,4 +1,4 @@
-import biorbd
+import biorbd_casadi as biorbd
 import bioviz
 import numpy as np
 from casadi import MX, Function
@@ -81,8 +81,8 @@ CoM_low = compute_CoM(np.array(position_low))
 # --- Define Optimal Control Problem --- #
 # Dynamics
 dynamics = DynamicsList()
-dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=0)
-dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN_WITH_CONTACT, phase=1)
+dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=False, phase=0)
+dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=False, phase=1)
 
 # Objective function
 objective_functions = ObjectiveList()
