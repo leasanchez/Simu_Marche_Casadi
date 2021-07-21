@@ -55,7 +55,20 @@ class objective:
     def set_objectif_function_climb(objective_functions, muscles, phase=0):
         # --- control minimize --- #
         if muscles:
-            objective.set_minimize_muscle_driven_torque(objective_functions, phase)
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
+                                    quadratic=True,
+                                    key="tau",
+                                    node=Node.ALL,
+                                    weight=1,
+                                    expand=False,
+                                    phase=phase)
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # muscles
+                                    quadratic=True,
+                                    key="muscles",
+                                    node=Node.ALL,
+                                    weight=10,
+                                    expand=False,
+                                    phase=phase)
         else:
             objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
                                     quadratic=True,
@@ -103,18 +116,3 @@ class objective:
     def set_objectif_function_multiphase(objective_functions, muscles=False):
         objective.set_objectif_function_fall(objective_functions, muscles, phase=0)
         objective.set_objectif_function_climb(objective_functions, muscles, phase=1)
-        return objective_functions
-
-    @staticmethod
-    def set_objectif_function_torque_driven(objective_functions):
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=(0, 1, 2, 5, 8, 9, 11, 14, 15, 17),
-                                weight=0.001)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                index=(3, 4, 6, 7, 10, 12, 13, 16),
-                                weight=0.01)
-        return objective_functions

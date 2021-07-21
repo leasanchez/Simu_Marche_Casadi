@@ -86,7 +86,7 @@ dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=
 
 # Objective function
 objective_functions = ObjectiveList()
-objective_functions = objective.set_objectif_function_multiphase(objective_functions, position_high)
+objective.set_objectif_function_multiphase(objective_functions, muscles=False)
 
 # Constraints
 constraints = ConstraintList()
