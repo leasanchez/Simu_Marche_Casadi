@@ -1,9 +1,9 @@
-from bioptim import ObjectiveFcn, Node, PenaltyNodes, Axis
+from bioptim import ObjectiveFcn, Node, PenaltyNode, Axis
 from casadi import MX, vertcat
 import numpy as np
-import biorbd
+import biorbd_casadi as biorbd
 
-def sym_forces(pn: PenaltyNodes) -> MX:
+def sym_forces(pn: PenaltyNode) -> MX:
     ns = pn.nlp.ns # number of shooting points
     nc = pn.nlp.model.nbContacts() # number of contact forces
     val = []  # init
@@ -15,66 +15,53 @@ def sym_forces(pn: PenaltyNodes) -> MX:
             val = vertcat(val, (force[c]**2 - force[c+int(nc/2)]**2))
     return val
 
-def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
-    nq = pn.nlp.shape["q"]
-    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
-    com = compute_CoM(pn.x[0][:nq])
-    return com[2] - value
+def custom_CoM_position(pn: PenaltyNode) -> MX:
+    compute_CoM = pn.nlp.add_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.states["q"].mx)
+    com = compute_CoM(pn["q"])
+    return com[2]
 
 class objective:
     @staticmethod
-    def set_minimize_muscle_driven_torque(objective_functions, phase=0):
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
-                                quadratic=True,
-                                node=Node.ALL,
-                                weight=1,
-                                phase=phase)
-        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
-                                quadratic=True,
-                                node=Node.ALL,
-                                weight=10,
-                                phase=phase)
-    @staticmethod
-    def set_objectif_function_fall(objective_functions, position_high, phase=0):
+    def set_objectif_function_fall(objective_functions, muscles, phase=0):
         # --- control minimize --- #
-        objective.set_minimize_muscle_driven_torque(objective_functions, phase)
-
-        # --- initial position --- #
-        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-        #                         quadratic=True,
-        #                         node=Node.START,
-        #                         index=range(len(position_high)),
-        #                         target=np.array(position_high),
-        #                         weight=1000,
-        #                         phase=0)
-
+        if muscles:
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, # residual torque
+                                    quadratic=True,
+                                    key="tau",
+                                    node=Node.ALL,
+                                    weight=1,
+                                    expand=False,
+                                    phase=phase)
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, # muscles
+                                    quadratic=True,
+                                    key="muscles",
+                                    node=Node.ALL,
+                                    weight=10,
+                                    expand=False,
+                                    phase=phase)
+        else:
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+                                    quadratic=True,
+                                    weight=0.01,
+                                    phase=phase)
         # --- com displacement --- #
-        objective_functions.add(custom_CoM_position,
-                                custom_type=ObjectiveFcn.Mayer,
-                                value=-0.3,
+        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_PREDICTED_COM_HEIGHT,
                                 node=Node.END,
                                 quadratic=True,
-                                weight=1000,
-                                phase=0)
-
-    @staticmethod
-    def set_objectif_function_climb(objective_functions, position_high, phase=0):
-        # --- control minimize --- #
-        objective.set_minimize_muscle_driven_torque(objective_functions, phase)
-
-        # --- final position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.END,
-                                index=range(len(position_high)),
-                                target=np.array(position_high),
                                 weight=1000,
                                 phase=phase)
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                quadratic=True,
-                                node=Node.END,
-                                index=range(len(position_high), 2*len(position_high)),
-                                weight=10)
+
+    @staticmethod
+    def set_objectif_function_climb(objective_functions, muscles, phase=0):
+        # --- control minimize --- #
+        if muscles:
+            objective.set_minimize_muscle_driven_torque(objective_functions, phase)
+        else:
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE,
+                                    quadratic=True,
+                                    node=Node.ALL,
+                                    weight=0.01,
+                                    phase=phase)
 
 
     @staticmethod
@@ -113,9 +100,9 @@ class objective:
         return objective_functions
 
     @staticmethod
-    def set_objectif_function_multiphase(objective_functions, position_high):
-        objective.set_objectif_function_fall(objective_functions, position_high, phase=0)
-        objective.set_objectif_function_climb(objective_functions, position_high, phase=1)
+    def set_objectif_function_multiphase(objective_functions, muscles=False):
+        objective.set_objectif_function_fall(objective_functions, muscles, phase=0)
+        objective.set_objectif_function_climb(objective_functions, muscles, phase=1)
         return objective_functions
 
     @staticmethod
@@ -130,29 +117,4 @@ class objective:
                                 node=Node.ALL,
                                 index=(3, 4, 6, 7, 10, 12, 13, 16),
                                 weight=0.01)
-        return objective_functions
-
-    @staticmethod
-    def set_objectif_function_position_basse_torque_driven(objective_functions, position_high, time_max, time_min):
-        n_phases = len(time_min)
-        n_q = len(position_high)
-
-        for i in range(n_phases):
-            # Minimize time of the phase
-            objective_functions.add(
-                ObjectiveFcn.Mayer.MINIMIZE_TIME,
-                weight=0.1,
-                phase=i,
-                min_bound=time_min[i],
-                max_bound=time_max[i],
-            )
-
-        # Minimize com heigh for low position
-        objective_functions.add(custom_CoM_position,
-                                custom_type=ObjectiveFcn.Mayer,
-                                value=-0.25,
-                                node=Node.END,
-                                quadratic=True,
-                                weight=100,
-                                phase=0)
         return objective_functions
