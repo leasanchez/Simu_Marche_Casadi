@@ -1,7 +1,7 @@
-import biorbd
-import bioviz
+import biorbd_casadi as biorbd
+# import bioviz
 import numpy as np
-from casadi import MX, Function
+from casadi import MX
 from matplotlib import pyplot as plt
 from time import time
 from bioptim import (
@@ -19,8 +19,8 @@ from ocp.objective_functions import objective
 from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
-from Compute_Results.Plot_results import Affichage
-from Compute_Results.Contact_Forces import contact
+# from Compute_Results.Plot_results import Affichage
+# from Compute_Results.Contact_Forces import contact
 
 def get_results(sol):
     q = sol.states["q"]
@@ -36,60 +36,61 @@ def save_results(ocp, sol, save_path):
     np.save(save_path + 'tau', tau)
 
 
-model = (biorbd.Model("models/2legs_18dof_flatfootR.bioMod"),
-         biorbd.Model("models/2legs_18dof_flatfootR.bioMod"), )
+model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
 
 # --- Problem parameters --- #
-nb_q = model[0].nbQ()
-nb_qdot = model[0].nbQdot()
-nb_tau = model[0].nbGeneralizedTorque()
-nb_mus = model[0].nbMuscleTotal()
-nb_mark = model[0].nbMarkers()
-nb_shooting = (20, 20)
-final_time = (0.5, 0.5)
-time_min = (0.2, 0.2)
-time_max = (1.0, 1.0)
+nb_q = model.nbQ()
+nb_qdot = model.nbQdot()
+nb_tau = model.nbGeneralizedTorque()
+nb_mus = model.nbMuscleTotal()
+nb_mark = model.nbMarkers()
+nb_shooting = 20
+time_min, time_max, final_time = 0.2, 1.0, 0.77
+tau_min, tau_max, tau_init = -500, 500, 0
+activation_min, activation_max, activation_init = 0, 1, 0.5
 
 # --- Subject positions and initial trajectories --- #
-position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
-                [0], [0], [0.37], [-0.13], [0], [0], [0.11],
-                [0], [0], [0.37], [-0.13], [0], [0], [0.11]]
-position_high_zeros = np.zeros(nb_q)
+# position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11],
+#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
+position_high = [0, -0.054, 0, 0, 0, -0.4,
+                 0, 0, 0.37, -0.13, 0, 0.11,
+                 0, 0, 0.37, -0.13, 0, 0.11]
 position_low = [-0.12, -0.43, 0.0, 0.0, 0.0, -0.74,
-                0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36,
-                0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36,]
+                0.0, 0.0, 1.82, -1.48, 0.0, 0.36,
+                0.0, 0.0, 1.82, -1.48, 0.0, 0.36]
 position_low_2 = [-0.06, -0.36, 0, 0, 0, -0.8,
-                   0, 0, 1.53, -1.55, 0, 0, 0.68,
-                   0, 0, 1.53, -1.55, 0, 0, 0.68]
+                   0, 0, 1.53, -1.55, 0, 0.68,
+                   0, 0, 1.53, -1.55, 0, 0.68]
 
 # --- Compute CoM position --- #
-compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", nb_q, 1))
-CoM_high = compute_CoM(np.array(position_high_zeros))
+compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", nb_q, 1))
+CoM_high = compute_CoM(np.array(position_high))
 CoM_low = compute_CoM(np.array(position_low))
 
 # --- Define Optimal Control Problem --- #
 # Objective function
 objective_functions = ObjectiveList()
-objective_functions = objective.set_objectif_function_position_basse_torque_driven(objective_functions, position_low, time_max, time_min)
+objective.set_objectif_function_fall(objective_functions, muscles=True)
 
 # Dynamics
 dynamics = DynamicsList()
-dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
-dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
+dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, expand=False)
 
 # Constraints
 constraints = ConstraintList()
-constraints = constraint.set_constraints_position_basse(constraints, inequality_value=0.0)
+# constraint.set_constraints_fall(constraints, inequality_value=0.0)
 
 # Path constraints
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds, u_bounds = bounds.set_bounds_torque_driven(model[0], position_low, x_bounds, u_bounds)
+bounds.set_bounds(model, x_bounds, u_bounds, muscles=True)
 
 # Initial guess
+q_ref = np.linspace(position_high, position_low, nb_shooting + 1)
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-x_init, u_init = initial_guess.set_initial_guess_position_basse_torque_driven(model[0], x_init, u_init, position_high, position_low, nb_shooting, mapping=False)
+initial_guess.set_initial_guess(model, x_init, u_init, q_ref.T, muscles=True, mapping=False)
 
 # ------------- #
 ocp = OptimalControlProgram(
@@ -145,14 +146,14 @@ for n in range(q.shape[1]):
     markers_pos[:, :, n] = markers(q[:, n:n+1])
     markers_vel[:, :, n] = markers_velocity(q[:, n:n + 1], qdot[:, n:n+1])
 
-# --- Plot Symetry --- #
-plot_result = Affichage(ocp, sol, muscles=False)
-plot_result.plot_q_symetry()
-plot_result.plot_tau_symetry()
-plot_result.plot_qdot_symetry()
-plot_result.plot_individual_forces()
-
-contact_results = contact(ocp, sol, muscles=False)
+# # --- Plot Symetry --- #
+# plot_result = Affichage(ocp, sol, muscles=False)
+# plot_result.plot_q_symetry()
+# plot_result.plot_tau_symetry()
+# plot_result.plot_qdot_symetry()
+# plot_result.plot_individual_forces()
+#
+# contact_results = contact(ocp, sol, muscles=False)
 
 # --- Show results --- #
 sol.animate()
