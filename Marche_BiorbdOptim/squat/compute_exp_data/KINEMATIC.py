@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import biorbd
+import biorbd_casadi as biorbd
 from scipy import interpolate
 from ezc3d import c3d
 from MARKERS import markers
@@ -291,15 +291,15 @@ class kinematic:
             axes = axes.flatten()
             fig.suptitle(self.name + "\nmean " + title)
             for i in range(len(axes)):
-                axes[i].set_title(self.label_q[i + 5])
-                axes[i].plot(abscisse, self.q_mean[t][i + 5, :] * 180 / np.pi, 'r')
+                axes[i].set_title(self.label_q[i + 6])
+                axes[i].plot(abscisse, self.q_mean[t][i + 6, :] * 180 / np.pi, 'r')
                 axes[i].fill_between(abscisse,
-                                     self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi,
-                                     self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi,
+                                     self.q_mean[t][i + 6, :] * 180 / np.pi - self.q_std[t][i + 6, :] * 180 / np.pi,
+                                     self.q_mean[t][i + 6, :] * 180 / np.pi + self.q_std[t][i + 6, :] * 180 / np.pi,
                                      color='r', alpha=0.2)
                 axes[i].plot([50, 50],
-                             [min(self.q_mean[t][i + 5, :] * 180 / np.pi - self.q_std[t][i + 5, :] * 180 / np.pi),
-                              max(self.q_mean[t][i + 5, :] * 180 / np.pi + self.q_std[t][i + 5, :] * 180 / np.pi)],
+                             [min(self.q_mean[t][i + 6, :] * 180 / np.pi - self.q_std[t][i + 6, :] * 180 / np.pi),
+                              max(self.q_mean[t][i + 6, :] * 180 / np.pi + self.q_std[t][i + 6, :] * 180 / np.pi)],
                              'k--')
                 axes[i].set_xlim([0, 100])
                 axes[i].set_xlabel('normalized time (%)')
