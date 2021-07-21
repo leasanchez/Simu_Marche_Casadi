@@ -1,9 +1,6 @@
-import biorbd
-import bioviz
+import biorbd_casadi as biorbd
 import numpy as np
-from casadi import MX, Function
-import biorbd
-import bioviz
+from casadi import MX
 from matplotlib import pyplot as plt
 from time import time
 from bioptim import (
@@ -13,29 +10,11 @@ from bioptim import (
     BoundsList,
     InitialGuessList,
     ObjectiveList,
-    ObjectiveFcn,
     ConstraintList,
-    ConstraintFcn,
     Solver,
-    Node,
-    PenaltyNodes,
-    InterpolationType,
-    QAndQDotBounds,
 )
 
-from ocp.objective_functions import objective
-from ocp.constraint_functions import constraint
-from ocp.bounds_functions import bounds
-from ocp.initial_guess_functions import initial_guess
-from Compute_Results.Plot_results import Affichage
-from Compute_Results.Contact_Forces import contact
-
-def custom_CoM_position(pn: PenaltyNodes, value: float) -> MX:
-    nq = pn.nlp.shape["q"]
-    compute_CoM = biorbd.to_casadi_func("CoM", pn.nlp.model.CoM, pn.nlp.q)
-    com = compute_CoM(pn.x[0][:nq])
-    return com[2] - value
-
+from ocp.load_data import data
 def get_results(sol):
     q = sol.states["q"]
     qdot = sol.states["qdot"]
@@ -51,105 +30,50 @@ def save_results(ocp, sol, save_path):
 
 
 # OPTIMAL CONTROL PROBLEM
-model = (biorbd.Model("models/2legs_18dof_flatfootR_2D.bioMod"),
-         biorbd.Model("models/2legs_18dof_flatfootR_2D.bioMod"), )
-
 # --- Problem parameters --- #
-nb_q = model[0].nbQ()
-nb_qdot = model[0].nbQdot()
-nb_tau = model[0].nbGeneralizedTorque()
-nb_mus = model[0].nbMuscleTotal()
-nb_shooting = (20, 20)
-final_time = (0.5, 0.5)
-time_min = (0.2, 0.2)
-time_max = (1.0, 1.0)
+nb_shooting = 39
+final_time = 1.54
 
-c = model[0].contactNames()
-for (i, name) in enumerate(c):
-    print(f"{i} : {name.to_string()}")
+# # experimental data
+# name = "AmeCeg"
+# model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + ".bioMod"
+# model = (biorbd.Model(model_path),
+#          biorbd.Model(model_path),)
+# # --- Subject positions and initial trajectories --- #
+# q_kalman = data.get_q(name='AmeCeg', title='squat_controle')
+# position_high = q_kalman[:, 0]
+# position_low = q_kalman[:, 100]
 
-
+# model init
+model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
 # --- Subject positions and initial trajectories --- #
-position_zeros = [0]*nb_q
-position_high = [[0], [-0.07], [-0.4],
-                [0.37], [-0.13], [0.11],
-                [0.37], [-0.13], [0.11]]
-position_low = [-0.06, -0.36, -0.8,
-                1.53, -1.55, 0.68,
-                1.53, -1.55, 0.68]
-
-q_init_fall = np.zeros((nb_q, nb_shooting[0] + 1))
-q_init_climb = np.zeros((nb_q, nb_shooting[1] + 1))
-for i in range(nb_q):
-    q_init_fall[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting[0]+1).squeeze()
-    q_init_climb[i, :] = np.linspace(position_low[i], position_high[i], nb_shooting[1]+1).squeeze()
-
-# --- Compute CoM position --- #
-compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", nb_q, 1))
-CoM_high = compute_CoM(np.array(position_high))
-CoM_low = compute_CoM(np.array(position_low))
+position_high = [0, -0.054, 0, 0, 0, -0.4,
+                 0, 0, 0.37, -0.13, 0, 0.11,
+                 0, 0, 0.37, -0.13, 0, 0.11]
+position_low = [-0.12, -0.43, 0.0, 0.0, 0.0, -0.74,
+                0.0, 0.0, 1.82, -1.48, 0.0, 0.36,
+                0.0, 0.0, 1.82, -1.48, 0.0, 0.36]
+q_ref = np.concatenate([np.linspace(position_high, position_low,  int(nb_shooting/2) + 1),
+                        np.linspace(position_low, position_high,  int(nb_shooting/2) + 1)])
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
-dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
-dynamics.add(DynamicsFcn.TORQUE_DRIVEN_WITH_CONTACT)
+dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True)
 
 # --- Objective function --- #
 objective_functions = ObjectiveList()
-objective_functions.add(custom_CoM_position,
-                        custom_type=ObjectiveFcn.Mayer,
-                        value=-0.25,
-                        node=Node.END,
-                        quadratic=True,
-                        weight=100,
-                        phase=0)
-
-objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                        node=Node.END,
-                        quadratic=True,
-                        target=np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)]).reshape(nb_q + nb_qdot, 1),
-                        weight=10,
-                        phase=1)
 
 # --- Constraints --- #
 constraints = ConstraintList()
-n_phases = 2
-for i in range(n_phases):
-    # Contact forces
-    contact_z_axes = (1, 2, 4, 5)
-    for c in contact_z_axes:
-        constraints.add(  # positive vertical forces
-            ConstraintFcn.CONTACT_FORCE,
-            min_bound=0,
-            max_bound=np.inf,
-            node=Node.ALL,
-            contact_force_idx=c,
-            phase=i,
-        )
 
 # --- Path constraints --- #
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-x_bounds.add(bounds=QAndQDotBounds(model[0]))
-x_bounds.add(bounds=QAndQDotBounds(model[0]))
-x_bounds[0][:, 0] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
-# x_bounds[1][:, -1] = np.concatenate([np.array(position_high).squeeze(), np.zeros(nb_qdot)])
 
-u_bounds = BoundsList()
-u_bounds.add([0] * nb_tau,[1000] * nb_tau)
-u_bounds.add([0] * nb_tau,[1000] * nb_tau)
 
 # --- Initial guess --- #
 x_init = InitialGuessList()
-x = np.zeros((model[0].nbQ() + model[0].nbQ(), nb_shooting[0]+1))
-x[:nb_q, :] =q_init_fall
-x_init.add(x, interpolation=InterpolationType.EACH_FRAME)
-x[:nb_q, :] =q_init_climb
-x_init.add(x, interpolation=InterpolationType.EACH_FRAME)
-
 u_init = InitialGuessList()
-u_init.add([0] * model[0].nbGeneralizedTorque())
-u_init.add([0] * model[0].nbGeneralizedTorque())
 
 # ------------- #
 
@@ -164,7 +88,7 @@ ocp = OptimalControlProgram(
     u_bounds,
     objective_functions,
     constraints,
-    n_threads=4,
+    n_threads=8,
 )
 
 # --- Solve the program --- #
