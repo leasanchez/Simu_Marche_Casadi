@@ -50,9 +50,6 @@ tau_min, tau_max, tau_init = -500, 500, 0
 activation_min, activation_max, activation_init = 0, 1, 0.5
 
 # --- Subject positions and initial trajectories --- #
-# position_high = [[0], [-0.054], [0], [0], [0], [-0.4],
-#                 [0], [0], [0.37], [-0.13], [0], [0.11],
-#                 [0], [0], [0.37], [-0.13], [0], [0.11]]
 position_high = [0, -0.054, 0, 0, 0, -0.4,
                  0, 0, 0.37, -0.13, 0, 0.11,
                  0, 0, 0.37, -0.13, 0, 0.11]
@@ -145,15 +142,6 @@ markers_vel = np.zeros((3, nb_mark, q.shape[1]))
 for n in range(q.shape[1]):
     markers_pos[:, :, n] = markers(q[:, n:n+1])
     markers_vel[:, :, n] = markers_velocity(q[:, n:n + 1], qdot[:, n:n+1])
-
-# # --- Plot Symetry --- #
-# plot_result = Affichage(ocp, sol, muscles=False)
-# plot_result.plot_q_symetry()
-# plot_result.plot_tau_symetry()
-# plot_result.plot_qdot_symetry()
-# plot_result.plot_individual_forces()
-#
-# contact_results = contact(ocp, sol, muscles=False)
 
 # --- Show results --- #
 sol.animate()
