@@ -59,6 +59,25 @@ def compute_symetry_ratio(emg):
         emg_sym.append((emg[2*i] + 100)/(emg[2*i + 1] + 100))
     return emg_sym
 
+def sort_data(emg, index, freq):
+    sorted_data = []
+    divide_repet = divide_squat_repetition(emg, index, freq)
+    for repet in divide_repet:
+        s=[]
+        for r in repet:
+            s = np.concatenate([s, r])
+        sorted_data.append(np.sort(s))
+    return sorted_data
+
+def tolerant_mean(arrs):
+    lens = [len(i) for i in arrs]
+    arr = np.ma.empty((np.max(lens),len(arrs)))
+    arr.mask = True
+    for idx, l in enumerate(arrs):
+        arr[:len(l),idx] = l
+    return arr.mean(axis=-1), arr.std(axis=-1)
+
+
 
 class emg:
     def __init__(self, name, higher_foot='R'):
@@ -204,6 +223,17 @@ class emg:
         for (i, msym) in enumerate(self.mean_sym):
             sym_phases.append([np.mean(msym[:, :int(self.freq)], axis=1), np.mean(msym[:, int(1000):], axis=1)])
         return sym_phases
+
+    def plot_sort_activation(self):
+        mean_controle, std_controle = tolerant_mean(sort_data(self.emg_normalized_exp[0], self.events[0], self.freq))
+        mean_perturbation, std_perturbation = tolerant_mean(sort_data(self.emg_normalized_exp[3], self.events[3], self.freq))
+
+        plt.figure()
+        plt.plot(np.linspace(0, 100, mean_controle.shape[0]), mean_controle, 'b')
+        plt.fill_between(np.linspace(0, 100, mean_controle.shape[0]), mean_controle - std_controle, mean_controle + std_controle, color='b', alpha=0.2)
+
+        plt.plot(np.linspace(0, 100, mean_perturbation.shape[0]), mean_perturbation, 'r')
+        plt.fill_between(np.linspace(0, 100, mean_perturbation.shape[0]), mean_perturbation - std_perturbation, mean_perturbation + std_perturbation, color='r', alpha=0.2)
 
     def plot_mvc_data(self, emg_data):
         fig, axes = plt.subplots(4, 5)
