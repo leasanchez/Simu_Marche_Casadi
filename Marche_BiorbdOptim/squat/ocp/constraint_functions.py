@@ -54,14 +54,21 @@ class constraint:
         # --- contact forces --- #
         contact_z_axes = (2, 3, 5, 8, 9, 11)
         for c in contact_z_axes:
-            constraints.add(  # positive vertical forces
+            constraints.add(
                 ConstraintFcn.TRACK_CONTACT_FORCES,
                 min_bound=0,
                 max_bound=np.inf,
                 node=Node.ALL,
-                contact_force_idx=c,
+                contact_index=c,
                 phase=phase,
+                expand=False,
             )
+        constraints.add(ConstraintFcn.TIME_CONSTRAINT,
+                        node=Node.END,
+                        min_bound=0.3,
+                        max_bound=1.2,
+                        phase=phase,
+                        expand=False)
 
         # --- Foot --- #
         # constraints.add(
@@ -74,39 +81,37 @@ class constraint:
         #     node=Node.START,
         #     phase=phase,
         # )
-        # constraints.add(  # non sliding contact point
-        #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
-        #     node=Node.START,
-        #     index=(31, 55),
-        #     phase=phase,
-        # )
+        constraints.add(  # non sliding contact point
+            ConstraintFcn.TRACK_MARKERS_VELOCITY,
+            node=Node.START,
+            marker_index=(31, 55),
+            phase=phase,
+        )
 
 
     @staticmethod
-    def set_constraints_climb(constraints, inequality_value=0.0, phase=0):
+    def set_constraints_climb(constraints, inequality_value=0.0, phase=1):
         # --- contact forces --- #
         contact_z_axes = (2, 3, 5, 8, 9, 11)
         for c in contact_z_axes:
-            constraints.add(  # positive vertical forces
-                ConstraintFcn.CONTACT_FORCE,
+            constraints.add(
+                ConstraintFcn.TRACK_CONTACT_FORCES,
                 min_bound=0,
                 max_bound=np.inf,
                 node=Node.ALL,
-                contact_force_idx=c,
+                contact_index=c,
                 phase=phase,
+                expand=False,
             )
+        constraints.add(ConstraintFcn.TIME_CONSTRAINT,
+                        node=Node.END,
+                        min_bound=0.3,
+                        max_bound=1.2,
+                        phase=phase,
+                        expand=False)
 
-        constraints.add(
-            get_last_contact_force,
-            contact_force_idx=contact_z_axes,
-            min_bound=0,
-            max_bound=np.inf,
-            node=Node.ALL,
-            phase=phase,
-        )
 
     @staticmethod
     def set_constraints_multiphase(constraints, inequality_value=0.0):
         constraint.set_constraints_fall(constraints, inequality_value, phase=0)
         constraint.set_constraints_climb(constraints, inequality_value, phase=1)
-        return constraints
