@@ -1,7 +1,6 @@
 from bioptim import ObjectiveFcn, Node, PenaltyNode, Axis
 from casadi import MX, vertcat
-import numpy as np
-import biorbd_casadi as biorbd
+
 
 def sym_forces(pn: PenaltyNode) -> MX:
     ns = pn.nlp.ns # number of shooting points
@@ -22,22 +21,51 @@ def custom_CoM_position(pn: PenaltyNode) -> MX:
 
 class objective:
     @staticmethod
-    def set_objectif_function_fall(objective_functions, muscles, phase=0):
+    def set_objectif_function(objective_functions, position_high, position_low, muscles=True):
         # --- control minimize --- #
         if muscles:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, # residual torque
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
                                     quadratic=True,
                                     key="tau",
                                     node=Node.ALL,
                                     weight=1,
-                                    expand=False,
-                                    phase=phase)
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, # muscles
+                                    expand=False)
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # muscles
                                     quadratic=True,
                                     key="muscles",
                                     node=Node.ALL,
                                     weight=10,
-                                    expand=False,
+                                    expand=False)
+        else:
+            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
+                                    quadratic=True,
+                                    key="tau",
+                                    node=Node.ALL,
+                                    weight=0.1,
+                                    expand=False)
+
+        # --- com displacement --- #
+        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
+                                node=Node.MID,
+                                axes=Axis.Z,
+                                weight=1000,
+                                expand=False)
+        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+        #                         key="q",
+        #                         target=position_low,
+        #                         node=Node.MID,
+        #                         expand=False,
+        #                         quadratic=True,
+        #                         weight=100)
+
+        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
+                                key="q",
+                                target=position_high,
+                                node=Node.END,
+                                expand=False,
+                                quadratic=True,
+                                weight=100)
+
     @staticmethod
     def set_objectif_function_fall(objective_functions, muscles, phase=0):
         # --- control minimize --- #
