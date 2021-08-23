@@ -56,18 +56,18 @@ segment pelvis
 		0	0	0	1
 	translations	xyz
 	rotations	yxz
-        rangesQ -1    1
-                -1    1
-                -1    1
-                -pi  pi
-                -pi  pi
-                -pi  pi
-        rangesQdot -10        10
- 	               -10        10
-                   -10        10
-                   -pi*10     pi*10
-                   -pi*10     pi*10
-                   -pi*10     pi*10
+    rangesQ -1    1
+            -1    1
+            -1    1
+            -pi  pi
+            -pi  pi
+            -pi  pi
+    rangesQdot -10        10
+               -10        10
+               -10        10
+               -pi*10     pi*10
+               -pi*10     pi*10
+               -pi*10     pi*10
 	mass	7.8384
 	inertia
 		0.058836	0	        0
@@ -168,7 +168,7 @@ endmarker
 // ---- Segment
 segment femur_r
 	parent pelvis
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		1	0	0	-0.083804
 		0	1	0	-0.09161
@@ -190,6 +190,7 @@ segment femur_r
 	mesh    0        0              0
 	mesh    0       -0.3627         0
 endsegment
+
 // ---- Markers
 marker	R_TC //10
 	parent	femur_r
@@ -236,12 +237,12 @@ segment tibia_r
         RTinMatrix	1
 	RT
 		1	0	0	0
-		0	1	0      -0.3627
+		0	1	0  -0.3627
 		0	0	1	0
 		0	0	0	1
 	rotations	z
-        rangesQ    -pi/2-pi/6  pi/6
-        rangesQdot -7     7
+    rangesQ    -pi/2-pi/6  pi/6
+    rangesQdot -7     7
 	mass	3.0385
 	inertia
 		0.027795	0	        0
@@ -300,7 +301,7 @@ endmarker
 // ---- Segment
 segment patella_r
 	parent tibia_r
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		0.99916	        0.041062	0	0.0496
 	       -0.041062	0.99916	        0      -0.022712
@@ -313,8 +314,6 @@ segment patella_r
 		0	        0	        1.1667e-05
 	com	0.0016412	0.024071	0
 endsegment
-// ---- Markers
-// no marker
 
 
 // --------------------------------------------------------------------------------------------------------
@@ -323,16 +322,18 @@ endsegment
 // ---- Segment
 segment talus_r
 	parent tibia_r
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		1	0	0	0
 		0	1	0	-0.42392
 		0	0	1	0
 		0	0	0	1
-	rotations	yz
+	rotations	xyz
     rangesQ -pi/6 pi/6
             -pi/6 pi/6
+            -pi/6 pi/6
     rangesQdot -5.2360 5.2360
+               -5.2360 5.2360
                -5.2360 5.2360
 	mass	0.042104
 	inertia
@@ -343,8 +344,6 @@ segment talus_r
 	mesh    0               0               0
 	mesh   -0.048617       -0.041819        0.0078952
 endsegment
-// ---- Markers
-// no marker
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about foot_r segment
@@ -352,7 +351,7 @@ endsegment
 // ---- Segment
 segment foot_r
 	parent talus_r
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		1	0	0	-0.048617
 		0	1	0	-0.041819
@@ -392,6 +391,7 @@ segment foot_marker_r
 	mesh 0.156485	-0.00712829	0.0638694  //FMP5
 	mesh 0.0054278	0.00177226	0.00220395 //FCC
 endsegment
+
 // ---- Markers
 marker	R_FCC //25
 	parent	foot_marker_r
@@ -467,7 +467,7 @@ endmarker
 // ---- Segment
 segment toes_r
 	parent foot_r
-        RTinMatrix	1
+    RTinMatrix	1
 	RT 
 		1	0	0	0.17625
 		0	1	0	-0.0019937
@@ -494,12 +494,12 @@ segment femur_l
 		0	0	1	-0.082232
 		0	0	0	 1
 	rotations	xyz
-        rangesQ    -pi/2  pi/2
-                   -pi/2  pi/2
-                   -pi/2  pi/2+pi/3
-        rangesQdot -4    4.5
-                   -4    4.5
-                   -4    4.5
+    rangesQ    -pi/2  pi/2
+               -pi/2  pi/2
+               -pi/2  pi/2+pi/3
+    rangesQdot -4    4.5
+               -4    4.5
+               -4    4.5
 	mass	9.8454
 	inertia
 		0.14317	  0	        0
@@ -553,7 +553,7 @@ endmarker
 // ---- Segment
 segment tibia_l
 	parent femur_l
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		1	0	0	0
 		0	1	0	-0.3627
@@ -561,7 +561,7 @@ segment tibia_l
 		0	0	0	1
 	rotations	z
 	rangesQ    -pi/2-pi/6  pi/6
-	rangesQdot -7 7
+	rangesQdot -7  7
 	mass	3.0385
 	inertia
 		0.027795	0	        0
@@ -620,7 +620,7 @@ endmarker
 // ---- Segment
 segment patella_l
 	parent tibia_l
-        RTinMatrix	1
+    RTinMatrix	1
 	RT
 		0.99916	        0.041062	0	0.0496
 	       -0.041062	0.99916	        0      -0.022712
@@ -646,10 +646,12 @@ segment talus_l
 		0	1	0      -0.42392
 		0	0	1	0
 		0	0	0	1
-	rotations	yz
+	rotations	xyz
     rangesQ -pi/6 pi/6
             -pi/6 pi/6
+            -pi/6 pi/6
     rangesQdot -5.2360 5.2360
+               -5.2360 5.2360
                -5.2360 5.2360
 	mass	0.042104
 	inertia

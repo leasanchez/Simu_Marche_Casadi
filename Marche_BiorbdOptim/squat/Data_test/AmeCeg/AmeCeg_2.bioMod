@@ -114,7 +114,7 @@ endvariables
 			0.0000000000	1.0000000000	0.0000000000	0.1328525052
 			0.0000000000	0.0000000000	1.0000000000	0.0054342976
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations	xyz
+		//rotations	xyz
 		//rangesQ -pi  pi
 		//        -pi  pi
 		//        -pi  pi
@@ -235,12 +235,6 @@ endvariables
 			0.0000000000	0.0000000000	1.0000000000	-0.0000230626
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
 		rotations	z
-		rangesQ -pi  pi
-		        -pi  pi
-		        -pi  pi
-		rangesQdot -pi*10     pi*10
-		           -pi*10     pi*10
-		           -pi*10     pi*10
 		mass	3.38879
 		inertia
 			0.0460549254	0.0000000000	0.0000000000
@@ -286,23 +280,6 @@ endvariables
 		technical 1
 	endmarker
 
-// Informations about patella_r segment
-	segment patella_r
-		parent tibia_r
-		RTinMatrix	1
-		RT
-			0.99916	        0.041062	0	0.0496
-		       -0.041062	0.99916	        0      -0.022712
-			0	        0	        1	0.0024
-			0	        0	        0	1
-		mass	0.091226
-		inertia
-			2.3335e-06	0	        0
-			0	        1.1667e-05	0
-			0	        0	        1.1667e-05
-		com	0.0016412	0.024071	0
-	endsegment
-
 
 // Informations about foot_r segment
 	// Segment
@@ -313,11 +290,7 @@ endvariables
 			0.0000000000	1.0000000000	0.0000000000	-0.4313186432
 			0.0000000000	0.0000000000	1.0000000000	-0.0021011786
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations	xz
-		rangesQ -pi  pi
-		        -pi  pi
-		rangesQdot -pi*10     pi*10
-		           -pi*10     pi*10
+		rotations	yz
 		mass	0.84719
 		inertia
 			0.0005672850	0.0000000000	0.0000000000
@@ -357,26 +330,24 @@ endvariables
 		position	0.2057491047	-0.0248162436	-0.0294629199
 		technical 1
 	endmarker
-
-
 // --------------------------------------------------------------------------------------------------------
 // Informations about contact point 
 // --------------------------------------------------------------------------------------------------------
-//	contact    Heel_r   //FCC decale
-//		parent      foot_r
-//		position    -0.0323538639   -0.05   0.0070699852
-//		axis    xyz
-//	endcontact
-//	contact    Meta_1_r //FM1
-//		parent      foot_r
-//		position    0.1476490244   -0.05    -0.0408691478
-//		axis    xz
-//	endcontact
-//	contact    Meta_5_r //FM5
-//		parent     foot_r
-//		position   0.1364508051	   -0.05   0.0550091182
-//		axis    z
-//	endcontact
+	contact    Heel_r   //FCC decale
+		parent      foot_r
+		position    -0.0323538639   -0.05   0.0070699852
+		axis    xyz
+	endcontact
+	contact    Meta_1_r //FM1
+		parent      foot_r
+		position    0.1476490244   -0.05    -0.0408691478
+		axis    xz
+	endcontact
+	contact    Meta_5_r //FM5
+		parent     foot_r
+		position   0.1364508051	   -0.05   0.0550091182
+		axis    z
+	endcontact
 
 // Informations about femur_l segment
 	// Segment
@@ -388,12 +359,6 @@ endvariables
 			0.0000000000	0.0000000000	1.0000000000	-0.0830919782
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
 		rotations	xyz
-		rangesQ -pi  pi
-		        -pi  pi
-		        -pi  pi
-		rangesQdot -pi*10     pi*10
-		           -pi*10     pi*10
-		           -pi*10     pi*10	
 		mass	8.6838
 		inertia
 			0.1395634970	0.0000000000	0.0000000000
@@ -450,12 +415,6 @@ endvariables
 			0.0000000000	0.0000000000	1.0000000000	0.0007083449
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
 		rotations	z
-		rangesQ -pi  pi
-		        -pi  pi
-		        -pi  pi
-		rangesQdot -pi*10     pi*10
-		           -pi*10     pi*10
-		           -pi*10     pi*10
 		mass	3.38879
 		inertia
 			0.0460549254	0.0000000000	0.0000000000
@@ -501,25 +460,6 @@ endvariables
 		technical 1
 	endmarker
 
-// --------------------------------------------------------------------------------------------------------
-// Informations about patella_l segment
-// --------------------------------------------------------------------------------------------------------
-// ---- Segment
-segment patella_l
-	parent tibia_l
-        RTinMatrix	1
-	RT
-		0.99916	        0.041062	0	0.0496
-	       -0.041062	0.99916	        0      -0.022712
-		0	        0	        1	0.0024
-		0	        0	        0	1
-	mass	0.091226
-	inertia
-		2.3335e-06	0	        0
-		0	        1.1667e-05	0
-		0	        0	        1.1667e-05
-	com	0.0016412	0.024071	0
-endsegment
 
 // Informations about foot_l segment
 	// Segment
@@ -530,11 +470,7 @@ endsegment
 			0.0000000000	1.0000000000	0.0000000000	-0.4203358595
 			0.0000000000	0.0000000000	1.0000000000	-0.0116812443
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations   xz
-		rangesQ -pi  pi
-		        -pi  pi
-		rangesQdot -pi*10     pi*10
-		           -pi*10     pi*10
+		rotations   yz
 		mass	0.84719
 		inertia
 			0.0005672850	0.0000000000	0.0000000000
@@ -575,25 +511,24 @@ endsegment
 		technical 1
 	endmarker
 
-
 // --------------------------------------------------------------------------------------------------------
 // Informations about contact point 
 // --------------------------------------------------------------------------------------------------------
-//	contact    Heel_l   //FCC decale
-//		parent      foot_l
-//		position    -0.0364495994   -0.05   -0.0093687983
-//		axis    xyz
-//	endcontact
-//	contact    Meta_1_l //FM1
-//		parent      foot_l
-//		position    0.1448329856   -0.05    0.0392491781
-//		axis    xz
-//	endcontact
-//	contact    Meta_5_l //FM5
-//		parent     foot_l
-//		position   0.1282455628	   -0.05   -0.0579867747
-//		axis    z
-//	endcontact
+	contact    Heel_l   //FCC decale
+		parent      foot_l
+		position    -0.0364495994   -0.05   -0.0093687983
+		axis    xyz
+	endcontact
+	contact    Meta_1_l //FM1
+		parent      foot_l
+		position    0.1448329856   -0.05    0.0392491781
+		axis    xz
+	endcontact
+	contact    Meta_5_l //FM5
+		parent     foot_l
+		position   0.1282455628	   -0.05   -0.0579867747
+		axis    z
+	endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about muscle groups
@@ -611,9 +546,21 @@ musclegroup group3
 	OriginParent	pelvis
 	InsertionParent	patella_r
 endmusclegroup
+musclegroup group4
+	OriginParent	pelvis
+	InsertionParent	talus_r
+endmusclegroup
 musclegroup group5
 	OriginParent	pelvis
 	InsertionParent	foot_r
+endmusclegroup
+musclegroup group6
+	OriginParent	pelvis
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group7
+	OriginParent	pelvis
+	InsertionParent	toes_r
 endmusclegroup
 musclegroup group8
 	OriginParent	femur_r
@@ -623,21 +570,81 @@ musclegroup group9
 	OriginParent	femur_r
 	InsertionParent	patella_r
 endmusclegroup
+musclegroup group10
+	OriginParent	femur_r
+	InsertionParent	talus_r
+endmusclegroup
 musclegroup group11
 	OriginParent	femur_r
 	InsertionParent	foot_r
+endmusclegroup
+musclegroup group12
+	OriginParent	femur_r
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group13
+	OriginParent	femur_r
+	InsertionParent	toes_r
 endmusclegroup
 musclegroup group14
 	OriginParent	tibia_r
 	InsertionParent	patella_r
 endmusclegroup
+musclegroup group15
+	OriginParent	tibia_r
+	InsertionParent	talus_r
+endmusclegroup
 musclegroup group16
 	OriginParent	tibia_r
 	InsertionParent	foot_r
 endmusclegroup
+musclegroup group17
+	OriginParent	tibia_r
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group18
+	OriginParent	tibia_r
+	InsertionParent	toes_r
+endmusclegroup
+musclegroup group19
+	OriginParent	patella_r
+	InsertionParent	talus_r
+endmusclegroup
 musclegroup group20
 	OriginParent	patella_r
 	InsertionParent	foot_r
+endmusclegroup
+musclegroup group21
+	OriginParent	patella_r
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group22
+	OriginParent	patella_r
+	InsertionParent	toes_r
+endmusclegroup
+musclegroup group23
+	OriginParent	talus_r
+	InsertionParent	foot_r
+endmusclegroup
+musclegroup group24
+	OriginParent	talus_r
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group25
+	OriginParent	talus_r
+	InsertionParent	toes_r
+endmusclegroup
+musclegroup group26
+	OriginParent	foot_r
+	InsertionParent	foot_marker_r
+endmusclegroup
+musclegroup group27
+	OriginParent	foot_r
+	InsertionParent	toes_r
+endmusclegroup
+musclegroup group28
+	OriginParent	foot_marker_r
+	InsertionParent	toes_r
 endmusclegroup
 
 // FESSIERS 
@@ -646,9 +653,9 @@ endmusclegroup
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max1_r
-	Type			hillthelen
-	statetype        	degroote
-	musclegroup		group1
+	Type				hillthelen
+	statetype        		degroote
+	musclegroup			group1
 	OriginPosition		-0.13126 0.047251 0.063481
 	InsertionPosition	-0.025256 -0.051606 0.055607
 	optimalLength		0.15059
@@ -676,9 +683,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max2_r
-	Type			hillthelen
+	Type				hillthelen
 	statetype    		degroote
-	musclegroup		group1
+	musclegroup			group1
 	OriginPosition		-0.15106 0.0014453 0.053739
 	InsertionPosition	-0.014224 -0.092635 0.049573
 	optimalLength		0.15051
@@ -706,9 +713,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_max3_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group1
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group1
 	OriginPosition		-0.17201 -0.088053 0.0077519
 	InsertionPosition	-0.0054706 -0.12938 0.048627
 	optimalLength		0.14598
@@ -736,9 +743,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med1_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group1
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group1
 	OriginPosition		-0.052482 0.015676 0.12141
 	InsertionPosition	-0.019876 -0.010668 0.065664
 	optimalLength		0.057916
@@ -755,9 +762,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med2_r
-	Type			hillthelen
-	statetype   		degroote
-	musclegroup		group1
+	Type				hillthelen
+	statetype   			degroote
+	musclegroup			group1
 	OriginPosition		-0.10098 0.015231 0.082966
 	InsertionPosition	-0.023523 -0.0052882 0.062351
 	optimalLength		0.094302
@@ -774,9 +781,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle glut_med3_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group1
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group1
 	OriginPosition		-0.13786 -0.0064483 0.062643
 	InsertionPosition	-0.028174 -0.0042853 0.061287
 	optimalLength		0.072707
@@ -795,9 +802,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle semimem_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group2
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group2
 	OriginPosition		-0.13461 -0.13097 0.067567
 	InsertionPosition	-0.024181 -0.053338 -0.019305
 	optimalLength		0.072483
@@ -814,9 +821,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle semiten_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group2
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group2
 	OriginPosition		-0.13932 -0.13408 0.057929
 	InsertionPosition	0.0026868 -0.095132 -0.019206
 	optimalLength		0.18404
@@ -844,9 +851,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle bi_fem_lh_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group2
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group2
 	OriginPosition		-0.14006 -0.12941 0.064529
 	InsertionPosition	-0.0080604 -0.072543 0.042093
 	optimalLength		0.099572
@@ -864,9 +871,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle rectus_fem_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group3
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group3
 	OriginPosition		-0.040645 -0.052698 0.096165
 	InsertionPosition	0.011032 0.039844 -0.00091176
 	optimalLength		0.078408
@@ -901,9 +908,9 @@ endmuscle
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_med_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group9
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group9
 	OriginPosition		0.012765 -0.19138 0.022243
 	InsertionPosition	0.0057441 0.040573 -0.0155
 	optimalLength		0.083217
@@ -925,9 +932,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_int_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group9
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group9
 	OriginPosition		0.026441 -0.17542 0.036677
 	InsertionPosition	0.0052882 0.043765 -0.00054706
 	optimalLength		0.081289
@@ -949,9 +956,9 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle vas_lat_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group9
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group9
 	OriginPosition		0.0043765 -0.16904 0.041292
 	InsertionPosition	0.0093912 0.038568 0.012856
 	optimalLength		0.079102
@@ -974,11 +981,11 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gas_med_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group11
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group11
 	OriginPosition		-0.011579 -0.35823 -0.027804
-	InsertionPosition	-0.0452675  -0.009879   0.001575 //0.0033495 0.03194 -0.0063202
+	InsertionPosition	0.0033495 0.03194 -0.0063202
 	optimalLength		0.044721
 	maximalForce		$fiso_14
 	maxExcitation		1
@@ -998,11 +1005,11 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle gas_lat_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group11
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group11
 	OriginPosition		-0.014132 -0.35978 0.032181
-	InsertionPosition	-0.0452675  -0.009879   0.001575 //0.0033495 0.03194 -0.0063202
+	InsertionPosition	0.0033495 0.03194 -0.0063202
 	optimalLength		0.06375
 	maximalForce		$fiso_15
 	maxExcitation		1
@@ -1022,28 +1029,30 @@ endviapoint
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle soleus_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group16
-	OriginPosition		-0.0023883  -0.15255    0.0070653
-	InsertionPosition	-0.0452675  -0.009879   0.001575  //0.0033495 0.03194 -0.0063202
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group16
+	OriginPosition		-0.0023883 -0.15255 0.0070653
+	InsertionPosition	0.0033495 0.03194 -0.0063202
 	optimalLength		0.029856
 	maximalForce		$fiso_16
 	maxExcitation		1
 	tendonSlackLength	0.26672
 	pennationAngle		0.43633
 endmuscle
+// ---- Via points
+// no via point
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about tib_ant_r
 // --------------------------------------------------------------------------------------------------------
 // ---- Muscle
 muscle tib_ant_r
-	Type			hillthelen
-	statetype    		degroote
-	musclegroup		group16
-	OriginPosition		0.017812  -0.16161    0.011444
-	InsertionPosition	0.067623  -0.024075  -0.0225098 //0.11624 0.017744 -0.030405
+	Type				hillthelen
+	statetype    			degroote
+	musclegroup			group16
+	OriginPosition		0.017812 -0.16161 0.011444
+	InsertionPosition	0.11624 0.017744 -0.030405
 	optimalLength		0.097554
 	maximalForce		$fiso_17
 	maxExcitation		1
@@ -1066,8 +1075,8 @@ muscle    perlong_r
         Type                  hillthelen
         statetype             degroote
         musclegroup           group16
-        OriginPosition        -0.02298   -0.157758    0.0324018
-        InsertionPosition      0.0487798 -0.0303597   0.025566 //0.0973968  0.0114593  0.0176708
+        OriginPosition        -0.02298  -0.157758    0.0324018
+        InsertionPosition      0.0973968  0.0114593  0.0176708
         optimalLength          0.061954462726816401
         maximalForce           $fiso_19
         tendonSlackLength      0.40516848141592698
@@ -1077,7 +1086,7 @@ viapoint    perlong_r-P
     parent         foot_r
     muscle         perlong_r
     musclegroup    group16
-    position       0.001453 -0.0036215 0.0409906 //0.05007    0.0381975  0.0330954
+    position       0.05007    0.0381975  0.0330954
 endviapoint
 
 // --- Left Leg 
@@ -1093,9 +1102,21 @@ musclegroup group31
 	OriginParent	pelvis
 	InsertionParent	patella_l
 endmusclegroup
+musclegroup group32
+	OriginParent	pelvis
+	InsertionParent	talus_l
+endmusclegroup
 musclegroup group33
 	OriginParent	pelvis
 	InsertionParent	foot_l
+endmusclegroup
+musclegroup group34
+	OriginParent	pelvis
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group35
+	OriginParent	pelvis
+	InsertionParent	toes_l
 endmusclegroup
 musclegroup group36
 	OriginParent	femur_l
@@ -1105,23 +1126,82 @@ musclegroup group37
 	OriginParent	femur_l
 	InsertionParent	patella_l
 endmusclegroup
+musclegroup group38
+	OriginParent	femur_l
+	InsertionParent	talus_l
+endmusclegroup
 musclegroup group39
 	OriginParent	femur_l
 	InsertionParent	foot_l
+endmusclegroup
+musclegroup group40
+	OriginParent	femur_l
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group41
+	OriginParent	femur_l
+	InsertionParent	toes_l
 endmusclegroup
 musclegroup group42
 	OriginParent	tibia_l
 	InsertionParent	patella_l
 endmusclegroup
+musclegroup group43
+	OriginParent	tibia_l
+	InsertionParent	talus_l
+endmusclegroup
 musclegroup group44
 	OriginParent	tibia_l
 	InsertionParent	foot_l
+endmusclegroup
+musclegroup group45
+	OriginParent	tibia_l
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group46
+	OriginParent	tibia_l
+	InsertionParent	toes_l
+endmusclegroup
+musclegroup group47
+	OriginParent	patella_l
+	InsertionParent	talus_l
 endmusclegroup
 musclegroup group48
 	OriginParent	patella_l
 	InsertionParent	foot_l
 endmusclegroup
-
+musclegroup group49
+	OriginParent	patella_l
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group50
+	OriginParent	patella_l
+	InsertionParent	toes_l
+endmusclegroup
+musclegroup group51
+	OriginParent	talus_l
+	InsertionParent	foot_l
+endmusclegroup
+musclegroup group52
+	OriginParent	talus_l
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group53
+	OriginParent	talus_l
+	InsertionParent	toes_l
+endmusclegroup
+musclegroup group54
+	OriginParent	foot_l
+	InsertionParent	foot_marker_l
+endmusclegroup
+musclegroup group55
+	OriginParent	foot_l
+	InsertionParent	toes_l
+endmusclegroup
+musclegroup group56
+	OriginParent	foot_marker_l
+	InsertionParent	toes_l
+endmusclegroup
 // --------------------------------------------------------------------------------------------------------
 // Informations about glut_max1_l
 // --------------------------------------------------------------------------------------------------------
@@ -1456,7 +1536,7 @@ muscle gas_med_l
 	statetype    		degroote
 	musclegroup		group39
 	OriginPosition		-0.011579   -0.35823   0.027804
-	InsertionPosition	-0.0452675  -0.009879 -0.001575 //0.0033495    0.03194   0.0063202
+	InsertionPosition	0.0033495    0.03194   0.0063202
 	optimalLength		0.044721
 	maximalForce		$fiso_14
 	maxExcitation		1
@@ -1480,7 +1560,7 @@ muscle gas_lat_l
 	statetype    		degroote
 	musclegroup		group39
 	OriginPosition		-0.014132   -0.35978   -0.032181
-	InsertionPosition	-0.0452675  -0.009879  -0.001575 //0.0033495    0.03194    0.0063202
+	InsertionPosition	0.0033495    0.03194    0.0063202
 	optimalLength		0.06375
 	maximalForce		$fiso_15
 	maxExcitation		1
@@ -1504,7 +1584,7 @@ muscle soleus_l
 	statetype    		degroote
 	musclegroup		group44
 	OriginPosition		-0.0023883  -0.15255   -0.0070653
-	InsertionPosition	-0.0452675  -0.009879  -0.001575 //0.0033495    0.03194    0.0063202
+	InsertionPosition	0.0033495    0.03194    0.0063202
 	optimalLength		0.029856
 	maximalForce		$fiso_16
 	maxExcitation		1
@@ -1523,7 +1603,7 @@ muscle tib_ant_l
 	statetype    		degroote
 	musclegroup		group44
 	OriginPosition		0.017812  -0.16161   -0.011444
-	InsertionPosition	0.067623  -0.024075   0.0225098 //0.11624    0.017744   0.030405
+	InsertionPosition	0.11624    0.017744   0.030405
 	optimalLength		0.097554
 	maximalForce		$fiso_17
 	maxExcitation		1
@@ -1546,8 +1626,8 @@ muscle    perlong_l
         Type                  hillthelen
         statetype             degroote
         musclegroup           group44
-        OriginPosition        -0.02298    -0.157758   -0.0324018
-        InsertionPosition      0.0487798  -0.0303597  -0.025566 //0.0973968  0.0114593 -0.0176708
+        OriginPosition        -0.02298  -0.157758   -0.0324018
+        InsertionPosition      0.0973968  0.0114593 -0.0176708
         optimalLength          0.061954462726816401
         maximalForce           $fiso_19
         tendonSlackLength      0.40516848141592698
@@ -1557,5 +1637,5 @@ viapoint    perlong_l-P
     parent         foot_l
     muscle         perlong_l
     musclegroup    group44
-    position       0.001453  -0.0036215 -0.0409906 //0.05007    0.0381975  -0.0330954
+    position       0.05007    0.0381975  -0.0330954
 endviapoint

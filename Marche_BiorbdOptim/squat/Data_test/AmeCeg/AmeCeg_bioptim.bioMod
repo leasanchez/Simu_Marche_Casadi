@@ -114,7 +114,7 @@ endvariables
 			0.0000000000	1.0000000000	0.0000000000	0.1328525052
 			0.0000000000	0.0000000000	1.0000000000	0.0054342976
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations	xyz
+		//rotations	xyz
 		//rangesQ -pi  pi
 		//        -pi  pi
 		//        -pi  pi
@@ -234,7 +234,7 @@ endvariables
 			0.0000000000	1.0000000000	0.0000000000	-0.4390125500
 			0.0000000000	0.0000000000	1.0000000000	-0.0000230626
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations	z
+		rotations	xyz
 		rangesQ -pi  pi
 		        -pi  pi
 		        -pi  pi
@@ -362,21 +362,21 @@ endvariables
 // --------------------------------------------------------------------------------------------------------
 // Informations about contact point 
 // --------------------------------------------------------------------------------------------------------
-//	contact    Heel_r   //FCC decale
-//		parent      foot_r
-//		position    -0.0323538639   -0.05   0.0070699852
-//		axis    xyz
-//	endcontact
-//	contact    Meta_1_r //FM1
-//		parent      foot_r
-//		position    0.1476490244   -0.05    -0.0408691478
-//		axis    xz
-//	endcontact
-//	contact    Meta_5_r //FM5
-//		parent     foot_r
-//		position   0.1364508051	   -0.05   0.0550091182
-//		axis    z
-//	endcontact
+	contact    Heel_r   //FCC decale
+		parent      foot_r
+		position    -0.0323538639   -0.05   0.0070699852
+		axis    xyz
+	endcontact
+	contact    Meta_1_r //FM1
+		parent      foot_r
+		position    0.1476490244   -0.05    -0.0408691478
+		axis    xz
+	endcontact
+	contact    Meta_5_r //FM5
+		parent     foot_r
+		position   0.1364508051	   -0.05   0.0550091182
+		axis    z
+	endcontact
 
 // Informations about femur_l segment
 	// Segment
@@ -449,7 +449,7 @@ endvariables
 			0.0000000000	1.0000000000	0.0000000000	-0.4459309639
 			0.0000000000	0.0000000000	1.0000000000	0.0007083449
 			0.0000000000	0.0000000000	0.0000000000	1.0000000000
-		rotations	z
+		rotations	xyz
 		rangesQ -pi  pi
 		        -pi  pi
 		        -pi  pi
@@ -579,21 +579,21 @@ endsegment
 // --------------------------------------------------------------------------------------------------------
 // Informations about contact point 
 // --------------------------------------------------------------------------------------------------------
-//	contact    Heel_l   //FCC decale
-//		parent      foot_l
-//		position    -0.0364495994   -0.05   -0.0093687983
-//		axis    xyz
-//	endcontact
-//	contact    Meta_1_l //FM1
-//		parent      foot_l
-//		position    0.1448329856   -0.05    0.0392491781
-//		axis    xz
-//	endcontact
-//	contact    Meta_5_l //FM5
-//		parent     foot_l
-//		position   0.1282455628	   -0.05   -0.0579867747
-//		axis    z
-//	endcontact
+	contact    Heel_l   //FCC decale
+		parent      foot_l
+		position    -0.0364495994   -0.05   -0.0093687983
+		axis    xyz
+	endcontact
+	contact    Meta_1_l //FM1
+		parent      foot_l
+		position    0.1448329856   -0.05    0.0392491781
+		axis    xz
+	endcontact
+	contact    Meta_5_l //FM5
+		parent     foot_l
+		position   0.1282455628	   -0.05   -0.0579867747
+		axis    z
+	endcontact
 
 // --------------------------------------------------------------------------------------------------------
 // Informations about muscle groups
