@@ -60,7 +60,7 @@ class kinematic:
                         "tronc Rx", "tronc Ry", "tronc Rz",
                         "hanche Rx", "hanche Ry", "hanche Rz",
                         "genou Rz",
-                        "cheville Ry", "cheville Rz"]
+                        "cheville Rx", "cheville Rz"]
         self.events = markers(self.path).get_events()
         self.q = self.get_q()
         self.q_mean, self.q_std = self.get_mean(self.q)

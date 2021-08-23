@@ -7,20 +7,24 @@ from FORCE_PLATFORM import force_platform
 from KINEMATIC import kinematic
 
 
-name = 'AmeCeg'
+name = 'EriHou'
 model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + ".bioMod"
 model = biorbd.Model(model_path)
 # b = bioviz.Viz(loaded_model=model)
 
-# # kinematic
-# kin_test = kinematic(name)
-# # for (i, q) in enumerate(kin_test.q_mean):
-# #     np.save("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/kalman/" + kin_test.list_exp_files[i] + "_mean.npy", q)
-# kin_test.plot_squat_mean_torso('squat_controle')
+# kinematic
+kin_test = kinematic(name)
+# for (i, q) in enumerate(kin_test.q_mean):
+#    np.save("/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/kalman/" + kin_test.list_exp_files[i] + "_mean.npy", q)
+kin_test.plot_squat_mean_leg('squat_controle')
+kin_test.plot_squat_mean_leg('squat_5cm')
 # kin_test.plot_squat_repetition()
 
 # emg
 emg_test = emg(name)
+emg_test.plot_squat_mean('squat_controle.c3d')
+emg_test.plot_squat_mean('squat_5cm.c3d')
+
 emg_test.plot_sort_activation()
 emg_test.plot_squat_mean_symetry()
 emg_test.plot_assymetry_comparison_5cm()

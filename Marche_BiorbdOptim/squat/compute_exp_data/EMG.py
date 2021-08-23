@@ -122,6 +122,9 @@ class emg:
             self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
 
         self.mvc_value = self.get_mvc_value()
+        #self.mvc_value[0] = self.mvc_value[1]
+        #self.mvc_value[9] = self.mvc_value[8]
+
         self.mvc_value[2] = self.mvc_value[3]
         self.mvc_value[12] = self.mvc_value[13]
 
