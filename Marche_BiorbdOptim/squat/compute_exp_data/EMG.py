@@ -53,10 +53,13 @@ def compute_mean_squat_repetition(emg, index, freq):
         std_emg[m, :] = np.std(emg_squat_interp[:, m, :], axis=0)
     return mean_emg, std_emg
 
-def compute_symetry_ratio(emg):
+def compute_symetry_ratio(emg, higher_foot):
     emg_sym = []
     for i in range(int(len(emg)/2)):
-        emg_sym.append((emg[2*i] + 100)/(emg[2*i + 1] + 100))
+        if higher_foot == 'R':
+            emg_sym.append((emg[2*i] + 100)/(emg[2*i + 1] + 100))
+        else:
+            emg_sym.append((emg[2 * i + 1] + 100) / (emg[2 * i] + 100))
     return emg_sym
 
 def sort_data(emg, index, freq):
@@ -85,9 +88,7 @@ class emg:
         self.higher_foot = higher_foot
         self.path = '../Data_test/' + name
         self.list_mvc_files = get_mvc_files(self.path)
-        # self.list_exp_files = get_exp_files(path)
-        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d', 'squat_controle_post.c3d']
-        # self.label_muscles_analog = get_labels_muscles(path + '/MVC/' + self.list_mvc_files[0])
+        self.list_exp_files = ['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm', 'squat_controle_post']
         self.label_muscles_analog = ['Voltage.GM_r', 'Voltage.GM_l', # gastrocnemiem medial
                                      'Voltage.SOL_r', 'Voltage.SOL_l', # soleaire
                                      'Voltage.LF_r', 'Voltage.LF_l', # long fibulaire
@@ -118,21 +119,37 @@ class emg:
             self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/MVC/' + file))
             self.emg_filtered_mvc.append(self.get_filtered_emg(file_path=self.path + '/MVC/' + file))
         for file in self.list_exp_files:
-            self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
-            self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file))
+            self.emg_filtered.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file + ".c3d"))
+            self.emg_filtered_exp.append(self.get_filtered_emg(file_path=self.path + '/Squats/' + file + ".c3d"))
 
         self.mvc_value = self.get_mvc_value()
-        #self.mvc_value[0] = self.mvc_value[1]
-        #self.mvc_value[9] = self.mvc_value[8]
 
-        self.mvc_value[2] = self.mvc_value[3]
+        self.mvc_value[2] = self.mvc_value[3] #AC
         self.mvc_value[12] = self.mvc_value[13]
 
-        for file in self.list_exp_files:
-            self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file))
+        # self.mvc_value[2] = self.mvc_value[3] #AL
+        # self.mvc_value[7] = self.mvc_value[6]
+        # self.mvc_value[15] = self.mvc_value[14]
 
-        self.events = markers(self.path).get_events()
-        self.mid_events = markers(self.path).get_mid_events()
+        # self.mvc_value[5] = self.mvc_value[4] #BM
+        # self.mvc_value[8] = self.mvc_value[9]
+
+        # self.mvc_value[0] = self.mvc_value[1] #EH
+        # self.mvc_value[9] = self.mvc_value[8]
+
+        # self.mvc_value[3] = self.mvc_value[2] #GD - no mvc
+        # self.mvc_value[19] = self.mvc_value[18]
+
+        # self.mvc_value[0] = self.mvc_value[1] #JD - no mvc
+        # self.mvc_value[2] = self.mvc_value[3]
+
+        # self.mvc_value[14] = self.mvc_value[15] #LA
+        # self.mvc_value[2] = self.mvc_value[3]
+
+        for file in self.list_exp_files:
+            self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file + ".c3d"))
+
+        self.events = markers(self.path).events
         self.mean, self.std = self.get_mean()
         self.mean_sym, self.std_sym = self.get_mean(symetry=True)
         self.RMSE = self.get_RMSE()
@@ -181,19 +198,17 @@ class emg:
         std = []
         for i in range(len(self.emg_normalized_exp)):
             if symetry:
-                emg_sym = compute_symetry_ratio(self.emg_normalized_exp[i])
+                emg_sym = compute_symetry_ratio(self.emg_normalized_exp[i], self.higher_foot)
                 A = compute_mean_squat_repetition(emg_sym, self.events[i], self.freq)
-                mean.append(A[0])
-                std.append(A[1])
             else:
                 A = compute_mean_squat_repetition(self.emg_normalized_exp[i], self.events[i], self.freq)
-                mean.append(A[0])
-                std.append(A[1])
+            mean.append(A[0])
+            std.append(A[1])
         return mean, std
 
     def get_RMSE(self):
         RMSE = []
-        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        idx_control = self.list_exp_files.index('squat_controle')
         for m in self.mean:
             rmse = np.zeros(self.nb_mus)
             for i in range(self.nb_mus):
@@ -203,7 +218,7 @@ class emg:
 
     def get_R2(self):
         R2 = []
-        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        idx_control = self.list_exp_files.index('squat_controle')
         for m in self.mean:
             r2 = np.zeros(self.nb_mus)
             for i in range(self.nb_mus):
@@ -213,7 +228,7 @@ class emg:
 
     def get_diff(self):
         DIFF = []
-        idx_control = self.list_exp_files.index('squat_controle.c3d')
+        idx_control = self.list_exp_files.index('squat_controle')
         for m in self.mean:
             diff = np.zeros(self.nb_mus)
             for i in range(self.nb_mus):
