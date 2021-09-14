@@ -42,11 +42,29 @@ def compute_mean(x):
     std = np.std(x_interp, axis=0)
     return mean, std
 
-def compute_symetry_ratio(emg):
-    emg_sym = []
-    for i in range(int(len(emg)/2)):
-        emg_sym.append((emg[2*i] + 100)/(emg[2*i + 1] + 100))
-    return emg_sym
+def compute_symetry_ratio(data, higher_foot):
+    # compute difference between the two legs
+    # input : data : initial data for all dofs (all repetitions)
+    #         higher_foot : which foot is elevated ('R' or 'L')
+    # output : data_sym :  new data set where we computed the difference between the intervention leg and the control
+
+    data_sym = []
+    for d in data:
+        d_sym = []
+        for r in d:
+            a = np.zeros((15, r.shape[1]))
+            a[:9] = r[:9]
+            if higher_foot == 'R':
+                a[9:12] = (r[9:12] + 100) / (r[15:18] + 100) # hip
+                a[12] = (r[12] + 100) / (r[18] + 100) # knee
+                a[13:15] = (r[13:15] + 100) / (r[19:20] + 100)  # ankle
+            else:
+                a[9:12] = r[15:18] / r[9:12]  # hip
+                a[12] = r[18] / r[12] # knee
+                a[13:15] = r[19:20] / r[13:15]  # ankle
+            d_sym.append(a)
+        data_sym.append(d_sym)
+    return data_sym
 
 class kinematic:
     def __init__(self, name, higher_foot='R'):
@@ -64,6 +82,7 @@ class kinematic:
         self.events = markers(self.path).get_events()
         self.q = self.get_q()
         self.q_mean, self.q_std = self.get_mean(self.q)
+        self.qdiff_mean, self.qdiff_std = self.get_mean(self.q, diff=True)
         self.qdot = self.get_qdot()
 
     def get_q(self):
@@ -80,9 +99,11 @@ class kinematic:
             qdot.append(divide_squat_repetition(qdot_kalman, self.events[i]))
         return qdot
 
-    def get_mean(self, data):
+    def get_mean(self, data, diff=False):
         mean = []
         std = []
+        if diff:
+            data = compute_symetry_ratio(data, self.higher_foot)
         for (i, d) in enumerate(data):
             a = compute_mean(d)
             mean.append(a[0])
@@ -216,6 +237,36 @@ class kinematic:
                 axes[0].set_ylabel('q (m/deg)')
                 axes[3].set_ylabel('q (m/deg)')
                 plt.legend(['right', 'left'])
+
+    def plot_diff_mean_leg(self, title):
+        t = self.list_exp_files.index(title)
+        abscisse = np.linspace(0, 100, self.qdiff_mean[t].shape[1])
+        fig, axes = plt.subplots(2, 3)
+        axes = axes.flatten()
+        fig.suptitle(self.name + "\nmean difference with intervention feet : " + self.higher_foot + "\n" + title)
+        for i in range(len(axes)):
+            axes[i].set_title(self.label_q[i + 9])
+            if (i == 0 or i == 1 or i == 4):
+                axes[i].plot(abscisse, self.qdiff_mean[t][i + 9, :], 'k')
+                axes[i].fill_between(abscisse,
+                                     self.qdiff_mean[t][i + 9, :] - self.qdiff_std[t][i + 9, :],
+                                     self.qdiff_mean[t][i + 9, :] + self.qdiff_std[t][i + 9, :],
+                                     color='k', alpha=0.2)
+            else:
+                axes[i].plot(abscisse, self.qdiff_mean[t][i + 9, :], 'k')
+                axes[i].fill_between(abscisse,
+                                     self.qdiff_mean[t][i + 9, :] - self.qdiff_std[t][i + 9, :],
+                                     self.qdiff_mean[t][i + 9, :] + self.qdiff_std[t][i + 9, :],
+                                     color='k', alpha=0.2)
+            axes[i].plot([50, 50],
+                         [min(self.qdiff_mean[t][i + 9, :] - self.qdiff_std[t][i + 9, :]),
+                          max(self.qdiff_mean[t][i + 9, :] + self.qdiff_std[t][i + 9, :])],
+                         'k--')
+            axes[i].set_xlim([0, 100])
+            if i > 2:
+                axes[i].set_xlabel('normalized time (%)')
+        axes[0].set_ylabel('q (m/deg)')
+        axes[3].set_ylabel('q (m/deg)')
 
     def plot_squat_mean_pelvis(self, title=None):
         if title is not None:
