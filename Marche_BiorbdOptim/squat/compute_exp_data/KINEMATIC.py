@@ -72,6 +72,12 @@ def find_pic(data, index):
         pic[i] = np.max(np.abs(d[index, :])) * 180/np.pi
     return np.mean(pic)
 
+def find_amplitude(data, index):
+    amp=np.zeros(len(data))
+    for (i, d) in enumerate(data):
+        amp[i] = (np.max(np.abs(d[index, :])) - np.min(np.abs(d[index, :]))) * 180/np.pi
+    return np.mean(amp)
+
 class kinematic:
     def __init__(self, name, higher_foot='R'):
         self.name = name
@@ -92,12 +98,17 @@ class kinematic:
         self.qdot = self.get_qdot()
         if self.higher_foot == 'R':
             self.pic_flexion_knee = [self.get_pic_value(index=12), self.get_pic_value(index=18)]
+            self.amp_flexion_knee = [self.get_amp_value(index=12), self.get_amp_value(index=18)]
+
             self.pic_flexion_hip = [self.get_pic_value(index=11), self.get_pic_value(index=17)]
             self.pic_flexion_ankle = [self.get_pic_value(index=14), self.get_pic_value(index=20)]
         else :
             self.pic_flexion_knee = [self.get_pic_value(index=18), self.get_pic_value(index=12)]
+            self.amp_flexion_knee = [self.get_amp_value(index=18), self.get_amp_value(index=12)]
+
             self.pic_flexion_hip = [self.get_pic_value(index=17), self.get_pic_value(index=11)]
             self.pic_flexion_ankle = [self.get_pic_value(index=20), self.get_pic_value(index=14)]
+
 
     def get_q(self):
         q = []
@@ -129,6 +140,12 @@ class kinematic:
         for q in self.q:
             pic_value.append(find_pic(q, index))
         return pic_value
+
+    def get_amp_value(self, index):
+        amp_value = []
+        for q in self.q:
+            amp_value.append(find_amplitude(q, index))
+        return amp_value
 
 
     def plot_squat_repetition(self, title=None):
