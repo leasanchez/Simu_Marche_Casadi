@@ -66,6 +66,12 @@ def compute_symetry_ratio(data, higher_foot):
         data_sym.append(d_sym)
     return data_sym
 
+def find_pic(data, index):
+    pic=np.zeros(len(data))
+    for (i, d) in enumerate(data):
+        pic[i] = np.max(np.abs(d[index, :])) * 180/np.pi
+    return np.mean(pic)
+
 class kinematic:
     def __init__(self, name, higher_foot='R'):
         self.name = name
@@ -79,11 +85,19 @@ class kinematic:
                         "hanche Rx", "hanche Ry", "hanche Rz",
                         "genou Rz",
                         "cheville Rx", "cheville Rz"]
-        self.events = markers(self.path).get_events()
+        self.events = markers(self.path).get_events()[0]
         self.q = self.get_q()
         self.q_mean, self.q_std = self.get_mean(self.q)
         self.qdiff_mean, self.qdiff_std = self.get_mean(self.q, diff=True)
         self.qdot = self.get_qdot()
+        if self.higher_foot == 'R':
+            self.pic_flexion_knee = [self.get_pic_value(index=12), self.get_pic_value(index=18)]
+            self.pic_flexion_hip = [self.get_pic_value(index=11), self.get_pic_value(index=17)]
+            self.pic_flexion_ankle = [self.get_pic_value(index=14), self.get_pic_value(index=20)]
+        else :
+            self.pic_flexion_knee = [self.get_pic_value(index=18), self.get_pic_value(index=12)]
+            self.pic_flexion_hip = [self.get_pic_value(index=17), self.get_pic_value(index=11)]
+            self.pic_flexion_ankle = [self.get_pic_value(index=20), self.get_pic_value(index=14)]
 
     def get_q(self):
         q = []
@@ -109,6 +123,13 @@ class kinematic:
             mean.append(a[0])
             std.append(a[1])
         return mean, std
+
+    def get_pic_value(self, index):
+        pic_value = []
+        for q in self.q:
+            pic_value.append(find_pic(q, index))
+        return pic_value
+
 
     def plot_squat_repetition(self, title=None):
         if title is not None:
