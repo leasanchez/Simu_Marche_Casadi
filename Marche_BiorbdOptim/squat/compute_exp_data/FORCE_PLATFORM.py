@@ -121,7 +121,8 @@ class force_platform:
     def __init__(self, name):
         self.name = name
         self.path = '../Data_test/' + name
-        self.events = markers(self.path).get_events()
+        self.events, self.mid_events = markers(self.path).get_events()
+        self.time = markers(self.path).get_time()
         self.list_exp_files = ['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm']
         self.loaded_c3d = []
         self.force = []
@@ -153,7 +154,7 @@ class force_platform:
     def get_mean(self, data):
         mean = []
         std = []
-        for i in range(len(data)):
+        for (i, d) in enumerate(data):
             A = compute_mean_squat_repetition(data[i], self.events[i])
             mean.append(A[0])
             std.append(A[1])
@@ -183,6 +184,7 @@ class force_platform:
         label = ['x', 'y', 'z']
         if title is not None:
             idx = self.list_exp_files.index(title)
+            mid_idx = round(self.time[idx][1]/self.time[idx][0], 2) * 100
             data_interp = interpolate_squat_repetition(self.force[idx], self.events[idx])
             fig, axes = plt.subplots(len(data_interp), 3)
             axes = axes.flatten()
@@ -191,12 +193,16 @@ class force_platform:
                 axes[i].set_title(f"platform 1 : {label[i]}")
                 axes[i].plot(np.linspace(0, 100, 2000), data_interp[0][:, i, :].T)
                 axes[i].plot([0, 100], [0, 0], 'k--')
+                axes[i].plot([mid_idx, mid_idx], [np.min(data_interp[0][:, i, :]), np.max(data_interp[0][:, i, :])], 'k--')
                 axes[i].set_xlim([0, 100])
             if len(data_interp) > 1:
                 for i in range(3):
                     axes[i + 3].set_title(f"platform 2 : {label[i]}")
                     axes[i + 3].plot(np.linspace(0, 100, 2000), data_interp[1][:, i, :].T)
                     axes[i + 3].plot([0, 100], [0, 0], 'k--')
+                    axes[i + 3].plot([mid_idx, mid_idx],
+                                     [np.min(data_interp[1][:, i, :]), np.max(data_interp[1][:, i, :])],
+                                     'k--')
                     axes[i + 3].set_xlim([0, 100])
         else:
             for (t, title) in enumerate(self.list_exp_files):
@@ -221,6 +227,7 @@ class force_platform:
         abscisse = np.linspace(0, 100, 2000)
         if title is not None:
             idx = self.list_exp_files.index(title)
+            mid_idx = round(self.time[idx][1] / self.time[idx][0], 2) * 100
             fig, axes = plt.subplots(1, 3)
             axes = axes.flatten()
             fig.suptitle(self.name + "\nground reaction forces mean " + title)
@@ -235,6 +242,10 @@ class force_platform:
                                      self.mean_force[idx][1][i, :] - self.std_force[idx][1][i, :],
                                      self.mean_force[idx][1][i, :] + self.std_force[idx][1][i, :], color='b', alpha=0.2)
                 axes[i].set_xlim([0, 100])
+                axes[i].plot([mid_idx, mid_idx],
+                             [np.min(np.hstack((self.mean_force[idx][0][i, :], self.mean_force[idx][1][i, :]))),
+                              np.max(np.hstack((self.mean_force[idx][0][i, :], self.mean_force[idx][1][i, :])))],
+                             'k--')
                 axes[i].set_xlabel('temps')
             axes[0].set_ylabel('forces')
             plt.legend(['right', 'left'])
