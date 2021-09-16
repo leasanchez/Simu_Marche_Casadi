@@ -1,8 +1,17 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits import mplot3d
 import os
 from ezc3d import c3d
+
+def plot_events(markers_position, marker_anato, events):
+    plt.figure()
+    plt.plot(markers_position)
+    plt.plot([0, 1900], [find_initial_height(marker_anato) - 5, find_initial_height(marker_anato) - 5], 'k--')
+    for e in events:
+        plt.plot([e, e], [700, 1050], 'r')
+    for m in min:
+        plt.plot([m, m], [700, 1050], 'g')
+    plt.show()
 
 def get_exp_files(path):
     return os.listdir(path + '/Squats/')
@@ -21,29 +30,14 @@ def find_indices(markers_position, marker_anato):
         b = np.where((markers_position[idx - 50:idx + 1] - markers_position[idx]) < 0)[0]
         if (a.size > 40) or (b.size > 40):
             indices.append(idx)
-
-    plt.figure()
-    plt.plot(markers_position)
-    plt.plot([0, 1900], [find_initial_height(marker_anato), find_initial_height(marker_anato)], 'k--')
-    plt.plot([0, 1900], [find_initial_height(marker_anato) - 5, find_initial_height(marker_anato) - 5], 'g--')
-    for idx in indices:
-        plt.plot([idx, idx], [700, 1050], 'r')
-    plt.show()
     return indices
 
-def find_min(markers_position, events):
+def find_min(markers_position, marker_anato, events):
     min=[]
     n_repet = int(len(events)/2)
     for i in range(n_repet):
         min.append(np.argmin(markers_position[events[2*i]:events[2*i + 1]]) + events[2*i])
-
-    # plt.figure()
-    # plt.plot(markers_position)
-    # for e in events:
-    #     plt.plot([e, e], [700, 1050], 'r')
-    # for m in min:
-    #     plt.plot([m, m], [700, 1050], 'g')
-    # plt.show()
+    # plot_events(markers_position, marker_anato, events)
     return min
 
 class markers:
@@ -79,7 +73,7 @@ class markers:
 
         for mark in markers_position:
             indices = find_indices(mark[2, 1, :], marker_anato[2, 1, :])
-            md = find_min(mark[2, 1, :], indices)
+            md = find_min(mark[2, 1, :], marker_anato[2, 1, :], indices)
             events.append(indices)
             mid_events.append(md)
         return events, mid_events
