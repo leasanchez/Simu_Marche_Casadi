@@ -36,10 +36,17 @@ def save_mean_data(mean_data, save_path, list_exp_files):
        np.save(save_path + list_exp_files[i] + "_mean.npy", d)
 
 
-name = 'GabFor'
+name = 'BeaMoy'
 model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + ".bioMod"
 model = biorbd.Model(model_path)
 higher_foot = 'R'
+
+# force plateforme
+contact_test = force_platform(name)
+contact_test.plot_force_repetition('squat_controle')
+contact_test.plot_force_mean('squat_controle')
+# contact_test.plot_force_comparison()
+
 
 # kinematic
 kin_test = kinematic(name, higher_foot)
@@ -76,9 +83,5 @@ emg_test.plot_squat_comparison_5cm()
 plt.show()
 
 
-# force plateforme
-# contact_test = force_platform(name)
-# contact_test.plot_force_repetition()
-# contact_test.plot_force_mean()
-# contact_test.plot_force_comparison()
+
 plt.show()
