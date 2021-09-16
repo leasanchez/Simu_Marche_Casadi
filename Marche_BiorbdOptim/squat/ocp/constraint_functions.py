@@ -50,6 +50,22 @@ def custom_foot_position(pn: PenaltyNode) -> MX:
 
 class constraint:
     @staticmethod
+    def set_constraints_exp(constraints):
+        constraints.add(ConstraintFcn.TIME_CONSTRAINT, node=Node.END, min_bound=0.8, max_bound=2.8, expand=False)
+        # constraints.add(ConstraintFcn.TRACK_MARKERS_VELOCITY, marker_index=(26, 46), node=Node.START, expand=False)
+        # contact_z_axes = (1, 2, 4, 5)
+        contact_z_axes = (2, 3, 5, 8, 9, 11)
+        # for c in contact_z_axes:
+        #     constraints.add(
+        #         ConstraintFcn.TRACK_CONTACT_FORCES,
+        #         min_bound=0,
+        #         max_bound=np.inf,
+        #         node=Node.ALL,
+        #         contact_index=c,
+        #         expand=False,
+        #     )
+
+    @staticmethod
     def set_constraints(constraints, inequality_value=0.0):
         # --- contact forces --- #
         contact_z_axes = (2, 3, 5, 8, 9, 11)
