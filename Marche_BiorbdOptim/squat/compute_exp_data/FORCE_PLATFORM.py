@@ -3,6 +3,7 @@ import numpy as np
 from scipy import interpolate, signal
 from ezc3d import c3d
 from MARKERS import markers
+from UTILS import utils
 
 
 def get_cop(loaded_c3d):
@@ -27,22 +28,12 @@ def get_corners_position(loaded_c3d):
         corners.append(p["corners"] * 1e-3)
     return corners
 
-def define_butterworth_filter(fs, fc):
-    """
-    define filter parameters
-    input : fs : sample frequency, fc : cut frequency
-    output : signal parameter for low pass filter
-    """
-    w = fc / (fs / 2)
-    b, a = signal.butter(4, w, 'low')
-    return b, a
-
 def get_forces(loaded_c3d):
     """
     get the ground reaction forces
     from force platform
     """
-    b, a = define_butterworth_filter(fs=1000, fc=15)
+    b, a = utils.define_butterworth_filter(fs=1000, fc=15)
     force = []
     platform = loaded_c3d["data"]["platform"]
     for p in platform:

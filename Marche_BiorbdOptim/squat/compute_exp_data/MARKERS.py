@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from ezc3d import c3d
+from UTILS import utils
 
 def plot_events(markers_position, marker_anato, events):
     plt.figure()
