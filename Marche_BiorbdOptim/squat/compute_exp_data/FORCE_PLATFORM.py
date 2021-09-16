@@ -122,13 +122,13 @@ class force_platform:
         self.name = name
         self.path = '../Data_test/' + name
         self.events = markers(self.path).get_events()
-        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d']
+        self.list_exp_files = ['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm']
         self.loaded_c3d = []
         self.force = []
         self.moments = []
         self.cop = []
         for (i, file) in enumerate(self.list_exp_files):
-            self.loaded_c3d.append(load_c3d(self.path + '/Squats/' + file))
+            self.loaded_c3d.append(load_c3d(self.path + '/Squats/' + file + '.c3d'))
             self.force.append(get_forces(self.loaded_c3d[i]))
             self.moments.append(get_moments_at_cop(self.loaded_c3d[i]))
             self.cop.append(get_cop(self.loaded_c3d[i]))
