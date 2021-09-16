@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from ezc3d import c3d
+from scipy import signal
 from UTILS import utils
 
 def plot_events(markers_position, marker_anato, events):
@@ -34,12 +35,27 @@ def find_indices(markers_position, marker_anato):
     return indices
 
 def find_min(markers_position, marker_anato, events):
-    min=[]
     n_repet = int(len(events)/2)
-    for i in range(n_repet):
-        min.append(np.argmin(markers_position[events[2*i]:events[2*i + 1]]) + events[2*i])
+    min = [np.argmin(markers_position[events[2*i]:events[2*i + 1]]) + events[2*i] for i in range(n_repet)]
     # plot_events(markers_position, marker_anato, events)
     return min
+
+def apply_filter(data, b, a):
+    '''
+    interpolate nan value and use butterworth lowpass filter
+    input : data : raw markers coordinates
+            b, a : filter parameters
+    output : data_filt : filtered markers coordinates
+    '''
+
+    data_filt = np.ndarray(data.shape)
+    data_nan = np.ndarray(data.shape)
+    for m in range(data.shape[1]):
+        nan_value = [utils.fill_nan(data[i, m, :]) for i in range(3) if utils.has_nan(data[i, m, :])] # extrapolate data if nan detected
+        data_nan[:, m, :] = np.array(nan_value) if nan_value else data[:, m, :]  # fill nan or use raw data
+        data_filt[:, m, :] = np.array([signal.filtfilt(b, a, data_nan[i, m, :]) for i in range(3)]) # apply filter
+    return data_filt
+
 
 class markers:
     def __init__(self, path):
@@ -49,34 +65,31 @@ class markers:
         self.n_marker = 52
         self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:52]
         self.markers_position = self.get_markers_position()
+        self.filtered_markers_position = self.filter_markers_position()
         self.events, self.mid_events = self.get_events()
         self.time = self.get_time()
 
 
     def load_c3d(self):
-        loaded_c3d = []
-        for file in self.list_exp_files:
-            loaded_c3d.append(c3d(self.path + '/Squats/' + file))
+        loaded_c3d = [c3d(self.path + '/Squats/' + file) for file in self.list_exp_files]
         return loaded_c3d
 
     def get_markers_position(self):
-        markers_position = []
-        for c in self.loaded_c3d:
-            markers_position.append(c["data"]["points"][:3, :, :])
+        markers_position = [c["data"]["points"][:3, :, :] for c in self.loaded_c3d]
         return markers_position
 
+    def filter_markers_position(self):
+        b, a = utils.define_butterworth_filter(fs=100, fc=6)
+        filtered_markers_position = [apply_filter(mark_pos, b, a) for mark_pos in self.markers_position]
+        return filtered_markers_position
+
     def get_events(self):
-        events=[]
-        mid_events=[]
-        markers_position = self.get_markers_position()
         position_anato = c3d(self.path + '/SCoRE/anato.c3d')
         marker_anato = position_anato["data"]["points"]
 
-        for mark in markers_position:
-            indices = find_indices(mark[2, 1, :], marker_anato[2, 1, :])
-            md = find_min(mark[2, 1, :], marker_anato[2, 1, :], indices)
-            events.append(indices)
-            mid_events.append(md)
+        events = [find_indices(mark[2, 1, :], marker_anato[2, 1, :]) for mark in self.filtered_markers_position]
+        mid_events = [find_min(mark[2, 1, :], marker_anato[2, 1, :], find_indices(mark[2, 1, :], marker_anato[2, 1, :]))
+                      for mark in self.filtered_markers_position]
         return events, mid_events
 
     def get_time(self):
