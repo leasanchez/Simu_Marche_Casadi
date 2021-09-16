@@ -10,9 +10,8 @@ class initial_guess:
             nb_mus = 0
 
         qdot_ref = np.gradient(q_ref)[0]
-
+        x_init.add([0]*model.nbQ() + [0]*model.nbQ())
         # x_init.add(np.vstack([q_ref, qdot_ref]), interpolation=InterpolationType.EACH_FRAME)
-        x_init.add(np.vstack([np.hstack([q_ref[0], qdot_ref[0]]), np.hstack([q_ref[-1], qdot_ref[-1]])]).T, interpolation=InterpolationType.LINEAR)
         if mapping:
             u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * nb_mus)
         else:
