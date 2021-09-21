@@ -63,7 +63,7 @@ class markers:
         self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d', 'squat_controle_post.c3d']
         self.loaded_c3d = self.load_c3d()
         self.n_marker = 52
-        self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:52]
+        self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:self.n_marker]
         self.markers_position = self.get_markers_position()
         self.filtered_markers_position = self.filter_markers_position()
         self.events, self.mid_events = self.get_events()
@@ -75,7 +75,7 @@ class markers:
         return loaded_c3d
 
     def get_markers_position(self):
-        markers_position = [c["data"]["points"][:3, :, :] for c in self.loaded_c3d]
+        markers_position = [c["data"]["points"][:3, :self.n_marker, :] for c in self.loaded_c3d]
         return markers_position
 
     def filter_markers_position(self):

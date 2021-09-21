@@ -25,6 +25,6 @@ class utils:
         '''
         x = np.arange(y.shape[0])
         good = np.where(np.isfinite(y))
-        f = interpolate.interp1d(x[~np.isnan(y)], y[~np.isnan(y)], bounds_error=False, kind='cubic')
+        f = interpolate.interp1d(x[good], y[good], bounds_error=False, kind='cubic')
         y_interp = np.where(np.isfinite(y), y, f(x))
         return y_interp
