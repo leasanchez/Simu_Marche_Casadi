@@ -5,14 +5,14 @@ from ezc3d import c3d
 from scipy import signal
 from UTILS import utils
 
-def plot_events(markers_position, marker_anato, events):
+def plot_events(markers_position, marker_anato, events, min):
     plt.figure()
     plt.plot(markers_position)
     plt.plot([0, 1900], [find_initial_height(marker_anato) - 5, find_initial_height(marker_anato) - 5], 'k--')
     for e in events:
-        plt.plot([e, e], [700, 1050], 'r')
+        plt.plot([e, e], [np.min(markers_position) - 50, np.max(markers_position) + 50], 'r')
     for m in min:
-        plt.plot([m, m], [700, 1050], 'g')
+        plt.plot([m, m], [np.min(markers_position) - 50, np.max(markers_position) + 50], 'g')
     plt.show()
 
 def get_exp_files(path):
@@ -37,7 +37,7 @@ def find_indices(markers_position, marker_anato):
 def find_min(markers_position, marker_anato, events):
     n_repet = int(len(events)/2)
     min = [np.argmin(markers_position[events[2*i]:events[2*i + 1]]) + events[2*i] for i in range(n_repet)]
-    # plot_events(markers_position, marker_anato, events)
+    plot_events(markers_position, marker_anato, events, min)
     return min
 
 def apply_filter(data, b, a):
