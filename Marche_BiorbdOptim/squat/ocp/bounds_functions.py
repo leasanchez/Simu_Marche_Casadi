@@ -5,10 +5,8 @@ class bounds:
     def set_bounds(model, x_bounds, u_bounds, muscles=False, mapping=False):
         torque_min, torque_max = -1000, 1000
         activation_min, activation_max = 1e-3, 0.99
-        if muscles:
-            nb_mus = model.nbMuscleTotal()
-        else:
-            nb_mus = 0
+
+        nb_mus = model.nbMuscleTotal() if muscles else 0
 
         x_bounds.add(bounds=QAndQDotBounds(model))
         if mapping:
