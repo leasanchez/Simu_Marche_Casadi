@@ -58,9 +58,10 @@ def apply_filter(data, b, a):
 
 
 class markers:
-    def __init__(self, path):
-        self.path = path
-        self.list_exp_files = ['squat_controle.c3d', 'squat_3cm.c3d', 'squat_4cm.c3d', 'squat_5cm.c3d', 'squat_controle_post.c3d']
+    def __init__(self, name):
+        self.name = name
+        self.path = '../Data_test/' + name
+        self.list_exp_files = ['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm', 'squat_controle_post']
         self.loaded_c3d = self.load_c3d()
         self.n_marker = 52
         self.labels_markers = self.loaded_c3d[-1]["parameters"]["POINT"]["LABELS"]["value"][:self.n_marker]
@@ -71,7 +72,7 @@ class markers:
 
 
     def load_c3d(self):
-        loaded_c3d = [c3d(self.path + '/Squats/' + file) for file in self.list_exp_files]
+        loaded_c3d = [c3d(self.path + '/Squats/' + file + '.c3d') for file in self.list_exp_files]
         return loaded_c3d
 
     def get_markers_position(self):

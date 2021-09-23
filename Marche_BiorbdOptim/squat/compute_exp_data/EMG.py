@@ -149,7 +149,7 @@ class emg:
         for file in self.list_exp_files:
             self.emg_normalized_exp.append(self.get_normalized_emg(file_path=self.path + '/Squats/' + file + ".c3d"))
 
-        self.events = markers(self.path).events
+        self.events = markers(self.name).events
         self.mean, self.std = self.get_mean()
         self.mean_sym, self.std_sym = self.get_mean(symetry=True)
         self.RMSE = self.get_RMSE()
