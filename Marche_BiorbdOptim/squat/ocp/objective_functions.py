@@ -2,38 +2,21 @@ from bioptim import ObjectiveFcn, Node, PenaltyNodeList, Axis, BiorbdInterface
 from casadi import MX, vertcat
 import numpy as np
 
-
-def sym_forces(pn: PenaltyNodeList) -> MX:
-    ns = pn.nlp.ns # number of shooting points
-    nc = pn.nlp.model.nbContacts() # number of contact forces
-    val = []  # init
-
-    # --- compute forces ---
-    for n in range(ns):
-        force = pn.nlp.contact_forces_func(pn.x[n], pn.u[n], pn.p)  # compute force
-        for c in range(int(nc/2)):
-            val = vertcat(val, (force[c]**2 - force[c+int(nc/2)]**2))
-    return val
-
 class objective:
     @staticmethod
-    def set_objectif_function_exp(objective_functions, q_ref, mark_ref):
-        # 2D - objective fcn
-        # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="q", target=q_ref, node=Node.ALL, weight=1)
+    def set_objectif_function_exp(objective_functions, q_ref):
+        marker_index = [26, 46] # foot markers
+        objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=1, expand=False)
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_CONTROL, key='muscles', weight=10, expand=False)
         # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", weight=0.001)
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=0.001)
-
-        # 3D - objective fcn
-        marker_index = [26, 31, 46, 51] # foot markers
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=0.001, expand=False)
-        # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="q", index=range(3), target=q_ref[:3, :], node=Node.ALL, weight=1)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
-                                marker_index=marker_index,
-                                target=mark_ref[:, marker_index, :-1],
-                                node=Node.ALL,
-                                weight=10,
-                                expand=True)
-        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION, axes=Axis.Z, node=Node.MID, expand=True)
+        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="q", target=q_ref[:, :-1], node=Node.ALL, weight=100, expand=False)
+        # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_MARKERS,
+        #                         marker_index=marker_index,
+        #                         target=mark_ref[:, marker_index, :-1],
+        #                         node=Node.ALL,
+        #                         weight=10,
+        #                         expand=True)
+        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION, axes=Axis.Z, node=Node.MID, expand=True)
 
     @staticmethod
     def set_objectif_function(objective_functions, position_high, position_low, muscles=True):
