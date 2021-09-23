@@ -1,8 +1,12 @@
 import numpy as np
 from scipy import interpolate, signal
 
-class utils:
 
+def interpolation(x, y, x_new):
+    f = interpolate.interp1d(x, y, kind='cubic')
+    return f(x_new)
+
+class utils:
     @staticmethod
     def define_butterworth_filter(fs, fc):
         """
@@ -28,3 +32,30 @@ class utils:
         f = interpolate.interp1d(x[good], y[good], bounds_error=False, kind='cubic')
         y_interp = np.where(np.isfinite(y), y, f(x))
         return y_interp
+
+    @staticmethod
+    def divide_squat_repetition(x, index):
+        x_squat = []
+        for idx in range(int(len(index) / 2)):
+            x_squat.append(x[:, :, index[2 * idx]:index[2 * idx + 1]])
+        return x_squat
+
+    @staticmethod
+    def interpolate_repetition(x, index):
+        x_squat = utils.divide_squat_repetition(x, index)
+        x_interp = []
+        for (i, r) in enumerate(x_squat):
+            start = np.arange(0, r.shape[-1])
+            interp = np.linspace(0, start[-1], 200)
+            r_new = np.ndarray((3, 52, 200))
+            for m in range(r.shape[1]):
+                r_new[:, m, :] = np.array([interpolation(start, r[i, m, :], interp) for i in range(3)])
+            x_interp.append(r_new)
+        return np.array(x_interp)
+
+    @staticmethod
+    def compute_mean(x, index):
+        x_interp = utils.interpolate_repetition(x, index)
+        mean = np.mean(x_interp, axis=0)
+        std = np.std(x_interp, axis=0)
+        return mean, std
