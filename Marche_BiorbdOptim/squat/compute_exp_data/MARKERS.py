@@ -69,6 +69,7 @@ class markers:
         self.filtered_markers_position = self.filter_markers_position()
         self.events, self.mid_events = self.get_events()
         self.time = self.get_time()
+        self.mean_markers_position = self.get_mean()
 
 
     def load_c3d(self):
@@ -101,3 +102,12 @@ class markers:
             tclimb = np.mean((np.array(e[1::2]) - self.mid_events[n])/100)
             time.append([t, tfall, tclimb])
         return time
+
+    def get_mean(self):
+        mean_markers_position = []
+        std_markers_position = []
+        for (i, mark_pos) in enumerate(self.filtered_markers_position):
+            a = utils.compute_mean(mark_pos, self.events[i])
+            mean_markers_position.append(a[0])
+            std_markers_position.append(a[1])
+        return mean_markers_position, std_markers_position
