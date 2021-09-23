@@ -69,7 +69,7 @@ class markers:
         self.filtered_markers_position = self.filter_markers_position()
         self.events, self.mid_events = self.get_events()
         self.time = self.get_time()
-        self.mean_markers_position = self.get_mean()
+        self.mean_markers_position, self.std_markers_position = self.get_mean()
 
 
     def load_c3d(self):
