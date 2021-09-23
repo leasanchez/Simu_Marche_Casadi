@@ -3,19 +3,15 @@ from bioptim import InterpolationType, InitialGuessList
 
 class initial_guess:
     @staticmethod
-    def set_initial_guess(model, x_init, u_init, q_ref, muscles, mapping):
-        if muscles:
-            nb_mus = model.nbMuscleTotal()
-        else:
-            nb_mus = 0
+    def set_initial_guess(model, x_init, u_init, q_ref, muscles, mapping=False):
+        nb_mus = model.nbMuscleTotal() if muscles else 0
+        nb_tau = (model.nbGeneralizedTorque() - model.nbRoot()) if mapping else model.nbGeneralizedTorque()
 
         qdot_ref = np.gradient(q_ref)[0]
         x_init.add([0]*model.nbQ() + [0]*model.nbQ())
         # x_init.add(np.vstack([q_ref, qdot_ref]), interpolation=InterpolationType.EACH_FRAME)
-        if mapping:
-            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * nb_mus)
-        else:
-            u_init.add([0] * model.nbGeneralizedTorque() + [0.1] * nb_mus)
+
+        u_init.add([0] * nb_tau + [0.1] * nb_mus)
 
     @staticmethod
     def set_initial_guess_multiphase(model, x_init, u_init, q_ref, muscles=True, mapping=False):
