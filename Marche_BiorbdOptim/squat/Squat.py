@@ -23,6 +23,27 @@ from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
 from ocp.constraint_functions import constraint
 
+
+def get_generic_model():
+    # model init
+    model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
+    # --- Subject positions and initial trajectories --- #
+    # position_high = [0, -0.054, 0, 0, 0, -0.4,
+    #                  0, 0, 0.37, -0.13, 0, 0.11,
+    #                  0, 0, 0.37, -0.13, 0, 0.11]
+    # position_low = [-0.12, -0.43, 0.0, 0.0, 0.0, -0.74,
+    #                 0.0, 0.0, 1.82, -1.48, 0.0, 0.36,
+    #                 0.0, 0.0, 1.82, -1.48, 0.0, 0.36]
+    position_high = [0.0, 0.246, 0.0, 0.0, 0.0, -0.4,
+                     0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11,
+                     0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11]
+    position_low = [-0.12, -0.13, 0.0, 0.0, 0.0, -0.74,
+                    0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36,
+                    0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36]
+    q_ref = np.concatenate([np.linspace(position_high, position_low,  int(nb_shooting/2)),
+                            np.linspace(position_low, position_high,  int(nb_shooting/2) + 1)])
+    return model, position_high, position_low, q_ref
+
 def get_results(sol):
     q = sol.states["q"]
     qdot = sol.states["qdot"]
@@ -38,6 +59,9 @@ def save_results(ocp, sol, save_path):
 
 
 # OPTIMAL CONTROL PROBLEM
+# generic model
+# model, position_high, position_low, q_ref = get_generic_model()
+
 # experimental data
 name = "EriHou"
 model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + "_3D.bioMod"
@@ -91,24 +115,6 @@ final_time = 1.8
 # b.load_movement(q)
 # b.exec()
 
-
-# # model init
-# model = biorbd.Model("models/2legs_18dof_flatfootR.bioMod")
-# # --- Subject positions and initial trajectories --- #
-# # position_high = [0, -0.054, 0, 0, 0, -0.4,
-# #                  0, 0, 0.37, -0.13, 0, 0.11,
-# #                  0, 0, 0.37, -0.13, 0, 0.11]
-# # position_low = [-0.12, -0.43, 0.0, 0.0, 0.0, -0.74,
-# #                 0.0, 0.0, 1.82, -1.48, 0.0, 0.36,
-# #                 0.0, 0.0, 1.82, -1.48, 0.0, 0.36]
-# position_high = [0.0, 0.246, 0.0, 0.0, 0.0, -0.4,
-#                  0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11,
-#                  0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11]
-# position_low = [-0.12, -0.13, 0.0, 0.0, 0.0, -0.74,
-#                 0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36,
-#                 0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36]
-# q_ref = np.concatenate([np.linspace(position_high, position_low,  int(nb_shooting/2)),
-#                         np.linspace(position_low, position_high,  int(nb_shooting/2) + 1)])
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
