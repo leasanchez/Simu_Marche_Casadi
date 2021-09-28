@@ -64,7 +64,7 @@ def save_results(ocp, sol, save_path):
 
 # experimental data
 name = "EriHou"
-model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + "_3D.bioMod"
+model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + "_3D2_muscles.bioMod"
 model = biorbd.Model(model_path)
 
 # --- Subject positions and initial trajectories --- #
@@ -80,12 +80,8 @@ q_kalman = data.get_q(name=name, title='squat_controle')
 position_high = q_kalman[idx, 0]
 position_low = q_kalman[idx, 100]
 
-# --- compute markers position --- #
-compute_markers_position = biorbd.to_casadi_func("Markers", model.markers, MX.sym("q", model.nbQ(), 1))
-mark = np.zeros((3, model.nbMarkers(), q_kalman.shape[1]))
-for i in range(q_kalman.shape[1]):
-    mark[:, :, i] = compute_markers_position(q_kalman[idx, i])
-data_marker = xarray.DataArray(data=mark)
+# --- load muscle activation --- #
+activation = data.get_muscle_activation(name=name, title='squat_controle')
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", model.nbQ(), 1))
@@ -118,14 +114,14 @@ final_time = 1.8
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
-dynamics.add(DynamicsFcn.TORQUE_DRIVEN, with_contact=True, expand=False)
-# dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, expand=False)
+# dynamics.add(DynamicsFcn.TORQUE_DRIVEN, with_contact=True, expand=False)
+dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, expand=False)
 
 # --- Objective function --- #
 com_ref = CoM_trajectory[:, 0::5]
 q_ref = q_kalman[idx, 0::5]
 objective_functions = ObjectiveList()
-objective.set_objectif_function_exp(objective_functions, q_ref, mark[:, :, 0::5])
+objective.set_objectif_function_exp(objective_functions, q_ref, activations_ref=activations_ref)
 
 # --- Constraints --- #
 constraints = ConstraintList()
@@ -134,13 +130,13 @@ constraint.set_constraints_exp(constraints)
 # --- Path constraints --- #
 x_bounds = BoundsList()
 u_bounds = BoundsList()
-bounds.set_bounds(model, x_bounds, u_bounds, muscles=False)
+bounds.set_bounds(model, x_bounds, u_bounds, muscles=True)
 x_bounds[0][:model.nbQ(), 0] = position_high
 
 # --- Initial guess --- #
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-initial_guess.set_initial_guess(model, x_init, u_init, q_ref[:, :-1], muscles=False, mapping=False)
+initial_guess.set_initial_guess(model, x_init, u_init, q_ref[:, :-1], muscles=True)
 # ------------- #
 
 ocp = OptimalControlProgram(
