@@ -76,12 +76,16 @@ model = biorbd.Model(model_path)
 #        20, # knee L
 #        23] # ankle L
 idx = range(model.nbQ())
+# --- load joint trajectories --- #
 q_kalman = data.get_q(name=name, title='squat_controle')
 position_high = q_kalman[idx, 0]
 position_low = q_kalman[idx, 100]
 
 # --- load muscle activation --- #
 activation = data.get_muscle_activation(name=name, title='squat_controle')
+
+# --- load markers position --- #
+markers_position = data.get_markers_position(name=name, title='squat_controle')
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model.CoM, MX.sym("q", model.nbQ(), 1))
@@ -91,10 +95,10 @@ CoM_low = compute_CoM(np.array(position_low))
 for i in range(q_kalman.shape[1]):
     CoM_trajectory[:, i:i+1] = compute_CoM(np.array(q_kalman[idx, i]))
 
-# --- affichage biomod --- #
+# --- visualize model and trajectories --- #
 # b = bioviz.Viz(model_path=model_path)
 # b.load_movement(q_kalman[idx, :])
-# # b.load_experimental_markers(mark)
+# # b.load_experimental_markers(markers_position)
 # b.exec()
 
 # --- Problem parameters --- #
@@ -102,15 +106,9 @@ nb_shooting = 38
 final_time = 1.8
 
 # # load previous solution
-# save_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/Simulation/torque_driven/" + name + "_coloc_2D.bo"
-# save_path2 = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/Simulation/torque_driven/" + name + "_5cm_coloc_2D.bo"
-# ocp_load, sol_load = OptimalControlProgram.load(save_path2)
+# save_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/EriHou/Simulation/torque_driven_3D/EriHou_controle_3D.bo"
+# ocp_load, sol_load = OptimalControlProgram.load(save_path)
 # sol_load.graphs()
-# q, q_dot, tau = get_results(sol_load)
-# b = bioviz.Viz(model_path=model_path)
-# b.load_movement(q)
-# b.exec()
-
 
 # --- Dynamics --- #
 dynamics = DynamicsList()
@@ -118,8 +116,12 @@ dynamics = DynamicsList()
 dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, expand=False)
 
 # --- Objective function --- #
+# data from experiment
 com_ref = CoM_trajectory[:, 0::5]
 q_ref = q_kalman[idx, 0::5]
+mark_ref = markers_position[:, :, 0::5]
+activations_ref = activation[:, 0::100]
+
 objective_functions = ObjectiveList()
 objective.set_objectif_function_exp(objective_functions, q_ref, activations_ref=activations_ref)
 
@@ -132,6 +134,7 @@ x_bounds = BoundsList()
 u_bounds = BoundsList()
 bounds.set_bounds(model, x_bounds, u_bounds, muscles=True)
 x_bounds[0][:model.nbQ(), 0] = position_high
+x_bounds[0][model.nbQ():, 0] = [0] * model.nbQ()
 
 # --- Initial guess --- #
 x_init = InitialGuessList()
@@ -174,8 +177,10 @@ sol = ocp.solve(
 # b.exec()
 
 # # --- Save results --- #
-# save_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/Simulation/torque_driven/" + name + "_controle_3D.bo"
-# ocp.save(sol, save_path)
+# save_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/Simulation/torque_driven_3D/"
+# ocp.save(sol, save_path + name + "_controle_3D.bo")
+# q, q_dot, tau = get_results(sol)
+# save_results(ocp, sol, save_path=save_path + name + "_")
 
 # --- Show results --- #
 sol.print()
