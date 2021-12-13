@@ -7,18 +7,11 @@ class bounds:
         activation_min, activation_max = 1e-3, 0.99
 
         nb_mus = model.nbMuscleTotal() if muscles else 0
+        nb_tau = (model.nbGeneralizedTorque() - model.nbRoot()) if mapping else model.nbGeneralizedTorque()
 
         x_bounds.add(bounds=QAndQDotBounds(model))
-        if mapping:
-            u_bounds.add(
-                [torque_min] * (model.nbGeneralizedTorque() - model.nbRoot()) + [activation_min] * nb_mus,
-                [torque_max] * (model.nbGeneralizedTorque() - model.nbRoot()) + [activation_max] * nb_mus,
-            )
-        else:
-            u_bounds.add(
-                [torque_min] * model.nbGeneralizedTorque() + [activation_min] * nb_mus,
-                [torque_max] * model.nbGeneralizedTorque() + [activation_max] * nb_mus,
-            )
+        u_bounds.add([torque_min] * nb_tau + [activation_min] * nb_mus,
+                     [torque_max] * nb_tau + [activation_max] * nb_mus,)
 
 
     @staticmethod
