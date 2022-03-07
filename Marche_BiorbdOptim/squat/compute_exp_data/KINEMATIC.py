@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import biorbd_casadi as biorbd
+from casadi import MX
 from scipy import interpolate
 from ezc3d import c3d
 from MARKERS import markers
@@ -78,6 +79,20 @@ def find_amplitude(data, index):
         amp[i] = (np.max(np.abs(d[index, :])) - np.min(np.abs(d[index, :]))) * 180/np.pi
     return np.mean(amp)
 
+def plot_com_displacement(com_position):
+    plt.figure()
+    for com in com_position:
+        plt.plot(com[2, :])
+    plt.legend(['squat_controle', 'squat_3cm', 'squat_4cm', 'squat_5cm', 'squat_controle_post'])
+    plt.show()
+
+def compute_speed(com_z, time):
+    com_displacement = np.max(com_z) - np.min(com_z)
+    speed = 2 * com_displacement/time[0]
+    speed_fall = com_displacement/time[1]
+    speed_climb = com_displacement/time[2]
+    return [speed, speed_fall, speed_climb]
+
 class kinematic:
     def __init__(self, name, higher_foot='R'):
         self.name = name
@@ -92,8 +107,12 @@ class kinematic:
                         "genou Rz",
                         "cheville Rx", "cheville Rz"]
         self.events = markers(self.path).get_events()[0]
+        self.time = markers(self.path).get_time()
         self.q = self.get_q()
         self.q_mean, self.q_std = self.get_mean(self.q)
+        self.com_position = self.compute_com()
+        # plot_com_displacement(self.com_position)
+        self.speed = self.get_speed()
         self.qdiff_mean, self.qdiff_std = self.get_mean(self.q, diff=True)
         self.qdot = self.get_qdot()
         if self.higher_foot == 'R':
@@ -146,6 +165,19 @@ class kinematic:
         for q in self.q:
             amp_value.append(find_amplitude(q, index))
         return amp_value
+
+    def compute_com(self):
+        com_position = []
+        compute_CoM = biorbd.to_casadi_func("CoM", self.model.CoM, MX.sym("q", self.model.nbQ(), 1))
+        for q in self.q_mean:
+            com_position.append(np.array(compute_CoM(q)))
+        return com_position
+
+    def get_speed(self):
+        speed = []
+        for (i, com) in enumerate(self.com_position):
+            speed.append(compute_speed(com[2, :], self.time[i]))
+        return speed
 
 
     def plot_squat_repetition(self, title=None):
