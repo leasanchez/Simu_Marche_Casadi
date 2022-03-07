@@ -37,7 +37,7 @@ def find_indices(markers_position, marker_anato):
 def find_min(markers_position, marker_anato, events):
     n_repet = int(len(events)/2)
     min = [np.argmin(markers_position[events[2*i]:events[2*i + 1]]) + events[2*i] for i in range(n_repet)]
-    plot_events(markers_position, marker_anato, events, min)
+    # plot_events(markers_position, marker_anato, events, min)
     return min
 
 def apply_filter(data, b, a):
