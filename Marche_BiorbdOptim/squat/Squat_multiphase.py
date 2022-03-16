@@ -1,7 +1,7 @@
 import biorbd_casadi as biorbd
-# import bioviz
+import bioviz
 import numpy as np
-from casadi import MX, Function
+from casadi import MX
 from matplotlib import pyplot as plt
 from time import time
 from bioptim import (
@@ -21,57 +21,50 @@ from ocp.objective_functions import objective
 from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
 from ocp.initial_guess_functions import initial_guess
-# from Compute_Results.Plot_results import Affichage
-# from Compute_Results.Muscles import muscle
 
 
-def get_results(sol):
+def get_results(sol, muscles=False):
     q = sol.states["q"]
     qdot = sol.states["qdot"]
     tau = sol.controls["tau"]
-    muscle = sol.controls["muscles"]
-    return q, qdot, tau, muscle
+    if muscles:
+        muscles = sol.controls["muscles"]
+        return q, qdot, tau, muscles
+    else:
+        return q, qdot, tau
 
-def save_results(ocp, sol, save_path):
+def save_results(ocp, sol, save_path, muscles=False):
     ocp.save(sol, save_path + 'cycle.bo')
-    q, qdot, tau, muscle = get_results(sol.merge_phases())
+    if muscles:
+        q, qdot, tau, muscles = get_results(sol.merge_phases(), muscles)
+        np.save(save_path + 'muscles', muscles)
+    else:
+        q, qdot, tau = get_results(sol.merge_phases())
     np.save(save_path + 'qdot', qdot)
     np.save(save_path + 'q', q)
     np.save(save_path + 'tau', tau)
-    np.save(save_path + 'muscle', muscle)
-
 
 # --- Problem parameters --- #
 nb_shooting = (19, 19)
 final_time = (0.75, 0.75)
 
 # experimental data
-# name = "AmeCeg"
-# model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + ".bioMod"
-# model = (biorbd.Model(model_path),
-#          biorbd.Model(model_path),)
-# # --- Subject positions and initial trajectories --- #
-# q_ref = []
-# q_kalman = data.get_q(name='AmeCeg', title='squat_controle')
-# position_high = q_kalman[:, 0]
-# position_low = q_kalman[:, 100]
-# a = q_kalman[:, 0::5]
-# q_ref.append(a[:, :nb_shooting[0]+1])
-# q_ref.append(a[:, nb_shooting[0]+1:])
+name = "EriHou"
+title = "squat_controle"
+model_path = "./Data_test/" + name + "/" + name + ".bioMod"
+model = (biorbd.Model(model_path),
+         biorbd.Model(model_path),)
 
-# model init
-model = (biorbd.Model("models/2legs_18dof_flatfootR.bioMod"),
-         biorbd.Model("models/2legs_18dof_flatfootR.bioMod"))
 # --- Subject positions and initial trajectories --- #
-position_high = [0.0, 0.246, 0.0, 0.0, 0.0, -0.4,
-                 0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11,
-                 0.0, 0.0, 0.37, -0.13, 0.0, 0.0, 0.11]
-position_low = [-0.12, -0.13, 0.0, 0.0, 0.0, -0.74,
-                0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36,
-                0.0, 0.0, 1.82, -1.48, 0.0, 0.0, 0.36]
-q_ref = []
-q_ref.append(np.linspace(position_high, position_low, nb_shooting[0] + 1).T)
-q_ref.append(np.linspace(position_low, position_high, nb_shooting[0] + 1).T)
+q_ref = data.data_per_phase(name, title, final_time, nb_shooting, "q")
+marker_ref = data.data_per_phase(name, title, final_time, nb_shooting, "marker")
+activation_ref = data.data_per_phase(name, title, final_time, nb_shooting, "activation")
+position_high = q_ref[0][:, 0]
+position_low = q_ref[0][:, -1]
+
+b=bioviz.Viz(model_path=model_path)
+b.load_movement(q_ref[0])
+b.exec()
 
 # --- Compute CoM position --- #
 compute_CoM = biorbd.to_casadi_func("CoM", model[0].CoM, MX.sym("q", model[0].nbQ(), 1))
@@ -83,16 +76,14 @@ CoM_low = compute_CoM(np.array(position_low))
 dynamics = DynamicsList()
 dynamics.add(DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase=0, expand=False)
 dynamics.add(DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase=1, expand=False)
-# dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, phase=0, expand=False)
-# dynamics.add(DynamicsFcn.MUSCLE_DRIVEN, with_residual_torque=True, with_contact=True, phase=1, expand=False)
 
 # Objective function
 objective_functions = ObjectiveList()
-objective.set_objectif_function_multiphase(objective_functions, position_high, muscles=False)
+objective.set_objectif_function_multiphase(objective_functions, q_ref, muscles=False)
 
 # Constraints
 constraints = ConstraintList()
-constraint.set_constraints_multiphase(constraints, inequality_value=0.0)
+constraint.set_constraints_multiphase(constraints, model[0])
 
 # Path constraints
 x_bounds = BoundsList()
@@ -124,24 +115,19 @@ ocp = OptimalControlProgram(
 
 # --- Solve the program --- #
 tic = time()
-sol = ocp.solve(
-    solver=Solver.IPOPT,
-    solver_options={
-        "ipopt.tol": 1e-6,
-        "ipopt.max_iter": 2000,
-        "ipopt.hessian_approximation": "limited-memory",
-        "ipopt.limited_memory_max_history": 50,
-        "ipopt.linear_solver": "ma57",
-    },
-    show_online_optim=False,
-)
+solver = Solver.IPOPT()
+solver.set_linear_solver("ma57")
+solver.set_convergence_tolerance(1e-3)
+solver.set_hessian_approximation("exact")
+solver.set_maximum_iterations(3000)
+solver.show_online_optim=False
+sol = ocp.solve(solver=solver)
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven/multiphase/ankle/'
+save_path = './RES/torque_driven/multiphase/with_contact/'
 save_results(ocp, sol, save_path)
 
 # --- Show results --- #
 sol.animate()
 sol.print()
-sol.graphs()
