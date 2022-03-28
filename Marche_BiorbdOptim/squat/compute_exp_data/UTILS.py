@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import interpolate, signal
-
+from ezc3d import c3d
 
 def interpolation(x, y, x_new):
     f = interpolate.interp1d(x, y, kind='cubic')
@@ -8,12 +8,29 @@ def interpolation(x, y, x_new):
 
 class utils:
     @staticmethod
+    def load_c3d(path, list_exp_files, extract_forceplat_data=False):
+        loaded_c3d = [c3d(path + file + '.c3d', extract_forceplat_data=extract_forceplat_data) for file in list_exp_files]
+        return loaded_c3d
+
+    @staticmethod
+    def get_q_name(model):
+        q_name = []
+        for q in range(model.nbSegment()):
+            for d in range(model.segment(q).nbQ()):
+                q_name.append(f"{model.segment(q).name().to_string()}_{model.segment(q).nameDof(d).to_string()}")
+        return q_name
+
+    @staticmethod
+    def load_txt_file(file_path, size):
+        data_tp = np.loadtxt(file_path)
+        nb_frame = int(len(data_tp) / size)
+        out = np.zeros((size, nb_frame))
+        for n in range(nb_frame):
+            out[:, n] = data_tp[n * size: n * size + size]
+        return out
+
+    @staticmethod
     def define_butterworth_filter(fs, fc):
-        """
-        define filter parameters
-        input : fs : sample frequency, fc : cut frequency
-        output : signal parameter for low pass filter
-        """
         w = fc / (fs / 2)
         b, a = signal.butter(4, w, 'low')
         return b, a
@@ -24,9 +41,6 @@ class utils:
 
     @staticmethod
     def fill_nan(y):
-        '''
-        interpolate to fill nan values using cubic interpolation
-        '''
         x = np.arange(y.shape[0])
         good = np.where(np.isfinite(y))
         f = interpolate.interp1d(x[good], y[good], bounds_error=False, kind='cubic')
@@ -37,25 +51,22 @@ class utils:
     def divide_squat_repetition(x, index):
         x_squat = []
         for idx in range(int(len(index) / 2)):
-            x_squat.append(x[:, :, index[2 * idx]:index[2 * idx + 1]])
+            x_squat.append(x[:, index[2 * idx]:index[2 * idx + 1]])
         return x_squat
 
     @staticmethod
-    def interpolate_repetition(x, index):
+    def interpolate_repetition(x, index, freq):
         x_squat = utils.divide_squat_repetition(x, index)
         x_interp = []
         for (i, r) in enumerate(x_squat):
             start = np.arange(0, r.shape[-1])
-            interp = np.linspace(0, start[-1], 200)
-            r_new = np.ndarray((3, 52, 200))
-            for m in range(r.shape[1]):
-                r_new[:, m, :] = np.array([interpolation(start, r[i, m, :], interp) for i in range(3)])
-            x_interp.append(r_new)
-        return np.array(x_interp)
+            interp = np.linspace(0, start[-1], 2*freq)
+            x_interp.append(interpolation(start, r, interp))
+        return x_interp
 
     @staticmethod
-    def compute_mean(x, index):
-        x_interp = utils.interpolate_repetition(x, index)
-        mean = np.mean(x_interp, axis=0)
-        std = np.std(x_interp, axis=0)
+    def compute_mean(x, index, freq):
+        x_interp = utils.interpolate_repetition(x, index, freq)
+        mean = np.mean(np.array(x_interp), axis=0)
+        std = np.std(np.array(x_interp), axis=0)
         return mean, std

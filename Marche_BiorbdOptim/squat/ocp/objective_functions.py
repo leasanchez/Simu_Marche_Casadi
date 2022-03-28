@@ -1,37 +1,56 @@
 from bioptim import ObjectiveFcn, Node, Axis
+import numpy as np
+
+def track_kinematic(objective_functions, q_ref, weight, phase):
+    objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE,  # track q
+                            quadratic=True,
+                            key="q",
+                            target=q_ref,
+                            node=Node.ALL,
+                            weight=weight,
+                            expand=False,
+                            phase=phase)
+
+def track_muscle(objective_functions, activation_ref, weight, phase):
+    objective_functions.add(ObjectiveFcn.Lagrange.TRACK_CONTROL,  # track muscle
+                            quadratic=True,
+                            key="muscles",
+                            target=activation_ref[:, :-1],
+                            node=Node.ALL,
+                            weight=weight,
+                            expand=False,
+                            phase=phase)
+
+def minimize_tau(objective_functions, weight, phase):
+    objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
+                            quadratic=True,
+                            key="tau",
+                            weight=weight,
+                            node=Node.ALL,
+                            expand=False,
+                            phase=phase)
+
+def target_com(objective_functions, target, weight, phase):
+    objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
+                            node=Node.END,
+                            axes=Axis.Z,
+                            quadratic=True,
+                            target=target,
+                            weight=weight,
+                            expand=False,
+                            phase=phase)
+
 
 class objective:
     @staticmethod
-    def set_objectif_function_exp(objective_functions, q_ref, markers_ref=None, activations_ref=None):
-        # objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", indices=range(6), weight=0.001, expand=False)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_CONTROL, key='muscles', target=activations_ref[:14, :-2], weight=1, expand=True)
-        # objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", weight=0.001)
-        objective_functions.add(ObjectiveFcn.Lagrange.TRACK_STATE, key="q", target=q_ref[:, :-1], node=Node.ALL, weight=1, expand=True)
-        # objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION, axes=Axis.Z, node=Node.MID, expand=True)
-
-    @staticmethod
-    def set_objectif_function(objective_functions, position_high, position_low, muscles=True):
+    def set_objectif_function(objective_functions, position_high, nb_shooting, muscles=True):
         # --- control minimize --- #
         if muscles:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    node=Node.ALL,
-                                    weight=1,
-                                    expand=False)
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # muscles
-                                    quadratic=True,
-                                    key="muscles",
-                                    node=Node.ALL,
-                                    weight=10,
-                                    expand=False)
+            minimize_tau(objective_functions, 1, phase=0)
+            act = np.zeros((38, nb_shooting + 1))
+            track_muscle(objective_functions, act, 10, phase=0)
         else:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    node=Node.ALL,
-                                    weight=0.1,
-                                    expand=False)
+            minimize_tau(objective_functions, 0.01, phase=0)
 
         # --- com displacement --- #
         objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
@@ -39,14 +58,7 @@ class objective:
                                 axes=Axis.Z,
                                 weight=1000,
                                 expand=False)
-        # objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-        #                         key="q",
-        #                         target=position_low,
-        #                         node=Node.MID,
-        #                         expand=False,
-        #                         quadratic=True,
-        #                         weight=100)
-
+        # --- final standing position --- #
         objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
                                 key="q",
                                 target=position_high,
@@ -56,73 +68,24 @@ class objective:
                                 weight=100)
 
     @staticmethod
-    def set_objectif_function_fall(objective_functions, muscles, phase=0):
-        # --- control minimize --- #
+    def set_objectif_function_fall(objective_functions, q_ref, activation_ref=None, muscles=False, phase=0):
+        track_kinematic(objective_functions, q_ref, 100, phase)
+        minimize_tau(objective_functions, 1, phase)
         if muscles:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    weight=1/100,
-                                    expand=False,
-                                    phase=phase)
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # muscles
-                                    quadratic=True,
-                                    key="muscles",
-                                    weight=1/100,
-                                    expand=False,
-                                    phase=phase)
-        else:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    weight=1/100,
-                                    expand=False,
-                                    phase=phase)
-        # --- com displacement --- #
-        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_COM_POSITION,
-                                node=Node.END,
-                                axes=Axis.Z,
-                                quadratic=False,
-                                weight=10,
-                                expand=False,
-                                phase=phase)
-
-    @staticmethod
-    def set_objectif_function_climb(objective_functions, position_high, muscles, phase=0):
-        # --- control minimize --- #
-        if muscles:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    weight=1,
-                                    expand=False,
-                                    phase=phase)
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # muscles
-                                    quadratic=True,
-                                    key="muscles",
-                                    weight=1,
-                                    expand=False,
-                                    phase=phase)
-        else:
-            objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,  # residual torque
-                                    quadratic=True,
-                                    key="tau",
-                                    weight=1/100,
-                                    expand=False,
-                                    phase=phase)
-
-        # --- final position --- #
-        objective_functions.add(ObjectiveFcn.Mayer.TRACK_STATE,
-                                key="q",
-                                target=position_high,
-                                node=Node.END,
-                                expand=False,
-                                quadratic=True,
-                                weight=100,
-                                phase=phase)
+            act = activation_ref if activation_ref is not None else np.zeros((38, q_ref.shape[1]))
+            track_muscle(objective_functions, act, 10, phase)
 
 
     @staticmethod
-    def set_objectif_function_multiphase(objective_functions, position_high, muscles=False):
-        objective.set_objectif_function_fall(objective_functions, muscles, phase=0)
-        objective.set_objectif_function_climb(objective_functions, position_high, muscles, phase=1)
+    def set_objectif_function_climb(objective_functions, q_ref, activation_ref, muscles, phase=1):
+        track_kinematic(objective_functions, q_ref, 100, phase)
+        minimize_tau(objective_functions, 0.001, phase)
+        if muscles:
+            act = activation_ref if activation_ref is not None else np.zeros((38, q_ref.shape[1]))
+            track_muscle(objective_functions, act, 10, phase)
+
+
+    @staticmethod
+    def set_objectif_function_multiphase(objective_functions, q_ref=None, activation_ref=None, muscles=False):
+        objective.set_objectif_function_fall(objective_functions, q_ref[0], activation_ref, muscles, phase=0)
+        objective.set_objectif_function_climb(objective_functions, q_ref[1], activation_ref, muscles, phase=1)

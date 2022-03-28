@@ -1,0 +1,899 @@
+version	4
+gravity 0 0 -9.81
+
+--------------------------------------------------------------------------------------------------------
+// Variables --------------------------------------------------------------------------------------------------------
+variables
+	$fiso_glutmax1 1047 //glut max 1
+	$fiso_glutmax2 1496 //glut max 2
+	$fiso_glutmax3 1008 //glut max 3
+	$fiso_glutmed1 1163 //glut med 1
+	$fiso_glutmed2 814  //glut med 2
+	$fiso_glutmed3 927  //glut med 3
+	$fiso_semimem 2342 //semimem
+	$fiso_semiten 629 //semiten
+	$fiso_bifem 1397 //bi fem
+	$fiso_recfem 2332 //rectus fem
+	$fiso_vasmed 2924 //vas med
+	$fiso_vasint 1806 //vas int
+	$fiso_vaslat 5479 //vas lat
+	$fiso_gasmed 3315 //gas med
+	$fiso_gaslat 1676 //gas lat
+	$fiso_sol 6593 //soleus
+	$fiso_tibant 1306 //tib ant
+	$fiso_addlong 975 //add long
+	$fiso_perlong 1187 //per long
+endvariables
+
+// Segments  --------------------------------------------------------------------------------------------------------
+// Informations about pelvis segment
+	// Segment
+	segment	pelvis
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	 0.0000000000	 0.000000000
+			0.0000000000	0.0000000000	-1.0000000000	 0.000000000
+			0.0000000000	1.0000000000	 0.0000000000	 0.000000000
+			0.0000000000	0.0000000000	 0.0000000000	 1.000000000
+		translations	xyz
+		rotations	xyz
+	        rangesQ -5    5
+		    	-5    5
+		    	-5    5
+		    	-pi  pi
+		    	-pi  pi
+		    	-pi  pi
+	    	rangesQdot -10        10
+		           -10        10
+		       	   -10        10
+		           -pi*10     pi*10
+		           -pi*10     pi*10
+		           -pi*10     pi*10
+		mass	7.23000
+		inertia
+			1.0000000000	0.0000000000	0.0000000000
+			0.0000000000	1.0000000000	0.0000000000
+			0.0000000000	0.0000000000	1.0000000000
+		com	0.0025390000	0.0199800000	0.0019360000
+	endsegment
+
+	// Markers
+	marker	L_ASIS //0
+		parent	pelvis
+		position	0.0988096710	0.0000000000	-0.1230536112
+		technical 1
+	endmarker
+	marker	L_CI //1
+		parent	pelvis
+		position	0.0119573330	0.0603738381	-0.1587937347
+		technical 1
+	endmarker
+	marker	L_PSIS //2
+		parent	pelvis
+		position	-0.1012801308	0.0003337071	-0.0382657733
+		technical 1
+	endmarker
+	marker	R_PSIS //3
+		parent	pelvis
+		position	-0.1026171233	-0.0003337071	0.0382657733
+		technical 1
+	endmarker
+	marker	R_CI //4
+		parent	pelvis
+		position	0.0032758986	0.0595160623	0.1704131262
+		technical 1
+	endmarker
+	marker	R_ASIS //5
+		parent	pelvis
+		position	0.1050875831	0.0000000000	0.1230536112
+		technical 1
+	endmarker
+
+
+// Informations about torso segment
+	// Segment
+	segment	torso
+		parent	pelvis
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	-0.0122252354
+			0.0000000000	1.0000000000	0.0000000000	 0.1238144180
+			0.0000000000	0.0000000000	1.0000000000	 0.0036462002
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		mass	26.55000
+		inertia
+			0.8144640000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.9032520000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.2072360000
+		com	0.0107470000	 0.3560320000	-0.0176797000
+	endsegment
+
+	// Markers
+	marker	CLAV //6
+		parent	torso
+		position	0.0951940973	0.2454278987	0.0055518085
+		technical 1
+	endmarker
+	marker	AV //7
+		parent	torso
+		position	0.1320733212	0.1672353286	0.0022328213
+		technical 1
+	endmarker
+	marker	STRN //8
+		parent	torso
+		position	0.1284155307	0.0562374337	0.0007655126
+		technical 1
+	endmarker
+	marker	T10 //9
+		parent	torso
+		position	-0.0894436337	0.0562374337	0.0007655126
+		technical 1
+	endmarker
+	marker	T2 //10
+		parent	torso
+		position	-0.0900751904	0.2167572145	0.0005843926
+		technical 1
+	endmarker
+	marker	C7 //11
+		parent	torso
+		position	-0.0197168872	0.3432685938	-0.0055518085
+		technical 1
+	endmarker
+
+
+// Informations about femur_r segment
+	// Segment
+	segment	femur_r
+		parent	pelvis
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0313112343
+			0.0000000000	1.0000000000	0.0000000000	-0.0915193278
+			0.0000000000	0.0000000000	1.0000000000	 0.1006197767
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xyz
+		rangesQ    -pi/2  pi/2
+		       	   -pi/2  pi/2
+		           -pi/2  pi/2+pi/3
+		rangesQdot  -pi*10     pi*10
+		            -pi*10     pi*10
+		            -pi*10     pi*10
+		mass	8.57000
+		inertia
+			 0.1932510000	 0.0000000000	 0.0000000000
+			 0.0000000000	 0.1985960000	 0.0000000000
+			 0.0000000000	 0.0000000000	 0.0382780000
+		com	-0.0007360000	-0.1489820000	-0.0001210000
+	endsegment
+
+	// Markers
+	marker	R_FUP //12
+		parent	femur_r
+		position	0.0104984292	-0.1221604460	0.0956285773
+		technical 1
+	endmarker
+	marker	R_FANT //13
+		parent	femur_r
+		position	0.0468454307	-0.1593310249	0.0828099818
+		technical 1
+	endmarker
+	marker	R_FPOST //14
+		parent	femur_r
+		position	-0.0326421154	-0.1618530273	0.0884836676
+		technical 1
+	endmarker
+	marker	R_FDOWN //15
+		parent	femur_r
+		position	0.0090690174	-0.1984561757	0.0874733658
+		technical 1
+	endmarker
+	marker	R_TC //16
+		parent	femur_r
+		position	-0.0309384799	-0.0136779586	0.0863493098
+		technical 1
+	endmarker
+	marker	R_KNEEL //17
+		parent	femur_r
+		position	-0.0000000000	-0.3867654254	0.0515503937
+		technical 1
+	endmarker
+	marker	R_KNEEM //18
+		parent	femur_r
+		position	0.0000000000	-0.4005708934	-0.0515503937
+		technical 1
+	endmarker
+
+
+// Informations about tibia_r segment
+	// Segment
+	segment	tibia_r
+		parent	femur_r
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	-0.0020380070
+			0.0000000000	1.0000000000	0.0000000000	-0.4124635727
+			0.0000000000	0.0000000000	1.0000000000	-0.0003345932
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	z
+    		rangesQ    -pi/2-pi/6   pi/10
+			   -pi/10       pi/10
+			   -pi/10       pi/10
+   		rangesQdot -7     7
+			   -7     7
+  			   -7     7
+		mass	2.79000
+		inertia
+			0.0264220000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.0272190000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.0032060000
+		com	-0.0025340000	-0.1573690000	 0.0336960000
+	endsegment
+
+	// Markers
+	marker	R_TUP //19
+		parent	tibia_r
+		position	0.0126120430	-0.0733417933	-0.0126744159
+		technical 1
+	endmarker
+	marker	R_TLAT //20
+		parent	tibia_r
+		position	0.0314460485	-0.1122746474	0.0273142934
+		technical 1
+	endmarker
+	marker	R_TCENTER //21
+		parent	tibia_r
+		position	0.0146861694	-0.1295198034	-0.0037622292
+		technical 1
+	endmarker
+	marker	R_TMED //22
+		parent	tibia_r
+		position	-0.0127632182	-0.1196357687	-0.0288043336
+		technical 1
+	endmarker
+	marker	R_TDOWN //23
+		parent	tibia_r
+		position	0.0173559795	-0.1768889880	0.0043429199
+		technical 1
+	endmarker
+	marker	R_ANKL //24
+		parent	tibia_r
+		position	-0.0057342529	-0.3563636221	0.0763028741
+		technical 1
+	endmarker
+	marker	R_ANKM //25
+		parent	tibia_r
+		position	0.0103035091	-0.3549608534	0.0015108856
+		technical 1
+	endmarker
+
+// Informations about patella_r segment
+	// Segment
+	segment	patella_r
+		parent	femur_r
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	  0.0368454307 
+			0.0000000000	1.0000000000	0.0000000000	 -0.4224635727
+			0.0000000000	0.0000000000	1.0000000000	 -0.0024879788482558346
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		mass	0.06664947900306345
+		inertia
+			2.03698e-06	 0.0000000000	 0.0000000000
+			0.0000000000	 9.30479e-06	 0.0000000000
+			0.0000000000	 0.0000000000	 9.30479e-06
+		com	0.0017244 0.0252912 0
+	endsegment
+
+// Informations about foot_r segment
+	// Segment
+	segment	foot_r
+		parent	tibia_r
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0054060569
+			0.0000000000	1.0000000000	0.0000000000	-0.3715775046
+			0.0000000000	0.0000000000	1.0000000000	 0.0347870124
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xz
+    		rangesQ    -pi/6   pi/6
+			   -pi/6   pi/6
+			   -pi/6   pi/6
+   		rangesQdot -7     7
+			   -7     7
+  			   -7     7
+		mass	0.75000
+		inertia
+			0.0032420000	 0.0000000000	 0.0000000000
+			0.0000000000	 0.0037240000	 0.0000000000
+			0.0000000000	 0.0000000000	 0.0008050000
+		com	0.0343340000	-0.0342820000	-0.0095390000
+	endsegment
+
+	// Markers
+	marker	R_HEE //26
+		parent	foot_r
+		position	-0.0598087399	-0.0369797364	0.0004371280
+		technical 1
+	endmarker
+	marker	R_FOOT //27
+		parent	foot_r
+		position	0.0531543520	0.0185624021	0.0047355434
+		technical 1
+	endmarker
+	marker	R_FMP5 //28
+		parent	foot_r
+		position	0.1082918602	-0.0369797364	0.0478301923
+		technical 1
+	endmarker
+	marker	R_FMP2 //29
+		parent	foot_r
+		position	0.1347482079	-0.0228537527	0.0007664011
+		technical 1
+	endmarker
+	marker	R_FMP1 //30
+		parent	foot_r
+		position	0.1207464304	-0.0369797364	-0.0469559362
+		technical 1
+	endmarker
+	marker	R_HAL //31
+		parent	foot_r
+		position	0.1747262290	-0.0302592785	-0.0244164684
+		technical 1
+	endmarker
+
+	// Contacts
+	contact    Heel_r
+		parent      foot_r
+		position    -0.0398087399    -0.05	0.0004371280
+		axis    xyz
+	endcontact
+	contact    Meta1_r
+		parent      foot_r
+		position    0.1207464304    -0.05	-0.0469559362
+		axis    z
+	endcontact
+	contact    Meta5_r
+		parent      foot_r
+		position    0.1082918602    -0.05	0.0478301923
+		axis    xz
+	endcontact
+
+
+// Informations about femur_l segment
+	// Segment
+	segment	femur_l
+		parent	pelvis
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0320829222
+			0.0000000000	1.0000000000	0.0000000000	-0.0970886951
+			0.0000000000	0.0000000000	1.0000000000	-0.0880462901
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	xyz
+		rangesQ    -pi/2  pi/2
+		       	   -pi/2  pi/2
+		           -pi/2  pi/2+pi/3
+		rangesQdot  -pi*10     pi*10
+		            -pi*10     pi*10
+		            -pi*10     pi*10
+		mass	8.57000
+		inertia
+			 0.1877480000	 0.0000000000	0.0000000000
+			 0.0000000000	 0.1929420000	0.0000000000
+			 0.0000000000	 0.0000000000	0.0371880000
+		com	-0.0027680000	-0.1468230000	0.0003160000
+	endsegment
+
+	// Markers
+	marker	LFUP //32
+		parent	femur_l
+		position	0.0076879198	-0.1258179772	-0.0927830557
+		technical 1
+	endmarker
+	marker	L_FANT //33
+		parent	femur_l
+		position	0.0495413374	-0.1682419597	-0.0726920519
+		technical 1
+	endmarker
+	marker	L_FPOST //34
+		parent	femur_l
+		position	-0.0372362601	-0.1764041558	-0.0847143500
+		technical 1
+	endmarker
+	marker	L_FDOWN //35
+		parent	femur_l
+		position	0.0031133152	-0.2063931781	-0.0832868726
+		technical 1
+	endmarker
+	marker	L_TC //36
+		parent	femur_l
+		position	-0.0126859449	-0.0108367555	-0.0934405516
+		technical 1
+	endmarker
+	marker	L_KNEEL //37
+		parent	femur_l
+		position	-0.0000000000	-0.3763361495	-0.0528816680
+		technical 1
+	endmarker
+	marker	L_KNEEM //38
+		parent	femur_l
+		position	-0.0000000000	-0.3893055842	0.0528816680
+		technical 1
+	endmarker
+
+
+// Informations about tibia_l segment
+	// Segment
+	segment	tibia_l
+		parent	femur_l
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	-0.0076636593
+			0.0000000000	1.0000000000	0.0000000000	-0.4064861836
+			0.0000000000	0.0000000000	1.0000000000	 0.0008745866
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		rotations	z
+    		rangesQ    -pi/2-pi/6   pi/10
+			   -pi/10       pi/10
+			   -pi/10       pi/10
+   		rangesQdot -7     7
+			   -7     7
+  			   -7     7
+		mass	2.79000
+		inertia
+			 0.0288380000	 0.0000000000	 0.0000000000
+			 0.0000000000	 0.0297090000	 0.0000000000
+			 0.0000000000	 0.0000000000	 0.0034990000
+		com	 0.0000970000	-0.1640170000	-0.0370810000
+	endsegment
+
+	// Markers
+	marker	L_TUP //39
+		parent	tibia_l
+		position	0.0330263182	-0.0843299762	-0.0142766739
+		technical 1
+	endmarker
+	marker	L_TLAT //40
+		parent	tibia_l
+		position	0.0350504668	-0.1777601868	-0.0339484863
+		technical 1
+	endmarker
+	marker	L_TCENTER //41
+		parent	tibia_l
+		position	0.0217532667	-0.1352329681	0.0004982449
+		technical 1
+	endmarker
+	marker	L_TMED //42
+		parent	tibia_l
+		position	-0.0000525822	-0.1078767989	0.0251048806
+		technical 1
+	endmarker
+	marker	L_TDOWN //43
+		parent	tibia_l
+		position	0.0082632021	-0.1816386658	0.0099746695
+		technical 1
+	endmarker
+	marker	L_ANKL //44
+		parent	tibia_l
+		position	0.0002223309	-0.3714185848	-0.0839701263
+		technical 1
+	endmarker
+	marker	L_ANKM //45
+		parent	tibia_l
+		position	0.0155740916	-0.3607725760	-0.0070393151
+		technical 1
+	endmarker
+
+// Informations about patella_l segment
+	// Segment
+	segment	patella_l
+		parent	femur_l
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	  0.0368454307 
+			0.0000000000	1.0000000000	0.0000000000	 -0.4224635727
+			0.0000000000	0.0000000000	1.0000000000	  0.0024879788482558346
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		mass	0.06664947900306345
+		inertia
+			2.03698e-06	 0.0000000000	 0.0000000000
+			0.0000000000	 9.30479e-06	 0.0000000000
+			0.0000000000	 0.0000000000	 9.30479e-06
+		com	0.0017244 0.0252912 0
+	endsegment
+
+// Informations about foot_l segment
+	// Segment
+	segment	foot_l
+		parent	tibia_l
+		RTinMatrix	1
+		RT
+			1.0000000000	0.0000000000	0.0000000000	 0.0078731777
+			0.0000000000	1.0000000000	0.0000000000	-0.3785138860
+			0.0000000000	0.0000000000	1.0000000000	-0.0434050534
+			0.0000000000	0.0000000000	0.0000000000	 1.0000000000
+		mass	0.75000
+		rotations	xz
+		rangesQ    -pi/6   pi/6
+			   -pi/6   pi/6
+			   -pi/6   pi/6
+   		rangesQdot -7     7
+			   -7     7
+  			   -7     7
+		inertia
+			0.0034290000	 0.0000000000	0.0000000000
+			0.0000000000	 0.0039390000	0.0000000000
+			0.0000000000	 0.0000000000	0.0008510000
+		com	0.0353140000	-0.0334410000	0.0067490000
+	endsegment
+
+	// Markers
+	marker	L_HEE //46
+		parent	foot_l
+		position	-0.0613915717	-0.0355077378	-0.0047091619
+		technical 1
+	endmarker
+	marker	L_FOOT //47
+		parent	foot_l
+		position	0.0594359978	0.0183919081	0.0008686355
+		technical 1
+	endmarker
+	marker	L_FMP5 //48
+		parent	foot_l
+		position	0.1071212697	-0.0355077378	-0.0530829642
+		technical 1
+	endmarker
+	marker	L_FMP2 //49
+		parent	foot_l
+		position	0.1386635986	-0.0211630769	-0.0007742942
+		technical 1
+	endmarker
+	marker	L_FMP1 //50
+		parent	foot_l
+		position	0.1213695199	-0.0355077378	0.0436646403
+		technical 1
+	endmarker
+	marker	L_HAL //51
+		parent	foot_l
+		position	0.1795303500	-0.0303583887	0.0238366316
+		technical 1
+	endmarker
+
+	// Contact 
+	contact    Heel_l
+		parent      foot_l
+		position    -0.0413915717    -0.05	-0.0047091619
+		axis    xyz
+	endcontact
+	contact    Meta1_l
+		parent      foot_l
+		position    0.1213695199    -0.05	0.0436646403
+		axis    z
+	endcontact
+	contact    Meta5_l
+		parent      foot_l
+		position    0.1071212697    -0.05	-0.0530829642
+		axis    xz
+	endcontact
+
+// --------------------------------------------------------------------------------------------------------
+// Muscles -------------------------------------------------------------------------------------------------------- 
+	musclegroup group_pelvis_femur_r
+		OriginParent	pelvis
+		InsertionParent	femur_r
+	endmusclegroup
+	musclegroup group_pelvis_tibia_r
+		OriginParent	pelvis
+		InsertionParent	tibia_r
+	endmusclegroup
+	musclegroup group_femur_r_tibia_r
+		OriginParent	femur_r
+		InsertionParent	tibia_r
+	endmusclegroup
+	musclegroup group_femur_r_foot_r
+		OriginParent	femur_r
+		InsertionParent	foot_r
+	endmusclegroup
+	musclegroup group_tibia_r_foot_r
+		OriginParent	tibia_r
+		InsertionParent	foot_r
+	endmusclegroup
+
+
+// Glut max 1
+	muscle glut_max1_r
+		Type			hillthelen
+		muscletype        	degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		-0.06717926  0.0036186   0.05410196
+		InsertionPosition	-0.025060732398795135 -0.051207128295010999 0.042521820315645172
+		optimalLength		0.12692488246162639
+		maximalForce		$fiso_glutmax1
+		maxExcitation		1
+		tendonSlackLength	0.042170912168902057
+		pennationAngle		0.35401178
+	endmuscle
+	// Via points
+	viapoint glut_max1_r
+		parent		pelvis
+		muscle		glut_max1_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.06977711 -0.0435841   0.07486458
+	endviapoint
+	viapoint glut_max1_r
+		parent		femur_r
+		muscle		glut_max1_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.040169549404566927 -0.029493858346596437 0.02732253135175498
+	endviapoint
+
+// Glut max 2
+	muscle glut_max2_r
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		-0.07577239 -0.01712804  0.04439343
+		InsertionPosition	-0.014113625466469461 -0.091919509448288278 0.037907750451607082
+		optimalLength		0.13947253651759936
+		maximalForce		$fiso_glutmax2
+		maxExcitation		1
+		tendonSlackLength	0.060308236763858096
+		pennationAngle		0.36738206000000001
+	endmuscle
+	// Via points
+	viapoint glut_max2_r
+		parent		pelvis
+		muscle		glut_max2_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.07847058 -0.07309575  0.07813277
+	endviapoint
+	viapoint glut_max2_r
+		parent		femur_r
+		muscle		glut_max2_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.040712381153277293 -0.052835623541142088 0.022798933445835282
+	endviapoint
+
+//Glut max 3
+	muscle glut_max3_r
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		-0.07407367 -0.06634103  0.00863555
+		InsertionPosition	-0.0054283174871036389 -0.12837951969326178 0.037183974786659926
+		optimalLength		0.15264182371854551
+		maximalForce		$fiso_glutmax3
+		maxExcitation		1
+		tendonSlackLength	0.06372257404585295
+		pennationAngle		0.38241613000000002ssssssss
+	endmuscle
+	// Via points
+	viapoint glut_max3_r
+		parent		pelvis
+		muscle		glut_max3_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.07137628 -0.12568649  0.04179815
+	endviapoint
+	viapoint glut_max3_r
+		parent		femur_r
+		muscle		glut_max3_r
+		musclegroup	group_pelvis_femur_r
+		position	-0.025422620231268709 -0.10178095288319322 0.0085043640631290336
+	endviapoint
+
+// Glut med 1
+	muscle glut_med1_r
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		0.04135655 -0.00442268  0.14264078
+		InsertionPosition	-0.019722886869809889 -0.010585219099852097 0.050211936755708661
+		optimalLength		0.060135152619458086
+		maximalForce		$fiso_glutmed1
+		maxExcitation		1
+		tendonSlackLength	0.045980187776251527
+		pennationAngle		0.31655591
+	endmuscle
+	
+// Glut med 2
+	muscle glut_med2_r
+		Type			hillthelen
+		muscletype   		degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		0.00088931 0.00128664 0.08486777
+		InsertionPosition	-0.023341765194545647 -0.0052473735708668517 0.047678721928393626
+		optimalLength		0.060925181806142467
+		maximalForce		$fiso_glutmed2
+		maxExcitation		1
+		tendonSlackLength	0.054456105273260898
+		pennationAngle		0.31655591
+	endmuscle
+
+// Glut med 3
+	muscle glut_med3_r
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_r
+		OriginPosition		-0.05928617 -0.02999419  0.05054533
+		InsertionPosition	-0.02795583505858374 -0.0042521820315645168 0.046864474305328085
+		optimalLength		0.06464915843473977
+		maximalForce		$fiso_glutmed3
+		maxExcitation		1
+		tendonSlackLength	0.040058428389561876
+		pennationAngle		0.31655591
+	endmuscle
+
+// Long adducteur
+	muscle    addlong_r
+		Type                     hillthelen
+		muscletype                degroote
+		musclegroup              group_pelvis_femur_r
+		OriginPosition            0.06824645 -0.09561152  0.03813254
+		InsertionPosition         0.010187161371805092 -0.21656229173149932 0.01432167319479391
+		optimalLength             0.099132735647937995
+		maximalForce              $fiso_addlong
+		maxExcitation		  1
+		tendonSlackLength         0.12075444958180821
+		pennationAngle            0.13777038999999999
+	endmuscle
+	
+// LEFT
+	musclegroup group_pelvis_femur_l
+		OriginParent	pelvis
+		InsertionParent	femur_l
+	endmusclegroup
+	musclegroup group_pelvis_tibia_l
+		OriginParent	pelvis
+		InsertionParent	tibia_l
+	endmusclegroup
+	musclegroup group_femur_l_tibia_l
+		OriginParent	femur_l
+		InsertionParent	tibia_l
+	endmusclegroup
+	musclegroup group_femur_l_foot_l
+		OriginParent	femur_l
+		InsertionParent	foot_l
+	endmusclegroup
+	musclegroup group_tibia_l_foot_l
+		OriginParent	tibia_l
+		InsertionParent	foot_l
+	endmusclegroup
+
+// Glut max 1
+	muscle glut_max1_l
+		Type			hillthelen
+		muscletype        	degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		-0.06717926  0.0036186   -0.05410196
+		InsertionPosition	-0.025060732398795135 -0.051207128295010999 -0.042521820315645172
+		optimalLength		0.12692488246162639
+		maximalForce		$fiso_glutmax1
+		maxExcitation		1
+		tendonSlackLength	0.042170912168902057
+		pennationAngle		0.35401178
+	endmuscle
+	// Via points
+	viapoint glut_max1_l
+		parent		pelvis
+		muscle		glut_max1_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.06977711 -0.0435841   -0.07486458
+	endviapoint
+	viapoint glut_max1_l
+		parent		femur_l
+		muscle		glut_max1_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.040169549404566927 -0.029493858346596437 -0.02732253135175498
+	endviapoint
+
+// Glut max 2
+	muscle glut_max2_l
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		-0.07577239 -0.01712804  -0.04439343
+		InsertionPosition	-0.014113625466469461 -0.091919509448288278  -0.037907750451607082
+		optimalLength		0.13947253651759936
+		maximalForce		$fiso_glutmax2
+		maxExcitation		1
+		tendonSlackLength	0.060308236763858096
+		pennationAngle		0.36738206000000001
+	endmuscle
+	// Via points
+	viapoint glut_max2_l
+		parent		pelvis
+		muscle		glut_max2_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.07847058 -0.07309575  -0.07813277
+	endviapoint
+	viapoint glut_max2_l
+		parent		femur_l
+		muscle		glut_max2_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.040712381153277293 -0.052835623541142088 -0.022798933445835282
+	endviapoint
+
+//Glut max 3
+	muscle glut_max3_l
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		-0.07407367 -0.06634103  -0.00863555
+		InsertionPosition	-0.0054283174871036389 -0.12837951969326178  -0.037183974786659926
+		optimalLength		0.15264182371854551
+		maximalForce		$fiso_glutmax3
+		maxExcitation		1
+		tendonSlackLength	0.06372257404585295
+		pennationAngle		0.38241613000000002
+	endmuscle
+	// Via points
+	viapoint glut_max3_l
+		parent		pelvis
+		muscle		glut_max3_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.07137628 -0.12568649  -0.04179815
+	endviapoint
+	viapoint glut_max3_l
+		parent		femur_l
+		muscle		glut_max3_l
+		musclegroup	group_pelvis_femur_l
+		position	-0.025422620231268709 -0.10178095288319322 -0.0085043640631290336
+	endviapoint
+
+// Glut med 1
+	muscle glut_med1_l
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		0.04135655 -0.00442268  -0.14264078
+		InsertionPosition	-0.019722886869809889 -0.010585219099852097 -0.050211936755708661
+		optimalLength		0.060135152619458086
+		maximalForce		$fiso_glutmed1
+		maxExcitation		1
+		tendonSlackLength	0.045980187776251527
+		pennationAngle		0.31655591
+	endmuscle
+
+// Glut med 2
+	muscle glut_med2_l
+		Type			hillthelen
+		muscletype   		degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		0.00088931 0.00128664 -0.08486777
+		InsertionPosition	-0.023341765194545647 -0.0052473735708668517 -0.047678721928393626
+		optimalLength		0.060925181806142467
+		maximalForce		$fiso_glutmed2
+		maxExcitation		1
+		tendonSlackLength	0.054456105273260898
+		pennationAngle		0.31655591
+	endmuscle
+
+// Glut med 3
+	muscle glut_med3_l
+		Type			hillthelen
+		muscletype    		degroote
+		musclegroup		group_pelvis_femur_l
+		OriginPosition		-0.05928617 -0.02999419  -0.05054533
+		InsertionPosition	-0.02795583505858374 -0.0042521820315645168 -0.046864474305328085
+		optimalLength		0.06464915843473977
+		maximalForce		$fiso_glutmed3
+		maxExcitation		1
+		tendonSlackLength	0.040058428389561876
+		pennationAngle		0.31655591
+	endmuscle
+	
+// Long adducteur
+	muscle    addlong_l
+		Type                     hillthelen
+		muscletype                degroote
+		musclegroup              group_pelvis_femur_l
+		OriginPosition            0.06824645 -0.09561152  -0.03813254
+		InsertionPosition         0.010187161371805092 -0.21656229173149932 -0.01432167319479391
+		optimalLength             0.099132735647937995
+		maximalForce              $fiso_addlong
+		maxExcitation		      1
+		tendonSlackLength         0.12075444958180821
+		pennationAngle            0.13777038999999999
+	endmuscle
+
+

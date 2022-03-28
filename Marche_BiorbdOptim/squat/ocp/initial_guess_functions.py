@@ -1,54 +1,26 @@
 import numpy as np
-from bioptim import InterpolationType, InitialGuessList
+from bioptim import InterpolationType, InitialGuessList, OptimalControlProgram
 
 class initial_guess:
     @staticmethod
-    def set_initial_guess(model, x_init, u_init, q_ref, muscles, mapping=False):
+    def set_initial_guess(model, x_init, u_init, q_ref, muscles=False, activation_ref=None, mapping=False):
         nb_mus = model.nbMuscleTotal() if muscles else 0
         nb_tau = (model.nbGeneralizedTorque() - model.nbRoot()) if mapping else model.nbGeneralizedTorque()
 
         qdot_ref = np.gradient(q_ref)[0]
-        x_init.add([0]*model.nbQ() + [0]*model.nbQ())
-        # x_init.add(np.vstack([q_ref, qdot_ref]), interpolation=InterpolationType.EACH_FRAME)
-
-        u_init.add([0] * nb_tau + [0.1] * nb_mus)
-
-    @staticmethod
-    def set_initial_guess_multiphase(model, x_init, u_init, q_ref, muscles=True, mapping=False):
-        initial_guess.set_initial_guess(model[0], x_init, u_init, q_ref[0], muscles, mapping)
-        initial_guess.set_initial_guess(model[1], x_init, u_init,  q_ref[1], muscles, mapping)
-
-
-    @staticmethod
-    def set_initial_guess_position_basse(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
-        init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
-        for i in range(model.nbQ()):
-            init_x[i, :] = np.concatenate(np.linspace(position_high[i], position_low[i], nb_shooting + 1)).squeeze()
-        init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
-        x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-
-        if mapping:
-            u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()) + [0.1] * model.nbMuscleTotal())
+        # x_init.add([0]*model.nbQ() + [0]*model.nbQ())
+        x_init.add(np.vstack([q_ref, qdot_ref]), interpolation=InterpolationType.EACH_FRAME)
+        if (activation_ref is not None) and (nb_mus != 0):
+            tau_ref = np.zeros((nb_tau, q_ref.shape[1]))
+            u_init.add(np.vstack([tau_ref[:, :-1], activation_ref[:, :-1]]), interpolation=InterpolationType.EACH_FRAME)
         else:
-            u_init.add([0] * model.nbGeneralizedTorque() + [0.1] * model.nbMuscleTotal())
-        return x_init, u_init
+            u_init.add([0] * nb_tau + [0.5] * nb_mus)
+
 
     @staticmethod
-    def set_initial_guess_position_basse_torque_driven(model, x_init, u_init, position_high, position_low, nb_shooting, mapping=False):
-        # init_x = np.zeros((model.nbQ() + model.nbQdot(), nb_shooting + 1))
-        # for i in range(model.nbQ()):
-        #     init_x[i, :] = np.linspace(position_high[i], position_low[i], nb_shooting + 1).squeeze()
-        # init_x[model.nbQ():, :] = np.gradient(init_x[:model.nbQ(), :])[0]
-        # x_init.add(init_x, interpolation=InterpolationType.EACH_FRAME)
-        n_phases = 2
-        for i in range(n_phases):
-            x_init.add(np.zeros(model.nbQ() + model.nbQ()))
-            if mapping:
-                u_init.add([0] * (model.nbGeneralizedTorque() - model.nbRoot()))
-            else:
-                u_init.add([0] * model.nbGeneralizedTorque())
-        return x_init, u_init
-
+    def set_initial_guess_multiphase(model, x_init, u_init, q_ref, muscles=True, activation_ref=[None, None], mapping=False):
+        initial_guess.set_initial_guess(model[0], x_init, u_init, q_ref[0], muscles, activation_ref[0], mapping)
+        initial_guess.set_initial_guess(model[1], x_init, u_init,  q_ref[1], muscles, activation_ref[1], mapping)
 
     @staticmethod
     def set_initial_guess_from_previous_solution(model, x_init, u_init, save_path, nb_shooting, mapping=False):

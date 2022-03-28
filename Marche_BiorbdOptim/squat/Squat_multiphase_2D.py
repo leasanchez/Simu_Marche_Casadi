@@ -1,5 +1,4 @@
 import biorbd_casadi as biorbd
-import bioviz
 import numpy as np
 from casadi import MX
 from matplotlib import pyplot as plt
@@ -13,10 +12,9 @@ from bioptim import (
     ConstraintList,
     InitialGuessList,
     Solver,
-    OdeSolver,
 )
 
-from ocp.load_data import data
+from Marche_BiorbdOptim.squat.load_data import data
 from ocp.objective_functions import objective
 from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
@@ -44,7 +42,7 @@ idx = [0, 1, 5, 11, 12, 14, 17, 18, 20]
 # experimental data
 name = "EriHou"
 title = "squat_controle"
-model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + "_2D_RT.bioMod"
+model_path = "/home/leasanchez/programmation/Simu_Marche_Casadi/Marche_BiorbdOptim/squat/Data_test/" + name + "/" + name + "_2D.bioMod"
 model = (biorbd.Model(model_path),
          biorbd.Model(model_path),)
 
@@ -119,7 +117,7 @@ sol = ocp.solve(solver=solver)
 toc = time() - tic
 
 # --- Save results --- #
-save_path = './RES/muscle_driven_2D/multiphase/with_contact/'
+save_path = './RES/'
 save_results(ocp, sol, save_path)
 
 # --- Show results --- #

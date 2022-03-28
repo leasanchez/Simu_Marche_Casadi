@@ -2,7 +2,6 @@ import biorbd_casadi as biorbd
 import bioviz
 import numpy as np
 from casadi import MX
-from matplotlib import pyplot as plt
 from time import time
 from bioptim import (
     OptimalControlProgram,
@@ -13,10 +12,9 @@ from bioptim import (
     ConstraintList,
     InitialGuessList,
     Solver,
-    OdeSolver,
 )
 
-from ocp.load_data import data
+from Marche_BiorbdOptim.squat.load_data import data
 from ocp.objective_functions import objective
 from ocp.constraint_functions import constraint
 from ocp.bounds_functions import bounds
@@ -49,16 +47,18 @@ nb_shooting = (19, 19)
 final_time = (0.75, 0.75)
 
 # experimental data
+# import data from the server and check path in the code
 name = "EriHou"
-title = "squat_controle"
+higher_foot='R'
+condition= "squat_controle"
 model_path = "./Data_test/" + name + "/" + name + ".bioMod"
 model = (biorbd.Model(model_path),
          biorbd.Model(model_path),)
 
 # --- Subject positions and initial trajectories --- #
-q_ref = data.data_per_phase(name, title, final_time, nb_shooting, "q")
-marker_ref = data.data_per_phase(name, title, final_time, nb_shooting, "marker")
-activation_ref = data.data_per_phase(name, title, final_time, nb_shooting, "activation")
+q_ref = data.data_per_phase(name, higher_foot, condition, final_time, nb_shooting, "q")
+marker_ref = data.data_per_phase(name, higher_foot, condition, final_time, nb_shooting, "marker")
+activation_ref = data.data_per_phase(name, higher_foot, condition, final_time, nb_shooting, "activation")
 position_high = q_ref[0][:, 0]
 position_low = q_ref[0][:, -1]
 
@@ -95,7 +95,7 @@ x_bounds[0][:model[0].nbQ(), 0] = position_high
 # Initial guess
 x_init = InitialGuessList()
 u_init = InitialGuessList()
-initial_guess.set_initial_guess_multiphase(model, x_init, u_init, q_ref, muscles=False, mapping=False)
+initial_guess.set_initial_guess_multiphase(model, x_init, u_init, q_ref, muscles=False)
 
 # ------------- #
 ocp = OptimalControlProgram(
